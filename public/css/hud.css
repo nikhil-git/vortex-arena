@@ -1,0 +1,494 @@
+/* ==========================================================================
+   VORTEX ARENA - IN-GAME HUD & COMBAT UI OVERLAY
+   ========================================================================== */
+
+#game-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+#hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 32px;
+}
+
+/* 1. Crosshair */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  transition: width 0.08s ease, height 0.08s ease;
+}
+
+.crosshair-line {
+  position: absolute;
+  background-color: #00ffff;
+  box-shadow: 0 0 6px rgba(0, 255, 255, 0.8);
+}
+
+.crosshair-line.top { top: 0; left: 11px; width: 2px; height: 6px; }
+.crosshair-line.bottom { bottom: 0; left: 11px; width: 2px; height: 6px; }
+.crosshair-line.left { left: 0; top: 11px; width: 6px; height: 2px; }
+.crosshair-line.right { right: 0; top: 11px; width: 6px; height: 2px; }
+.crosshair-dot {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+#crosshair.expanded {
+  width: 44px;
+  height: 44px;
+}
+
+/* 2. Hitmarker */
+#hitmarker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+  transition: opacity 0.05s ease;
+  pointer-events: none;
+}
+
+#hitmarker.show {
+  opacity: 1;
+}
+
+.hitmarker-tick {
+  position: absolute;
+  background-color: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+}
+
+.hitmarker-tick.top { top: 0; left: 8px; width: 4px; height: 7px; }
+.hitmarker-tick.bottom { bottom: 0; left: 8px; width: 4px; height: 7px; }
+.hitmarker-tick.left { left: 0; top: 8px; width: 7px; height: 4px; }
+.hitmarker-tick.right { right: 0; top: 8px; width: 7px; height: 4px; }
+
+#hitmarker.headshot .hitmarker-tick {
+  background-color: #ff2a4d;
+  box-shadow: 0 0 12px #ff2a4d;
+}
+
+/* 3. Sniper Scope Overlay */
+#sniper-scope {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 32%, rgba(0, 0, 0, 0.98) 33%);
+}
+
+#sniper-scope.active {
+  display: block;
+}
+
+.scope-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  border-radius: 50%;
+}
+
+.scope-reticle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  background: rgba(0, 240, 255, 0.5);
+}
+
+.scope-reticle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 240, 255, 0.5);
+}
+
+/* 4. Low Health Vignette */
+#damage-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  box-shadow: inset 0 0 100px rgba(255, 42, 77, 0);
+  transition: box-shadow 0.2s ease;
+}
+
+#damage-vignette.hit {
+  box-shadow: inset 0 0 140px rgba(255, 42, 77, 0.6);
+}
+
+#damage-vignette.critical {
+  animation: pulseLowHp 1.0s infinite alternate;
+}
+
+@keyframes pulseLowHp {
+  from { box-shadow: inset 0 0 80px rgba(255, 42, 77, 0.4); }
+  to { box-shadow: inset 0 0 180px rgba(255, 42, 77, 0.85); }
+}
+
+/* 5. HUD Top Bar */
+.hud-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.hud-radar-box {
+  background: rgba(10, 14, 22, 0.7);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--cyan-glow);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.hud-match-timer-box {
+  background: rgba(10, 14, 22, 0.8);
+  border: 1px solid var(--border-bright);
+  padding: 10px 28px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+}
+
+.hud-match-timer {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.hud-match-mode-label {
+  font-size: 11px;
+  color: var(--cyan-glow);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* Killfeed */
+#killfeed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  max-width: 380px;
+}
+
+.killfeed-item {
+  background: rgba(10, 15, 24, 0.85);
+  border-right: 3px solid var(--cyan-glow);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  animation: slideInRight 0.25s ease;
+}
+
+.killfeed-item.headshot {
+  border-right-color: var(--crimson-red);
+}
+
+.killfeed-killer { font-weight: 700; color: #00ffff; }
+.killfeed-victim { font-weight: 700; color: #ff4d6d; }
+.killfeed-weapon { color: #ffbe26; font-size: 11px; text-transform: uppercase; }
+
+@keyframes slideInRight {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* 6. Elimination Banner */
+#elimination-banner {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+#elimination-banner.show {
+  display: flex;
+  animation: bannerPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.banner-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #00ff88;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 25px rgba(0, 255, 136, 0.7);
+}
+
+.banner-subtitle {
+  font-size: 16px;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+@keyframes bannerPop {
+  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* 7. Bottom Left Vitals (Health & Shield) */
+.hud-vitals-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 260px;
+  background: rgba(10, 14, 22, 0.75);
+  padding: 14px 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vital-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vital-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vital-track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.vital-fill.health {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #00e5ff, #00ff88);
+  transition: width 0.15s ease;
+}
+
+.vital-fill.shield {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #0077ff, #00d2ff);
+  transition: width 0.15s ease;
+}
+
+/* 8. Bottom Right Weapons & Ammo */
+.hud-weapon-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  background: rgba(10, 14, 22, 0.75);
+  padding: 14px 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.weapon-name-display {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cyan-glow);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.ammo-display {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ammo-current {
+  font-size: 44px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+
+.ammo-reserve {
+  font-size: 18px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.weapon-slots-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.weapon-slot-pill {
+  width: 30px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.weapon-slot-pill.active {
+  background: var(--cyan-glow);
+  color: #060b14;
+  border-color: var(--cyan-glow);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+}
+
+/* 9. Respawn Modal */
+#respawn-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(14, 18, 28, 0.95);
+  border: 1px solid var(--crimson-red);
+  padding: 32px 48px;
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(255, 42, 77, 0.4);
+  pointer-events: none;
+}
+
+#respawn-modal.active {
+  display: flex;
+}
+
+/* 10. Live Scoreboard Overlay (Tab Key) */
+#scoreboard-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 760px;
+  max-width: 90vw;
+  background: rgba(10, 14, 22, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+  display: none;
+  flex-direction: column;
+  padding: 24px;
+  pointer-events: none;
+}
+
+#scoreboard-overlay.active {
+  display: flex;
+}
+
+/* 11. Mobile Touch Controls Styling */
+#mobile-controls {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.touch-action-btn {
+  background: rgba(14, 20, 32, 0.85);
+  border: 2px solid rgba(0, 240, 255, 0.5);
+  color: #fff;
+  border-radius: 50%;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.touch-action-btn:active {
+  transform: scale(0.92);
+}
+
+.touch-action-btn.fire {
+  width: 80px;
+  height: 80px;
+  font-size: 15px;
+  background: linear-gradient(135deg, rgba(255, 42, 77, 0.55), rgba(200, 20, 50, 0.35));
+  border-color: var(--crimson-red);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 42, 77, 0.6);
+}
+
+.touch-action-btn.jump,
+.touch-action-btn.reload,
+.touch-action-btn.swap {
+  width: 60px;
+  height: 60px;
+  font-size: 11px;
+}
+

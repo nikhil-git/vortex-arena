@@ -1,0 +1,24 @@
+{
+  "name": "multiplayer-gun-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/server.test.js test/match.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "sql.js": "^1.15.0",
+    "sqlite3": "^6.0.1",
+    "three": "^0.186.1",
+    "ws": "^8.22.0"
+  }
+}

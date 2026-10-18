@@ -1,0 +1,11 @@
+node_modules
+.git
+.gitignore
+ios/VortexArena/www
+ios/VortexArena.xcodeproj/xcuserdata
+android/app/build
+android/.gradle
+android/local.properties
+*.log
+.DS_Store
+server/database/*.sqlite-journal

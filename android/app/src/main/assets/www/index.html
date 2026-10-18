@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Vortex Arena">
+  <meta name="theme-color" content="#0a0f18">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <title>Vortex Arena: 12-Player Tactical FPS/TPS</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/hud.css">
+</head>
+<body>
+  <!-- Background Cyber FX Canvas -->
+  <div id="bg-canvas-fx"></div>
+
+  <!-- =========================================================================
+       SCREEN 1: LOGIN AND REGISTRATION
+       ========================================================================= -->
+  <div id="screen-auth" class="screen active">
+    <div class="card auth-container">
+      <h1 class="game-logo">VORTEX <span>ARENA</span></h1>
+      <p class="game-subtitle">12-Player Tactical Multiplayer Shooter</p>
+
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active" onclick="app.setAuthTab('login')">Sign In</button>
+        <button id="tab-register" class="auth-tab" onclick="app.setAuthTab('register')">Create Account</button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="form-login" onsubmit="app.handleLogin(event)">
+        <div class="form-group">
+          <label>Username or Email</label>
+          <input type="text" id="login-identifier" class="form-input" placeholder="e.g. SoldierAlpha" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Enter Battlefield</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-register" style="display: none;" onsubmit="app.handleRegister(event)">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="reg-username" class="form-input" placeholder="SoldierAlpha" minlength="3" maxlength="20" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="soldier@domain.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password (Min 6 Characters)</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Initialize Profile</button>
+      </form>
+
+      <!-- Quick Test Accounts for Instant Pair-Testing -->
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+        <p style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Quick Matchmaking Test Presets</p>
+        <div class="demo-users-row">
+          <button type="button" class="btn" style="flex: 1; font-size: 11px; padding: 8px 12px;" onclick="app.quickLogin('SoldierAlpha', 'Password123!')">Player 1: Alpha</button>
+          <button type="button" class="btn" style="flex: 1; font-size: 11px; padding: 8px 12px;" onclick="app.quickLogin('SniperBravo', 'Password123!')">Player 2: Bravo</button>
+        </div>
+      </div>
+
+      <!-- Mobile Native & PWA Install Badges -->
+      <div style="margin-top: 18px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+        <a href="/download" download="VortexArena.apk" class="btn" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; font-size: 12px; font-weight: 800; padding: 10px 14px; background: rgba(0, 240, 255, 0.12); border-color: rgba(0, 240, 255, 0.4); color: var(--cyan-glow); text-decoration: none; border-radius: 6px;">
+          <span>🤖</span> Android APK (Direct Download)
+        </a>
+        <a href="/download-ios" class="btn" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; font-size: 12px; font-weight: 800; padding: 10px 14px; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.25); color: #fff; text-decoration: none; border-radius: 6px;">
+          <span>🍎</span> iOS WebClip / Fullscreen App
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 2: MAIN MENU
+       ========================================================================= -->
+  <div id="screen-main-menu" class="screen">
+    <div class="menu-header">
+      <div style="display: flex; align-items: center; gap: 18px;">
+        <h1 class="game-logo" style="margin: 0; font-size: 28px;">VORTEX <span>ARENA</span></h1>
+        <span style="font-size: 12px; color: var(--cyan-glow); background: rgba(0, 240, 255, 0.1); border: 1px solid var(--border-bright); padding: 4px 10px; border-radius: 12px; font-weight: 800;">12-PLAYER ONLINE</span>
+      </div>
+
+      <div class="user-profile-badge">
+        <div class="avatar-circle" id="menu-avatar-initial">A</div>
+        <div>
+          <div style="font-weight: 800; font-size: 15px;" id="menu-username">SoldierAlpha</div>
+          <div style="font-size: 11px; color: var(--cyan-glow);" id="menu-usertag">#0001</div>
+        </div>
+        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 11px; margin-left: 12px;" onclick="app.handleLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="menu-layout">
+      <!-- Left Navigation Buttons -->
+      <div class="menu-nav">
+        <button class="btn btn-primary" onclick="app.navigateTo('matchmaking')">
+          <span style="font-size: 18px;">🎯</span> Find Quick Match
+        </button>
+        <button class="btn" onclick="app.openCreateRoomModal()">
+          <span style="font-size: 18px;">🛡️</span> Host Custom Match
+        </button>
+        <button class="btn" onclick="app.openJoinCodeModal()">
+          <span style="font-size: 18px;">🔑</span> Join by Room Code
+        </button>
+        <button class="btn" onclick="app.navigateTo('friends')">
+          <span style="font-size: 18px;">👥</span> Friends & Social
+        </button>
+        <button class="btn" onclick="app.navigateTo('skins')">
+          <span style="font-size: 18px;">🎨</span> Skins & Customization
+        </button>
+        <button class="btn" onclick="app.navigateTo('achievements')">
+          <span style="font-size: 18px;">🏆</span> Kill Milestones & Rewards
+        </button>
+        <button class="btn" onclick="app.navigateTo('settings')">
+          <span style="font-size: 18px;">⚙️</span> System Settings
+        </button>
+      </div>
+
+      <!-- Center Hero Match Callout -->
+      <div class="menu-center-hero">
+        <div class="hero-match-card">
+          <div style="font-size: 12px; color: var(--cyan-glow); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">Ranked Combat Rotation</div>
+          <h2 style="font-size: 32px; font-weight: 900; margin-bottom: 12px; letter-spacing: 2px;">SECTOR-7 COMPOUND</h2>
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
+            Up to 12 players simultaneously in tight urban combat with sniper platforms, barricades, and central bunker sightlines.
+          </p>
+          <div style="display: flex; justify-content: center; gap: 14px;">
+            <button class="btn btn-primary" style="padding: 16px 36px; font-size: 17px;" onclick="app.navigateTo('matchmaking')">
+              Deploy Now
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Player Progression Overview -->
+      <div class="card stats-sidebar-card">
+        <h3 style="font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 8px;">
+          Lifetime Combat Record
+        </h3>
+        <div class="stat-item">
+          <span>Lifetime Kills</span>
+          <span id="side-lifetime-kills" style="color: var(--emerald-green); font-size: 18px;">0</span>
+        </div>
+        <div class="stat-item">
+          <span>K/D Ratio</span>
+          <span id="side-kd-ratio">0.00</span>
+        </div>
+        <div class="stat-item">
+          <span>Matches Played</span>
+          <span id="side-matches">0</span>
+        </div>
+        <div class="stat-item">
+          <span>Victories</span>
+          <span id="side-wins">0</span>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+            <span style="color: var(--amber-gold); font-weight: 700;">Upcoming Milestone:</span>
+            <span id="side-milestone-text">0 / 10 kills</span>
+          </div>
+          <div class="progress-track">
+            <div id="side-milestone-bar" class="progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+          Progress towards <strong style="color: #fff;" id="side-milestone-name">Bronze Striker</strong> (10 kills).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 3: MATCHMAKING
+       ========================================================================= -->
+  <div id="screen-matchmaking" class="screen">
+    <div class="radar-spinner"></div>
+    <h2 style="font-size: 26px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">SEARCHING FOR SECTOR...</h2>
+    <p style="color: var(--cyan-glow); font-size: 15px; margin-bottom: 12px;">Connecting to best available 12-Player match</p>
+    <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 30px;">
+      Time Elapsed: <span id="matchmaking-timer" style="color: #fff; font-weight: 700;">00:03</span>
+    </div>
+    <button class="btn btn-danger" onclick="app.cancelMatchmaking()">Cancel Matchmaking</button>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 4: GAME LOBBY
+       ========================================================================= -->
+  <div id="screen-lobby" class="screen">
+    <div class="lobby-header">
+      <div>
+        <h2 style="font-size: 26px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px;" id="lobby-title">TACTICAL LOBBY</h2>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 13px; color: var(--text-muted);">Room Code:</span>
+          <span id="lobby-room-code" style="font-size: 16px; font-weight: 900; color: var(--cyan-glow); letter-spacing: 2px; background: rgba(0, 240, 255, 0.1); padding: 2px 8px; border-radius: 4px;">ABC123</span>
+          <button class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="app.copyRoomCode()">Copy</button>
+          <span style="font-size: 13px; color: var(--text-muted); margin-left: 12px;">Capacity:</span>
+          <span id="lobby-capacity-pill" style="font-weight: 800; color: var(--amber-gold);">1 / 12 PLAYERS</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 14px;">
+        <button id="btn-start-match" class="btn btn-primary" onclick="app.startLobbyMatch()">
+          🚀 Launch Match
+        </button>
+        <button class="btn btn-danger" onclick="app.leaveLobby()">
+          Leave Lobby
+        </button>
+      </div>
+    </div>
+
+    <!-- 12-Player Capacity Slot Grid -->
+    <div class="slots-grid" id="lobby-slots-container">
+      <!-- Dynamically rendered 12 slots -->
+    </div>
+
+    <div class="card" style="padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="font-size: 13px; color: var(--text-muted);">
+        Match will automatically begin when players ready up. Host can force-start match immediately with current players.
+      </div>
+      <div id="lobby-status-msg" style="font-weight: 700; color: var(--cyan-glow);">Waiting for combatants...</div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 5: GAMEPLAY & 3D VIEWPORT WITH HUD
+       ========================================================================= -->
+  <div id="screen-gameplay" class="screen">
+    <div id="game-viewport"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud-overlay">
+      <!-- Top Bar -->
+      <div class="hud-top-bar">
+        <div class="hud-radar-box">
+          <span style="color: #fff;">COMPASS:</span> <span id="hud-compass">N 045°</span>
+          <span style="margin-left: 12px; color: #888;" id="hud-fps">60 FPS</span>
+        </div>
+
+        <div class="hud-match-timer-box">
+          <div class="hud-match-mode-label" id="hud-mode-label">FREE FOR ALL</div>
+          <div class="hud-match-timer" id="hud-timer">05:00</div>
+          <div style="font-size: 11px; color: #8a99ad;">First to 25 Kills</div>
+        </div>
+
+        <!-- Killfeed -->
+        <div id="killfeed"></div>
+      </div>
+
+      <!-- Center Reticle & Hitmarker -->
+      <div id="crosshair">
+        <div class="crosshair-line top"></div>
+        <div class="crosshair-line bottom"></div>
+        <div class="crosshair-line left"></div>
+        <div class="crosshair-line right"></div>
+        <div class="crosshair-dot"></div>
+      </div>
+
+      <div id="hitmarker">
+        <div class="hitmarker-tick top"></div>
+        <div class="hitmarker-tick bottom"></div>
+        <div class="hitmarker-tick left"></div>
+        <div class="hitmarker-tick right"></div>
+      </div>
+
+      <!-- Sniper Scope ADS Overlay -->
+      <div id="sniper-scope">
+        <div class="scope-reticle"></div>
+      </div>
+
+      <!-- Damage Vignette -->
+      <div id="damage-vignette"></div>
+
+      <!-- Elimination Banner -->
+      <div id="elimination-banner">
+        <div class="banner-title" id="banner-title">ELIMINATED</div>
+        <div class="banner-subtitle" id="banner-subtitle">Enemy Combatant</div>
+      </div>
+
+      <!-- Respawn Countdown Modal -->
+      <div id="respawn-modal">
+        <h2 style="color: var(--crimson-red); font-size: 28px; font-weight: 900; margin-bottom: 8px;">YOU WERE ELIMINATED</h2>
+        <div style="font-size: 16px; color: #fff; margin-bottom: 12px;" id="respawn-killer-text">Eliminated by SniperBravo</div>
+        <div style="font-size: 32px; font-weight: 900; color: var(--cyan-glow);" id="respawn-countdown-timer">3</div>
+      </div>
+
+      <!-- Scoreboard Overlay (Tab Key) -->
+      <div id="scoreboard-overlay">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 20px; font-weight: 900; letter-spacing: 2px;">LIVE MATCH LEADERBOARD</h2>
+          <span style="font-size: 13px; color: var(--cyan-glow);">HOLD [TAB] TO VIEW</span>
+        </div>
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Operative</th>
+              <th>Kills</th>
+              <th>Deaths</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="scoreboard-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+        <!-- Vitals -->
+        <div class="hud-vitals-box">
+          <div class="vital-bar-wrap">
+            <div class="vital-label-row">
+              <span style="color: #00e5ff;">HEALTH</span>
+              <span id="hud-hp-num">100</span>
+            </div>
+            <div class="vital-track">
+              <div id="hud-hp-fill" class="vital-fill health" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <div class="vital-bar-wrap">
+            <div class="vital-label-row">
+              <span style="color: #0077ff;">SHIELD</span>
+              <span id="hud-shield-num">50</span>
+            </div>
+            <div class="vital-track">
+              <div id="hud-shield-fill" class="vital-fill shield" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weapon & Ammo -->
+        <div class="hud-weapon-box">
+          <div class="weapon-name-display" id="hud-weapon-name">V-44 Striker</div>
+          <div class="ammo-display">
+            <span class="ammo-current" id="hud-ammo-current">30</span>
+            <span class="ammo-reserve" id="hud-ammo-reserve">/ 120</span>
+          </div>
+          <div class="weapon-slots-row">
+            <div class="weapon-slot-pill active" id="slot-1">1: AR</div>
+            <div class="weapon-slot-pill" id="slot-2">2: SNP</div>
+            <div class="weapon-slot-pill" id="slot-3">3: SHG</div>
+            <div class="weapon-slot-pill" id="slot-4">4: PST</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Touch On-Screen Controls -->
+    <div id="mobile-controls" style="display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 20;">
+      <!-- Virtual Joystick Base & Thumb -->
+      <div id="joystick-base" style="position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(0, 240, 255, 0.15); border: 2px solid rgba(0, 240, 255, 0.4); display: none; pointer-events: none;">
+        <div id="joystick-thumb" style="position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; border-radius: 50%; background: var(--cyan-glow); box-shadow: 0 0 15px var(--cyan-glow);"></div>
+      </div>
+
+      <!-- Action Buttons on Right -->
+      <div style="position: absolute; bottom: 85px; right: 28px; display: flex; flex-direction: column; gap: 14px; pointer-events: auto;">
+        <button id="touch-btn-fire" class="touch-action-btn fire" type="button">🎯 FIRE</button>
+        <div style="display: flex; gap: 10px;">
+          <button id="touch-btn-jump" class="touch-action-btn jump" type="button">🦘 JUMP</button>
+          <button id="touch-btn-reload" class="touch-action-btn reload" type="button">🔄 RELOAD</button>
+          <button id="touch-btn-swap" class="touch-action-btn swap" type="button">🔫 SWAP</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 6: FRIENDS SYSTEM
+       ========================================================================= -->
+  <div id="screen-friends" class="screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <h2 style="font-size: 26px; font-weight: 900; letter-spacing: 2px;">FRIENDS & SQUAD COMMAND</h2>
+      <button class="btn" onclick="app.navigateTo('main-menu')">← Main Menu</button>
+    </div>
+
+    <div class="friends-layout">
+      <!-- Search & Add Friend -->
+      <div class="card" style="display: flex; flex-direction: column; gap: 16px;">
+        <h3 style="font-size: 16px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow);">Find Operative</h3>
+        <div class="form-group" style="margin-bottom: 0;">
+          <input type="text" id="friend-search-input" class="form-input" placeholder="Search by username or #0001" oninput="app.handleFriendSearch()">
+        </div>
+        <div id="friend-search-results" style="display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto;">
+          <!-- Dynamically populated search cards -->
+        </div>
+
+        <h3 style="font-size: 15px; font-weight: 800; text-transform: uppercase; color: var(--amber-gold); margin-top: 16px;">Pending Requests</h3>
+        <div id="friend-pending-requests" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
+          <!-- Incoming friend requests -->
+        </div>
+      </div>
+
+      <!-- Friends List with Online & Match Status -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 16px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow);">Squad Roster</h3>
+          <span id="friends-count-pill" style="font-size: 13px; color: var(--text-muted);">0 Friends</span>
+        </div>
+        <div class="friends-list" id="friends-roster-list">
+          <!-- Dynamically populated friends cards -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 7: SKINS INVENTORY & 3D PREVIEW
+       ========================================================================= -->
+  <div id="screen-skins" class="screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h2 style="font-size: 26px; font-weight: 900; letter-spacing: 2px;">CUSTOMIZATION & ARMORY</h2>
+        <p style="color: var(--text-muted); font-size: 13px;">Unlock cosmetics exclusively through lifetime confirmed kill achievements</p>
+      </div>
+      <button class="btn" onclick="app.navigateTo('main-menu')">← Main Menu</button>
+    </div>
+
+    <div class="skins-layout">
+      <!-- Catalog Grid -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div style="display: flex; gap: 12px; margin-bottom: 18px;">
+          <button class="btn active" id="tab-skin-all" onclick="app.filterSkins('all')">All</button>
+          <button class="btn" id="tab-skin-chars" onclick="app.filterSkins('character')">Character Skins</button>
+          <button class="btn" id="tab-skin-weps" onclick="app.filterSkins('weapon')">Weapon Skins</button>
+        </div>
+        <div class="skins-catalog" id="skins-grid-container">
+          <!-- Dynamically populated skins -->
+        </div>
+      </div>
+
+      <!-- 3D Turntable Preview & Inspect Panel -->
+      <div class="card" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+        <div id="skin-preview-canvas" style="width: 100%; height: 320px; background: rgba(0,0,0,0.4); border-radius: 6px; margin-bottom: 16px; cursor: grab;"></div>
+        <h3 id="inspect-skin-name" style="font-size: 22px; font-weight: 900; margin-bottom: 6px;">Recruit Operative</h3>
+        <span id="inspect-skin-rarity" class="rarity-pill rarity-common" style="margin-bottom: 12px;">COMMON</span>
+        <p id="inspect-skin-desc" style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+          Standard issue tactical urban combat uniform.
+        </p>
+        <div id="inspect-skin-req" style="font-size: 12px; color: var(--amber-gold); margin-bottom: 20px; font-weight: 700;">
+          Unlocked by default
+        </div>
+        <button id="btn-equip-skin" class="btn btn-primary" style="width: 100%;" onclick="app.equipSelectedSkin()">
+          Equip Skin
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 8: ACHIEVEMENTS & KILL MILESTONES
+       ========================================================================= -->
+  <div id="screen-achievements" class="screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h2 style="font-size: 26px; font-weight: 900; letter-spacing: 2px;">KILL MILESTONES & REWARDS</h2>
+        <p style="color: var(--text-muted); font-size: 13px;">Authoritative lifetime combat tracking: 10, 50, and 60,000 kills milestones</p>
+      </div>
+      <button class="btn" onclick="app.navigateTo('main-menu')">← Main Menu</button>
+    </div>
+
+    <!-- 60,000 Kills Grand Milestone Banner -->
+    <div class="card" style="margin-bottom: 20px; border-color: var(--amber-gold); background: linear-gradient(135deg, rgba(255, 174, 0, 0.12), rgba(20, 27, 40, 0.9));">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div>
+          <span style="font-size: 11px; font-weight: 800; color: var(--amber-gold); letter-spacing: 2px; text-transform: uppercase;">Ultimate Milestone Track</span>
+          <h3 style="font-size: 24px; font-weight: 900; color: #fff;">APEX OVERLORD (60,000 LIFETIME KILLS)</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">Unlocks Legendary Radiant Hologram Armor + Solaris Oblivion Exclusive Weapon</p>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 28px; font-weight: 900; color: var(--amber-gold);" id="ach-60k-percentage">0.00%</div>
+          <div style="font-size: 13px; color: var(--text-muted);" id="ach-60k-fraction">0 / 60,000 Kills</div>
+        </div>
+      </div>
+      <div class="progress-track" style="height: 12px;">
+        <div id="ach-60k-progress-bar" class="progress-fill" style="width: 0%; background: linear-gradient(90deg, var(--amber-gold), #fff);"></div>
+      </div>
+    </div>
+
+    <!-- Milestones List -->
+    <div class="achievements-grid" id="achievements-container">
+      <!-- Dynamically generated achievement milestone cards -->
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 9: MATCH RESULTS
+       ========================================================================= -->
+  <div id="screen-results" class="screen">
+    <div class="card results-modal">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 id="results-title" style="font-size: 38px; font-weight: 900; letter-spacing: 3px; color: var(--emerald-green);">MATCH VICTORY</h1>
+        <p style="color: var(--text-muted); font-size: 14px;" id="results-subtitle">Sector-7 Combat Operations Concluded</p>
+      </div>
+
+      <!-- Personal Match Performance -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px;">
+        <div class="card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Kills</div>
+          <div style="font-size: 26px; font-weight: 900; color: #00ffff;" id="res-kills">0</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Deaths</div>
+          <div style="font-size: 26px; font-weight: 900; color: #ff3366;" id="res-deaths">0</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">K/D Ratio</div>
+          <div style="font-size: 26px; font-weight: 900; color: #ffae00;" id="res-kd">0.00</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Damage</div>
+          <div style="font-size: 26px; font-weight: 900; color: #00ff88;" id="res-damage">0</div>
+        </div>
+      </div>
+
+      <!-- Lifetime progression notice -->
+      <div class="card" style="background: rgba(0, 240, 255, 0.08); border-color: var(--border-bright); margin-bottom: 24px; padding: 14px 20px;">
+        <div style="font-weight: 700; color: var(--cyan-glow); margin-bottom: 4px;">Lifetime Progression Recorded Authoritatively</div>
+        <div style="font-size: 13px; color: #ddd;" id="res-progression-text">Kills persisted to database. Milestone progress updated.</div>
+      </div>
+
+      <!-- 12-Player Leaderboard Table -->
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Kills</th>
+            <th>Deaths</th>
+            <th>Damage</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+
+      <div style="display: flex; justify-content: center; gap: 16px; margin-top: 24px;">
+        <button class="btn btn-primary" onclick="app.navigateTo('main-menu')">Return to Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SCREEN 10: SETTINGS
+       ========================================================================= -->
+  <div id="screen-settings" class="screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 680px; max-width: 90vw; margin-bottom: 24px;">
+      <h2 style="font-size: 26px; font-weight: 900; letter-spacing: 2px;">SYSTEM SETTINGS</h2>
+      <button class="btn" onclick="app.navigateTo('main-menu')">← Back</button>
+    </div>
+
+    <div class="card settings-box">
+      <!-- Mouse & Controls -->
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase;">Controls & Aiming</h3>
+      <div class="slider-row">
+        <span>Mouse Sensitivity</span>
+        <input type="range" id="setting-sens" min="0.2" max="3.0" step="0.1" value="1.0" oninput="app.updateSettings()">
+        <span id="setting-sens-val" style="width: 40px; text-align: right; font-weight: 700;">1.0</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Invert Mouse Y-Axis</span>
+        <input type="checkbox" id="setting-invert-y" onchange="app.updateSettings()" style="width: 20px; height: 20px; accent-color: var(--cyan-glow);">
+      </div>
+      <div class="slider-row">
+        <span>Field of View (FOV)</span>
+        <input type="range" id="setting-fov" min="65" max="105" step="1" value="75" oninput="app.updateSettings()">
+        <span id="setting-fov-val" style="width: 40px; text-align: right; font-weight: 700;">75°</span>
+      </div>
+
+      <!-- Graphics Settings for Laptop Performance -->
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 12px;">Graphics Performance</h3>
+      <div class="form-group">
+        <label>Graphics Preset (Target 60 FPS)</label>
+        <select id="setting-graphics" class="form-input" onchange="app.updateSettings()">
+          <option value="low">Low (Max Laptop FPS, No Shadows)</option>
+          <option value="medium">Medium (Soft Shadows, Fast)</option>
+          <option value="high" selected>High (PCF Soft Shadows, High-Res)</option>
+          <option value="ultra">Ultra (Max Texture Scaling & 4K Shadows)</option>
+        </select>
+      </div>
+      <div class="slider-row">
+        <span>Display Brightness</span>
+        <input type="range" id="setting-brightness" min="0.8" max="2.6" step="0.1" value="1.4" oninput="app.updateSettings()">
+        <span id="setting-brightness-val" style="width: 40px; text-align: right; font-weight: 700;">1.4x</span>
+      </div>
+
+      <!-- Audio Settings -->
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 12px;">Audio Volumes</h3>
+      <div class="slider-row">
+        <span>Master Volume</span>
+        <input type="range" id="setting-vol-master" min="0" max="100" value="80" oninput="app.updateSettings()">
+        <span id="setting-vol-master-val" style="width: 40px; text-align: right; font-weight: 700;">80%</span>
+      </div>
+      <div class="slider-row">
+        <span>SFX & Gunfire</span>
+        <input type="range" id="setting-vol-sfx" min="0" max="100" value="90" oninput="app.updateSettings()">
+        <span id="setting-vol-sfx-val" style="width: 40px; text-align: right; font-weight: 700;">90%</span>
+      </div>
+
+      <!-- Keybindings Reference -->
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 12px;">Default Laptop Keybindings</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; color: var(--text-muted);">
+        <div><strong>W, A, S, D:</strong> Movement</div>
+        <div><strong>Left Click:</strong> Fire Weapon</div>
+        <div><strong>Right Click:</strong> ADS / Sniper Scope</div>
+        <div><strong>R:</strong> Reload Magazine</div>
+        <div><strong>Space:</strong> Jump</div>
+        <div><strong>Shift:</strong> Sprint</div>
+        <div><strong>1, 2, 3, 4:</strong> Select Firearms</div>
+        <div><strong>[TAB]:</strong> View Scoreboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/audio.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/net.js"></script>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

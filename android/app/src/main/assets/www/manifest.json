@@ -1,0 +1,24 @@
+{
+  "name": "Vortex Arena: 12-Player Shooter",
+  "short_name": "Vortex Arena",
+  "description": "High-octane 12-player tactical 3D multiplayer shooter.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0f18",
+  "theme_color": "#0a0f18",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
