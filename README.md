@@ -148,3 +148,42 @@ npm test
 - `✔ Multiplayer Room Capacity Enforcement (Hard 12-Player Limit)`
 - `✔ Combat Mechanics & Collision Validation`
 - `✔ 2-Player Real-time Matchmaking, Combat, and Authoritative Damage`
+
+---
+
+## 7. Free 24/7 Cloud Hosting Deployment
+
+Vortex Arena is pre-configured with `render.yaml`, `Dockerfile`, and `fly.toml` for 100% free cloud hosting with zero local laptop dependency and full WebSocket multiplayer support.
+
+### Option A: Render (Recommended — 2 Minutes, 100% Free)
+1. **Push your code to GitHub:**
+   ```bash
+   git remote add origin https://github.com/<your-username>/<your-repo-name>.git
+   git push -u origin main
+   ```
+2. Go to **[render.com](https://render.com)** and sign in with GitHub (no credit card required).
+3. Click **New +** → **Blueprint** (or **Web Service**).
+4. Select your `vortex-arena` GitHub repository.
+5. Render detects `render.yaml` automatically:
+   - **Plan:** Free
+   - **Build Command:** `npm install`
+   - **Start Command:** `node server/index.js`
+6. Click **Apply** or **Create Web Service**.
+7. In ~60 seconds, your game is live globally at:
+   ```text
+   https://<your-app-name>.onrender.com
+   ```
+   - Native `wss://` WebSocket multiplayer enabled out-of-the-box.
+   - Anyone on PC, Mac, Android, or iPhone can join from anywhere in the world!
+
+### Option B: Koyeb (Global Free Edge Tier)
+1. Go to **[koyeb.com](https://koyeb.com)** and sign in with GitHub.
+2. Click **Create App** → select **GitHub**.
+3. Choose your repository. Koyeb detects the `Dockerfile` and deploys globally with WebSockets enabled.
+
+### Option C: Fly.io
+```bash
+fly launch
+fly deploy
+```
+
