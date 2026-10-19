@@ -17,5 +17,6 @@ ios/VortexArena.xcodeproj/xcuserdata/
 ios/VortexArena.xcodeproj/project.xcworkspace/xcuserdata/
 .build/
 
-# SQLite journal files
+# SQLite journal and test database files
 server/database/*.sqlite-journal
+test/*.sqlite

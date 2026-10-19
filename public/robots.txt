@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vortex-arena-1nmx.onrender.com/sitemap.xml
