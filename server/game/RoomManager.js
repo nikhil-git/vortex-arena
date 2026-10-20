@@ -39,6 +39,30 @@ class RoomManager {
     return room;
   }
 
+  createAiMatch(options = {}) {
+    const roomCode = this.generateRoomCode();
+    const botCount = Math.max(1, Math.min(11, options.botCount !== undefined ? options.botCount : 5));
+    const difficulty = (options.difficulty || 'medium').toLowerCase();
+    const isPractice = Boolean(options.isPractice);
+
+    const room = this.createRoom({
+      roomCode,
+      name: isPractice ? 'Solo Target Training' : `Sector-7 vs ${difficulty.toUpperCase()} AI`,
+      isPrivate: true,
+      isAiMatch: true,
+      aiDifficulty: difficulty,
+      isPractice,
+      botCount,
+      gameMode: options.gameMode || 'ffa',
+      scoreLimit: options.scoreLimit || (isPractice ? 999 : 25),
+      matchDuration: options.matchDuration || (isPractice ? 600 : 300),
+      minPlayers: 1,
+      hostUserId: options.hostUserId
+    });
+
+    return room;
+  }
+
   getRoom(roomCode) {
     if (!roomCode) return null;
     return this.rooms.get(roomCode.toUpperCase()) || null;

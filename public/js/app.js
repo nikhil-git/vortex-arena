@@ -28,6 +28,20 @@ class App {
       pistol: { name: 'Pulse-9 Sidearm', mag: 15, reserve: 60 }
     };
 
+    // Single Player vs AI & Practice match configuration
+    this.spConfig = {
+      mode: 'ffa',
+      difficulty: 'medium',
+      botCount: 5,
+      mapId: 'sector7',
+      scoreLimit: 25,
+      duration: 300,
+      isPractice: false
+    };
+    this.lastMatchConfig = null;
+    this.currentMatchInfo = null;
+    this.recentMilestoneReward = null;
+
     this.init();
   }
 
@@ -226,6 +240,126 @@ class App {
     if (el) el.style.display = 'none';
   }
 
+  // =========================================================================
+  // SINGLE PLAYER VS COMPUTER & PRACTICE MODE SETUP
+  // =========================================================================
+
+  openSinglePlayerModal(isPractice = false) {
+    const modal = document.getElementById('modal-singleplayer-setup');
+    if (!modal) return;
+
+    this.spConfig.isPractice = Boolean(isPractice);
+    this.setSpMode(isPractice ? 'practice' : (this.spConfig.mode === 'practice' ? 'ffa' : this.spConfig.mode));
+    this.setSpDifficulty(this.spConfig.difficulty || 'medium');
+    this.onSpBotCountChange(this.spConfig.botCount || 5);
+
+    const titleEl = document.getElementById('sp-modal-title');
+    const descEl = document.getElementById('sp-modal-desc');
+    if (titleEl) {
+      titleEl.innerHTML = isPractice ? '🎯 Practice / Target Training' : '🤖 Play vs Computer (Single Player)';
+    }
+    if (descEl) {
+      descEl.textContent = isPractice 
+        ? 'Instant respawn aim training sandbox with bots. Practice mechanics and test weapons.'
+        : 'Fight against tactical computer-controlled AI bots with difficulty scaling and milestone progression.';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  closeSinglePlayerModal() {
+    const modal = document.getElementById('modal-singleplayer-setup');
+    if (modal) modal.style.display = 'none';
+  }
+
+  setSpMode(mode) {
+    this.spConfig.mode = mode;
+    this.spConfig.isPractice = (mode === 'practice');
+
+    document.querySelectorAll('.btn-mode-pill').forEach(el => el.classList.remove('active'));
+    const activeBtn = document.getElementById(`sp-mode-${mode}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const scoreSelect = document.getElementById('sp-score-select');
+    if (scoreSelect) {
+      if (mode === 'practice') {
+        scoreSelect.value = '999';
+      } else if (scoreSelect.value === '999') {
+        scoreSelect.value = '25';
+      }
+    }
+  }
+
+  setSpDifficulty(diff) {
+    this.spConfig.difficulty = diff;
+
+    document.querySelectorAll('.btn-diff-pill').forEach(el => el.classList.remove('active'));
+    const activeBtn = document.getElementById(`sp-diff-${diff}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const descMap = {
+      easy: 'Recruit AI: 550ms reaction time, relaxed aim accuracy, limited tactical movement. Great for beginners.',
+      medium: 'Veteran AI: 320ms reaction time, steady pursuit, cover seeking, and balanced firearm accuracy.',
+      hard: 'Elite AI: 180ms reaction time, dynamic strafing, rapid target acquisition, and tactical weapon switching.',
+      expert: 'Nightmare AI: 90ms lightning reactions, pinpoint accuracy, advanced cover maneuvers, and relentless aggression.'
+    };
+
+    const infoEl = document.getElementById('sp-diff-info');
+    if (infoEl) infoEl.textContent = descMap[diff] || descMap.medium;
+  }
+
+  onSpBotCountChange(count) {
+    const val = parseInt(count, 10);
+    this.spConfig.botCount = val;
+
+    const slider = document.getElementById('sp-bots-slider');
+    if (slider) slider.value = val;
+
+    const badge = document.getElementById('sp-bots-count-badge');
+    if (badge) {
+      badge.textContent = `${val} ${val === 1 ? 'Bot' : 'Bots'} (Total: ${val + 1} / 12 Combatants)`;
+    }
+  }
+
+  startSinglePlayerMatch() {
+    const mapSelect = document.getElementById('sp-map-select');
+    const scoreSelect = document.getElementById('sp-score-select');
+    const durSelect = document.getElementById('sp-duration-select');
+
+    const botCount = this.spConfig.botCount || 5;
+    const difficulty = this.spConfig.difficulty || 'medium';
+    const isPractice = this.spConfig.mode === 'practice';
+    const gameMode = isPractice ? 'ffa' : (this.spConfig.mode || 'ffa');
+    const scoreLimit = scoreSelect ? parseInt(scoreSelect.value, 10) : 25;
+    const matchDuration = durSelect ? parseInt(durSelect.value, 10) : 300;
+    const mapId = mapSelect ? mapSelect.value : 'sector7';
+
+    this.lastMatchConfig = {
+      botCount,
+      difficulty,
+      isPractice,
+      gameMode,
+      scoreLimit,
+      matchDuration,
+      mapId
+    };
+
+    this.closeSinglePlayerModal();
+    this.showToast(`Deploying into Sector-7 Compound vs ${difficulty.toUpperCase()} AI...`);
+
+    window.netClient.createAiMatch(this.lastMatchConfig);
+  }
+
+  rematchAi() {
+    if (!this.lastMatchConfig) {
+      this.openSinglePlayerModal();
+      return;
+    }
+
+    this.showToast(`Starting AI Rematch on Sector-7 Compound...`);
+    window.netClient.createAiMatch(this.lastMatchConfig);
+  }
+
   startLobbyMatch() {
     window.netClient.startMatch();
   }
@@ -286,6 +420,55 @@ class App {
 
   enterGameplay(matchData) {
     this.navigateTo('gameplay');
+    this.currentMatchInfo = matchData || {};
+
+    // Update HUD Mode, Target, and AI Difficulty Badge
+    const modeLabel = document.getElementById('hud-mode-label');
+    const scoreTarget = document.getElementById('hud-score-target');
+    const aiBadge = document.getElementById('hud-ai-badge');
+    const kCount = document.getElementById('hud-kills-count');
+    const dCount = document.getElementById('hud-deaths-count');
+
+    if (kCount) kCount.textContent = '0';
+    if (dCount) dCount.textContent = '0';
+
+    if (modeLabel) {
+      if (this.currentMatchInfo.isPractice) {
+        modeLabel.textContent = 'PRACTICE - TARGET TRAINING';
+      } else if (this.currentMatchInfo.isAiMatch) {
+        const diff = (this.currentMatchInfo.aiDifficulty || 'medium').toUpperCase();
+        const mode = (this.currentMatchInfo.gameMode || 'ffa').toUpperCase();
+        modeLabel.textContent = `VS AI (${diff}) - ${mode}`;
+      } else {
+        const mode = (this.currentMatchInfo.gameMode || 'ffa').toUpperCase();
+        modeLabel.textContent = `${mode} - 12-PLAYER MULTIPLAYER`;
+      }
+    }
+
+    if (scoreTarget) {
+      if (this.currentMatchInfo.isPractice) {
+        scoreTarget.textContent = 'Unlimited Sandbox • Instant Respawn';
+      } else {
+        scoreTarget.textContent = `First to ${this.currentMatchInfo.scoreLimit || 25} Kills`;
+      }
+    }
+
+    if (aiBadge) {
+      if (this.currentMatchInfo.isPractice) {
+        aiBadge.style.display = 'inline-block';
+        aiBadge.textContent = '🎯 PRACTICE SANDBOX';
+        aiBadge.style.color = 'var(--emerald-green)';
+        aiBadge.style.borderColor = 'rgba(0, 255, 136, 0.4)';
+      } else if (this.currentMatchInfo.isAiMatch) {
+        aiBadge.style.display = 'inline-block';
+        const diff = (this.currentMatchInfo.aiDifficulty || 'medium').toUpperCase();
+        aiBadge.textContent = `🤖 AI DIFFICULTY: ${diff}`;
+        aiBadge.style.color = 'var(--cyan-glow)';
+        aiBadge.style.borderColor = 'rgba(0, 240, 255, 0.4)';
+      } else {
+        aiBadge.style.display = 'none';
+      }
+    }
 
     if (!this.gameEngine) {
       const container = document.getElementById('game-viewport');
@@ -493,6 +676,17 @@ class App {
         if (timerEl.textContent !== formatted) timerEl.textContent = formatted;
       }
 
+      // Update local HUD kills & deaths display live
+      if (data.players && this.currentUser) {
+        const localSnap = data.players.find(p => p.id === this.currentUser.id);
+        if (localSnap) {
+          const kEl = document.getElementById('hud-kills-count');
+          const dEl = document.getElementById('hud-deaths-count');
+          if (kEl && kEl.textContent !== String(localSnap.kills)) kEl.textContent = localSnap.kills;
+          if (dEl && dEl.textContent !== String(localSnap.deaths)) dEl.textContent = localSnap.deaths;
+        }
+      }
+
       // Update Scoreboard table (only if visible to eliminate 30Hz DOM thrashing)
       this.updateScoreboard(data.players);
     });
@@ -587,6 +781,7 @@ class App {
     });
 
     net.on('milestone_unlocked', (data) => {
+      this.recentMilestoneReward = data.reward;
       this.showToast(`🎖️ REWARD UNLOCKED: ${data.reward.name}! (Kills: ${data.totalLifetimeKills})`, 'reward');
       if (window.soundEngine) window.soundEngine.playKill();
       this.refreshUserStats();
@@ -633,8 +828,13 @@ class App {
     const isWinner = data.winner && data.winner.id === this.currentUser.id;
 
     if (titleEl) {
-      titleEl.textContent = isWinner ? 'VICTORY - TOP OPERATIVE' : 'MATCH COMPLETE';
-      titleEl.style.color = isWinner ? 'var(--amber-gold)' : 'var(--cyan-glow)';
+      if (data.isPractice) {
+        titleEl.textContent = 'PRACTICE SESSION COMPLETE';
+        titleEl.style.color = 'var(--emerald-green)';
+      } else {
+        titleEl.textContent = isWinner ? 'VICTORY - TOP OPERATIVE' : 'MATCH COMPLETE';
+        titleEl.style.color = isWinner ? 'var(--amber-gold)' : 'var(--cyan-glow)';
+      }
     }
 
     // Populate Results Table
@@ -660,6 +860,51 @@ class App {
           document.getElementById('res-damage').textContent = p.damage;
         }
       });
+    }
+
+    // Duration display
+    const durationEl = document.getElementById('res-duration');
+    if (durationEl) {
+      const dur = data.durationSeconds || 0;
+      const mins = String(Math.floor(dur / 60)).padStart(2, '0');
+      const secs = String(dur % 60).padStart(2, '0');
+      durationEl.textContent = `${mins}:${secs}`;
+    }
+
+    // AI match options & Progression details
+    const progText = document.getElementById('res-progression-text');
+    const btnRematch = document.getElementById('btn-results-rematch');
+    const btnSetup = document.getElementById('btn-results-change-setup');
+
+    if (data.isAiMatch || data.isPractice) {
+      if (btnRematch) btnRematch.style.display = 'inline-block';
+      if (btnSetup) btnSetup.style.display = 'inline-block';
+
+      if (progText) {
+        if (data.isPractice) {
+          progText.textContent = 'Practice Sandbox: Targets defeated. Aim mechanics drilled without altering ranked stats.';
+        } else {
+          progText.textContent = `Single Player vs ${((data.aiDifficulty || 'Medium')).toUpperCase()} AI: Confirmed kills recorded authoritatively toward milestone rewards!`;
+        }
+      }
+    } else {
+      if (btnRematch) btnRematch.style.display = 'none';
+      if (btnSetup) btnSetup.style.display = 'none';
+      if (progText) {
+        progText.textContent = 'Online Multiplayer: Kills and match records authoritatively verified & persisted.';
+      }
+    }
+
+    // Rewards earned notice
+    const rewardsContainer = document.getElementById('res-rewards-container');
+    if (rewardsContainer) {
+      if (this.recentMilestoneReward) {
+        rewardsContainer.style.display = 'block';
+        rewardsContainer.textContent = `🎖️ Milestone Reward Unlocked: ${this.recentMilestoneReward.name}!`;
+        this.recentMilestoneReward = null;
+      } else {
+        rewardsContainer.style.display = 'none';
+      }
     }
 
     this.refreshUserStats();

@@ -182,28 +182,41 @@
     <div class="menu-layout">
       <!-- Left Navigation Buttons -->
       <div class="menu-nav">
+        <!-- 1. Play Online -->
         <button class="btn btn-primary" onclick="app.navigateTo('matchmaking')">
-          <span style="font-size: 18px;">🎯</span> Find Quick Match
+          <span style="font-size: 18px;">🌐</span> Play Online (12-Player)
         </button>
+        <!-- 2. Play vs Computer -->
+        <button class="btn" onclick="app.openSinglePlayerModal(false)" style="border-color: rgba(0, 240, 255, 0.45); background: rgba(0, 240, 255, 0.09); color: var(--cyan-glow); font-weight: 800;">
+          <span style="font-size: 18px;">🤖</span> Play vs Computer
+        </button>
+        <!-- 3. Practice / Training -->
+        <button class="btn" onclick="app.openSinglePlayerModal(true)" style="border-color: rgba(0, 255, 136, 0.45); background: rgba(0, 255, 136, 0.08); color: var(--emerald-green); font-weight: 800;">
+          <span style="font-size: 18px;">🎯</span> Practice / Training
+        </button>
+        <!-- Custom Matches -->
         <button class="btn" onclick="app.openCreateRoomModal()">
           <span style="font-size: 18px;">🛡️</span> Host Custom Match
         </button>
         <button class="btn" onclick="app.openJoinCodeModal()">
           <span style="font-size: 18px;">🔑</span> Join by Room Code
         </button>
+        <!-- 4. Friends -->
         <button class="btn" onclick="app.navigateTo('friends')">
           <span style="font-size: 18px;">👥</span> Friends & Social
         </button>
+        <!-- 5. Skins and Rewards -->
         <button class="btn" onclick="app.navigateTo('skins')">
-          <span style="font-size: 18px;">🎨</span> Skins & Customization
+          <span style="font-size: 18px;">🎨</span> Skins and Rewards
         </button>
         <button class="btn" onclick="app.navigateTo('achievements')">
-          <span style="font-size: 18px;">🏆</span> Kill Milestones & Rewards
+          <span style="font-size: 18px;">🏆</span> Kill Milestones
         </button>
+        <!-- 6. Settings -->
         <button class="btn" onclick="app.navigateTo('settings')">
-          <span style="font-size: 18px;">⚙️</span> System Settings
+          <span style="font-size: 18px;">⚙️</span> Settings
         </button>
-        <button class="btn" onclick="app.openMobileDownloadModal()" style="border-color: rgba(0, 240, 255, 0.45); background: rgba(0, 240, 255, 0.08); color: var(--cyan-glow);">
+        <button class="btn" onclick="app.openMobileDownloadModal()" style="border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04);">
           <span style="font-size: 18px;">📱</span> Mobile Apps (Android & iOS)
         </button>
       </div>
@@ -214,11 +227,14 @@
           <div style="font-size: 12px; color: var(--cyan-glow); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">Ranked Combat Rotation</div>
           <h2 style="font-size: 32px; font-weight: 900; margin-bottom: 12px; letter-spacing: 2px;">SECTOR-7 COMPOUND</h2>
           <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
-            Up to 12 players simultaneously in tight urban combat with sniper platforms, barricades, and central bunker sightlines.
+            Up to 12 players simultaneously in tight tactical combat with sniper platforms, barricades, and central bunker sightlines.
           </p>
-          <div style="display: flex; justify-content: center; gap: 14px;">
-            <button class="btn btn-primary" style="padding: 16px 36px; font-size: 17px;" onclick="app.navigateTo('matchmaking')">
-              Deploy Now
+          <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;">
+            <button class="btn btn-primary" style="padding: 15px 30px; font-size: 16px;" onclick="app.navigateTo('matchmaking')">
+              🌐 Play Online Now
+            </button>
+            <button class="btn" style="padding: 15px 30px; font-size: 16px; border-color: var(--cyan-glow); color: var(--cyan-glow); background: rgba(0, 240, 255, 0.12); font-weight: 800;" onclick="app.openSinglePlayerModal(false)">
+              🤖 Play vs AI
             </button>
           </div>
         </div>
@@ -326,14 +342,25 @@
       <!-- Top Bar -->
       <div class="hud-top-bar">
         <div class="hud-radar-box">
-          <span style="color: #fff;">COMPASS:</span> <span id="hud-compass">N 045°</span>
-          <span style="margin-left: 12px; color: #888;" id="hud-fps">60 FPS</span>
+          <div>
+            <span style="color: #fff;">COMPASS:</span> <span id="hud-compass">N 045°</span>
+            <span style="margin-left: 12px; color: #888;" id="hud-fps">60 FPS</span>
+          </div>
+          <div style="margin-top: 5px; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px;">
+            <span style="color: var(--text-muted); font-size: 11px;">KILLS:</span>
+            <span id="hud-kills-count" style="color: var(--emerald-green); font-weight: 800; margin-right: 12px;">0</span>
+            <span style="color: var(--text-muted); font-size: 11px;">DEATHS:</span>
+            <span id="hud-deaths-count" style="color: var(--crimson-red); font-weight: 800;">0</span>
+          </div>
         </div>
 
         <div class="hud-match-timer-box">
           <div class="hud-match-mode-label" id="hud-mode-label">FREE FOR ALL</div>
           <div class="hud-match-timer" id="hud-timer">05:00</div>
-          <div style="font-size: 11px; color: #8a99ad;">First to 25 Kills</div>
+          <div id="hud-score-target" style="font-size: 11px; color: #8a99ad;">First to 25 Kills</div>
+          <div id="hud-ai-badge" style="display: none; font-size: 10px; font-weight: 800; color: var(--cyan-glow); margin-top: 4px; text-transform: uppercase; background: rgba(0, 240, 255, 0.15); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.3);">
+            AI: MEDIUM
+          </div>
         </div>
 
         <!-- Killfeed -->
@@ -589,7 +616,7 @@
       </div>
 
       <!-- Personal Match Performance -->
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 14px; margin-bottom: 24px;">
         <div class="card" style="text-align: center; padding: 14px;">
           <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Kills</div>
           <div style="font-size: 26px; font-weight: 900; color: #00ffff;" id="res-kills">0</div>
@@ -606,12 +633,21 @@
           <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Damage</div>
           <div style="font-size: 26px; font-weight: 900; color: #00ff88;" id="res-damage">0</div>
         </div>
+        <div class="card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Duration</div>
+          <div style="font-size: 26px; font-weight: 900; color: #ffffff;" id="res-duration">00:00</div>
+        </div>
       </div>
 
       <!-- Lifetime progression notice -->
-      <div class="card" style="background: rgba(0, 240, 255, 0.08); border-color: var(--border-bright); margin-bottom: 24px; padding: 14px 20px;">
-        <div style="font-weight: 700; color: var(--cyan-glow); margin-bottom: 4px;">Lifetime Progression Recorded Authoritatively</div>
+      <div class="card" style="background: rgba(0, 240, 255, 0.08); border-color: var(--border-bright); margin-bottom: 16px; padding: 14px 20px;">
+        <div style="font-weight: 700; color: var(--cyan-glow); margin-bottom: 4px;">Combat Results Authoritatively Verified</div>
         <div style="font-size: 13px; color: #ddd;" id="res-progression-text">Kills persisted to database. Milestone progress updated.</div>
+      </div>
+
+      <!-- Rewards Unlocked Banner (if any) -->
+      <div id="res-rewards-container" style="display: none; background: rgba(255, 174, 0, 0.12); border: 1px solid var(--amber-gold); border-radius: 6px; padding: 12px 18px; margin-bottom: 18px; text-align: center; color: var(--amber-gold); font-weight: 800;">
+        🎖️ Unlocked Rewards Earned
       </div>
 
       <!-- 12-Player Leaderboard Table -->
@@ -631,8 +667,16 @@
         </tbody>
       </table>
 
-      <div style="display: flex; justify-content: center; gap: 16px; margin-top: 24px;">
-        <button class="btn btn-primary" onclick="app.navigateTo('main-menu')">Return to Main Menu</button>
+      <div style="display: flex; justify-content: center; gap: 14px; margin-top: 24px; flex-wrap: wrap;">
+        <button id="btn-results-rematch" class="btn btn-primary" style="display: none;" onclick="app.rematchAi()">
+          🔄 Rematch vs AI
+        </button>
+        <button id="btn-results-change-setup" class="btn" style="display: none; border-color: rgba(0, 240, 255, 0.45); color: var(--cyan-glow);" onclick="app.openSinglePlayerModal()">
+          ⚙️ Change Match Setup
+        </button>
+        <button class="btn" onclick="app.navigateTo('main-menu')">
+          🏠 Return to Main Menu
+        </button>
       </div>
     </div>
   </div>
@@ -705,6 +749,148 @@
         <div><strong>Shift:</strong> Sprint</div>
         <div><strong>1, 2, 3, 4:</strong> Select Firearms</div>
         <div><strong>[TAB]:</strong> View Scoreboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Player vs AI Match Setup Modal -->
+  <div id="modal-singleplayer-setup" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) app.closeSinglePlayerModal()">
+    <div class="card modal-content" style="max-width: 620px; width: 94%; max-height: 92vh; overflow-y: auto; padding: 26px; box-sizing: border-box;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+        <div>
+          <h2 id="sp-modal-title" style="font-size: 20px; font-weight: 900; color: var(--cyan-glow); letter-spacing: 1.5px; text-transform: uppercase; margin: 0;">
+            🤖 Play vs Computer (Single Player)
+          </h2>
+          <div id="sp-modal-desc" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            Configure AI bots, map, difficulty, and combat rules.
+          </div>
+        </div>
+        <button class="btn" style="padding: 4px 10px; font-size: 14px; min-width: 32px;" onclick="app.closeSinglePlayerModal()">✕</button>
+      </div>
+
+      <!-- Mode Selection (FFA vs TDM vs Practice) -->
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 8px;">
+          Game Mode
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          <button type="button" id="sp-mode-ffa" class="btn btn-mode-pill active" onclick="app.setSpMode('ffa')">
+            <div style="font-weight: 800; font-size: 13px;">Free-For-All</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Solo Deathmatch</div>
+          </button>
+          <button type="button" id="sp-mode-tdm" class="btn btn-mode-pill" onclick="app.setSpMode('tdm')">
+            <div style="font-weight: 800; font-size: 13px;">Team Deathmatch</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Red vs Blue Squads</div>
+          </button>
+          <button type="button" id="sp-mode-practice" class="btn btn-mode-pill" onclick="app.setSpMode('practice')">
+            <div style="font-weight: 800; font-size: 13px;">🎯 Practice / Aim</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Instant Respawn Sandbox</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- AI Difficulty Selection -->
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 8px;">
+          AI Difficulty Level
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+          <button type="button" id="sp-diff-easy" class="btn btn-diff-pill" onclick="app.setSpDifficulty('easy')">
+            <div style="font-weight: 800; font-size: 13px; color: #00ff88;">Easy</div>
+            <div style="font-size: 9.5px; color: var(--text-muted); margin-top: 2px;">Recruit</div>
+          </button>
+          <button type="button" id="sp-diff-medium" class="btn btn-diff-pill active" onclick="app.setSpDifficulty('medium')">
+            <div style="font-weight: 800; font-size: 13px; color: #00e5ff;">Medium</div>
+            <div style="font-size: 9.5px; color: var(--text-muted); margin-top: 2px;">Veteran</div>
+          </button>
+          <button type="button" id="sp-diff-hard" class="btn btn-diff-pill" onclick="app.setSpDifficulty('hard')">
+            <div style="font-weight: 800; font-size: 13px; color: #ffae00;">Hard</div>
+            <div style="font-size: 9.5px; color: var(--text-muted); margin-top: 2px;">Elite</div>
+          </button>
+          <button type="button" id="sp-diff-expert" class="btn btn-diff-pill" onclick="app.setSpDifficulty('expert')">
+            <div style="font-weight: 800; font-size: 13px; color: #ff2a4d;">Expert</div>
+            <div style="font-size: 9.5px; color: var(--text-muted); margin-top: 2px;">Nightmare</div>
+          </button>
+        </div>
+        <div id="sp-diff-info" style="font-size: 11.5px; color: var(--text-muted); margin-top: 8px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 4px; border-left: 3px solid var(--cyan-glow);">
+          Balanced tactical combat: 320ms reaction time, reasonable aim accuracy, cover seeking, and persistent pursuit.
+        </div>
+      </div>
+
+      <!-- Number of AI Opponents (1 to 11 bots) -->
+      <div class="form-group" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow);">
+            Number of AI Opponents
+          </label>
+          <span id="sp-bots-count-badge" style="font-size: 12px; font-weight: 800; color: #fff; background: rgba(0, 240, 255, 0.15); border: 1px solid rgba(0, 240, 255, 0.3); padding: 2px 8px; border-radius: 4px;">
+            5 Bots (Total: 6 / 12 Combatants)
+          </span>
+        </div>
+        <input type="range" id="sp-bots-slider" min="1" max="11" step="1" value="5" oninput="app.onSpBotCountChange(this.value)" style="width: 100%; accent-color: var(--cyan-glow);">
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+          <span>1 (1v1 Duel)</span>
+          <span>3</span>
+          <span>5 (Standard 6-Player)</span>
+          <span>7</span>
+          <span>9</span>
+          <span>11 (Full 12-Player Mayhem)</span>
+        </div>
+      </div>
+
+      <!-- Map Selection & Rules Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+        <!-- Map Selection -->
+        <div class="form-group">
+          <label style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 6px; display: block;">
+            Map Selection
+          </label>
+          <select id="sp-map-select" class="form-input" style="width: 100%;">
+            <option value="sector7" selected>Sector-7 Compound (Tactical Urban)</option>
+          </select>
+        </div>
+
+        <!-- Target Kill Score -->
+        <div class="form-group">
+          <label style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 6px; display: block;">
+            Kill Target (Score Limit)
+          </label>
+          <select id="sp-score-select" class="form-input" style="width: 100%;">
+            <option value="15">15 Kills (Quick Skirmish)</option>
+            <option value="25" selected>25 Kills (Standard Match)</option>
+            <option value="50">50 Kills (Endurance Battle)</option>
+            <option value="999">Unlimited (Continuous)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Match Duration -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+        <div class="form-group">
+          <label style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 6px; display: block;">
+            Match Duration
+          </label>
+          <select id="sp-duration-select" class="form-input" style="width: 100%;">
+            <option value="180">3 Minutes (Fast)</option>
+            <option value="300" selected>5 Minutes (Standard)</option>
+            <option value="600">10 Minutes (Extended)</option>
+          </select>
+        </div>
+
+        <!-- Loadout / Skin shortcut -->
+        <div class="form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
+          <button type="button" class="btn" onclick="app.closeSinglePlayerModal(); app.navigateTo('skins');" style="width: 100%; font-size: 12px; padding: 10px; border-color: rgba(255, 255, 255, 0.2);">
+            🎨 Custom Skins & Loadout →
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 18px;">
+        <button type="button" class="btn" onclick="app.closeSinglePlayerModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px; font-weight: 800;" onclick="app.startSinglePlayerMatch()">
+          🚀 Start Match
+        </button>
       </div>
     </div>
   </div>

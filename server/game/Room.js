@@ -4,6 +4,7 @@ const { CollisionEngine } = require('./CollisionEngine');
 const statsService = require('../services/statsService');
 const friendsService = require('../services/friendsService');
 const db = require('../database/db');
+const BotPlayer = require('./BotPlayer');
 
 // Spawn points across the tactical arena
 const SPAWN_POINTS = [
@@ -45,6 +46,38 @@ class Room {
     this.tickInterval = null;
     this.timerInterval = null;
     this.spawnIndex = 0;
+
+    // AI / Single Player configurations
+    this.isAiMatch = Boolean(options.isAiMatch);
+    this.aiDifficulty = options.aiDifficulty || 'medium';
+    this.isPractice = Boolean(options.isPractice);
+    this.botCount = options.botCount || 0;
+    this.lastTickTime = Date.now();
+  }
+
+  initBots(count, difficulty = 'medium') {
+    this.aiDifficulty = difficulty;
+    const availableSlots = this.maxPlayers - this.players.size;
+    const targetBots = Math.max(0, Math.min(count, availableSlots));
+
+    for (let i = 0; i < targetBots; i++) {
+      let botTeam = 'solo';
+      if (this.gameMode === 'tdm') {
+        let red = 0, blue = 0;
+        for (const p of this.players.values()) {
+          if (p.team === 'red') red++;
+          else if (p.team === 'blue') blue++;
+        }
+        botTeam = red <= blue ? 'red' : 'blue';
+      }
+
+      const bot = new BotPlayer(i, difficulty, botTeam);
+      const spawn = this.getNextSpawnPoint();
+      bot.respawn(spawn);
+      this.players.set(bot.id, bot);
+    }
+
+    this.notifyLobbyUpdate();
   }
 
   get playerCount() {
@@ -185,6 +218,12 @@ class Room {
     this.broadcast('match_started', {
       timeRemaining: this.timeRemaining,
       scoreLimit: this.scoreLimit,
+      gameMode: this.gameMode,
+      mapId: this.mapId || 'sector7',
+      isAiMatch: this.isAiMatch,
+      aiDifficulty: this.aiDifficulty,
+      isPractice: this.isPractice,
+      botCount: this.botCount,
       players: Array.from(this.players.values()).map(p => p.serialize())
     });
 
@@ -205,6 +244,16 @@ class Room {
     if (this.state !== 'active') return;
 
     const now = Date.now();
+    const delta = Math.min(0.1, (now - this.lastTickTime) / 1000);
+    this.lastTickTime = now;
+
+    // 1. Update Autonomous AI Bots
+    for (const player of this.players.values()) {
+      if (player.isBot && player.isAlive) {
+        player.update(delta, this);
+      }
+    }
+
     const playerSnapshots = [];
 
     // Process respawns and reload completions
@@ -349,7 +398,9 @@ class Room {
 
   handlePlayerElimination(killer, victim, weaponConfig, isHeadshot) {
     const now = Date.now();
-    victim.respawnAt = now + (config.RESPAWN_DELAY_SECONDS * 1000);
+    // In practice mode, instant 1.2s respawn for continuous target training
+    const respawnDelay = this.isPractice ? 1.2 : config.RESPAWN_DELAY_SECONDS;
+    victim.respawnAt = now + (respawnDelay * 1000);
 
     // Broadcast kill feed event
     this.broadcast('player_eliminated', {
@@ -360,26 +411,32 @@ class Room {
       weaponId: weaponConfig.id,
       weaponName: weaponConfig.name,
       isHeadshot,
-      respawnCountdown: config.RESPAWN_DELAY_SECONDS
+      respawnCountdown: respawnDelay
     });
 
-    // AUTHORITATIVE PROGRESSION: Record confirmed kill in database
-    const progressResult = statsService.recordKills(killer.id, 1, isHeadshot, weaponConfig.damage);
-    statsService.recordDeath(victim.id);
+    // AUTHORITATIVE PROGRESSION: Record confirmed kill in database if not practice mode and killer is human
+    if (!this.isPractice && !killer.isBot) {
+      const progressResult = statsService.recordKills(killer.id, 1, isHeadshot, weaponConfig.damage);
 
-    // If killer unlocked a milestone reward, notify killer and entire match!
-    if (progressResult.unlockedRewards && progressResult.unlockedRewards.length > 0) {
-      for (const reward of progressResult.unlockedRewards) {
-        killer.send('milestone_unlocked', {
-          reward,
-          totalLifetimeKills: progressResult.totalLifetimeKills
-        });
+      // If killer unlocked a milestone reward, notify killer and entire match!
+      if (progressResult.unlockedRewards && progressResult.unlockedRewards.length > 0) {
+        for (const reward of progressResult.unlockedRewards) {
+          killer.send('milestone_unlocked', {
+            reward,
+            totalLifetimeKills: progressResult.totalLifetimeKills
+          });
 
-        // Broadcast celebratory announcement in kill feed
-        this.broadcast('server_announcement', {
-          message: `🎖️ ${killer.username} reached a combat milestone! Unlocked: ${reward.name}`
-        });
+          // Broadcast celebratory announcement in kill feed
+          this.broadcast('server_announcement', {
+            message: `🎖️ ${killer.username} reached a combat milestone! Unlocked: ${reward.name}`
+          });
+        }
       }
+    }
+
+    // Only record death in database for human players
+    if (!victim.isBot && !this.isPractice) {
+      statsService.recordDeath(victim.id);
     }
 
     // Check score limit condition
@@ -456,10 +513,12 @@ class Room {
       `);
 
       for (const p of playersList) {
-        insertParticipant.run(matchId, p.id, p.matchKills, p.matchDeaths, p.matchDamage, p.matchScore, p.team);
-        const won = winner && winner.id === p.id;
-        statsService.recordMatchFinished(p.id, won);
-        friendsService.updateUserStatus(p.id, true, 'in_lobby', this.code);
+        if (!p.isBot) {
+          insertParticipant.run(matchId, p.id, p.matchKills, p.matchDeaths, p.matchDamage, p.matchScore, p.team);
+          const won = winner && winner.id === p.id;
+          statsService.recordMatchFinished(p.id, won);
+          friendsService.updateUserStatus(p.id, true, 'in_lobby', this.code);
+        }
       }
     } catch (err) {
       console.error('Failed to save match results:', err);
@@ -469,6 +528,7 @@ class Room {
       rank: index + 1,
       userId: p.id,
       username: p.username,
+      isBot: Boolean(p.isBot),
       team: p.team,
       kills: p.matchKills,
       deaths: p.matchDeaths,
@@ -480,9 +540,12 @@ class Room {
 
     this.broadcast('match_ended', {
       reason,
-      winner: winner ? { id: winner.id, username: winner.username } : null,
+      winner: winner ? { id: winner.id, username: winner.username, isBot: Boolean(winner.isBot) } : null,
       leaderboard,
-      durationSeconds: this.matchDuration - this.timeRemaining
+      durationSeconds: this.matchDuration - this.timeRemaining,
+      isAiMatch: this.isAiMatch,
+      aiDifficulty: this.aiDifficulty,
+      isPractice: this.isPractice
     });
 
     // Reset back to lobby after 12 seconds so players can play another round
@@ -550,7 +613,12 @@ class Room {
       maxPlayers: this.maxPlayers,
       playerCount: this.playerCount,
       hostUserId: this.hostUserId,
-      state: this.state
+      state: this.state,
+      isAiMatch: this.isAiMatch,
+      aiDifficulty: this.aiDifficulty,
+      isPractice: this.isPractice,
+      scoreLimit: this.scoreLimit,
+      matchDuration: this.matchDuration
     };
   }
 

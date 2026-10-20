@@ -278,6 +278,36 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
+      if (action === 'create_ai_match') {
+        roomManager.leaveRoom(authenticatedUser.id);
+
+        const room = roomManager.createAiMatch({
+          difficulty: data.difficulty || 'medium',
+          botCount: data.botCount !== undefined ? data.botCount : 5,
+          gameMode: data.gameMode || 'ffa',
+          scoreLimit: data.scoreLimit || 25,
+          matchDuration: data.matchDuration || 300,
+          isPractice: Boolean(data.isPractice),
+          hostUserId: authenticatedUser.id
+        });
+
+        const equippedSkins = skinService.getEquippedSkins(authenticatedUser.id);
+        player = new Player(authenticatedUser.id, authenticatedUser.username, ws, equippedSkins);
+
+        const joinResult = room.addPlayer(player);
+        if (!joinResult.success) {
+          ws.send(JSON.stringify({ type: 'join_error', message: joinResult.error }));
+          return;
+        }
+
+        roomManager.playerToRoom.set(player.id, room.code);
+
+        // Populate bots and start single player match immediately
+        room.initBots(room.botCount, room.aiDifficulty);
+        room.startMatch();
+        return;
+      }
+
       if (action === 'create_room') {
         roomManager.leaveRoom(authenticatedUser.id);
 

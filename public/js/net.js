@@ -102,6 +102,10 @@ class NetClient {
     return this.send('find_match', { gameMode });
   }
 
+  createAiMatch(options = {}) {
+    return this.send('create_ai_match', options);
+  }
+
   createRoom(roomName, isPrivate = false, gameMode = 'ffa') {
     return this.send('create_room', { roomName, isPrivate, gameMode });
   }

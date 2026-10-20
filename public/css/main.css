@@ -691,3 +691,26 @@ body {
   border: 1px solid rgba(0, 240, 255, 0.3);
 }
 
+/* Single Player & AI Setup Mode Selectors */
+.btn-mode-pill, .btn-diff-pill {
+  text-align: center;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.btn-mode-pill:hover, .btn-diff-pill:hover {
+  border-color: rgba(0, 240, 255, 0.45);
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.btn-mode-pill.active, .btn-diff-pill.active {
+  border-color: var(--cyan-glow);
+  background: rgba(0, 240, 255, 0.18);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+}
+
