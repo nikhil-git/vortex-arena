@@ -91,7 +91,15 @@ class Player {
     const state = this.activeWeaponState;
     const config = this.activeWeaponConfig;
 
-    if (state.isReloading) return false;
+    if (state.isReloading) {
+      if (now >= state.reloadCompleteAt) {
+        this.finishReload();
+        if (state.ammoInMag >= config.magSize) return false;
+      } else {
+        return false;
+      }
+    }
+
     if (state.ammoInMag >= config.magSize) return false;
     if (state.reserveAmmo <= 0) return false;
 
@@ -117,8 +125,11 @@ class Player {
   switchWeapon(weaponId) {
     if (!this.isAlive) return false;
     if (WEAPONS[weaponId] && this.weapons[weaponId]) {
-      // Cancel ongoing reload on switch
+      // Cancel ongoing reload on switch for both previous and new weapons
       this.activeWeaponState.isReloading = false;
+      this.activeWeaponState.reloadCompleteAt = 0;
+      this.weapons[weaponId].isReloading = false;
+      this.weapons[weaponId].reloadCompleteAt = 0;
       this.activeWeaponId = weaponId;
       return true;
     }
@@ -175,11 +186,12 @@ class Player {
     this.rotation = { yaw: spawnPoint.yaw || 0, pitch: 0 };
     this.velocity = { x: 0, y: 0, z: 0 };
 
-    // Refill active magazine
+    // Refill active magazine and reset reload timers
     for (const [wepId, data] of Object.entries(WEAPONS)) {
       this.weapons[wepId].ammoInMag = data.magSize;
       this.weapons[wepId].reserveAmmo = data.maxReserve;
       this.weapons[wepId].isReloading = false;
+      this.weapons[wepId].reloadCompleteAt = 0;
     }
   }
 

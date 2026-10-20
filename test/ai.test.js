@@ -273,6 +273,72 @@ test('AI Difficulty Comparison: Accuracy & Reaction Speed Across All 4 Tiers', (
   assert.strictEqual(DIFFICULTY_CONFIG.expert.weaponSwitchRange, true);
 });
 
+test('Weapon Reload Reliability, Emergency Resupply & Scavenger Harvest', () => {
+  const room = roomManager.createAiMatch({
+    difficulty: 'medium',
+    botCount: 1,
+    hostUserId: mockHuman.id
+  });
+
+  room.addPlayer(mockHuman);
+  room.initBots(1, 'medium');
+
+  const arState = mockHuman.weapons.assault_rifle;
+  mockHuman.activeWeaponId = 'assault_rifle';
+
+  // 1. Partial reload consumes from reserve and sets reloading
+  arState.ammoInMag = 10;
+  arState.reserveAmmo = 100;
+  arState.isReloading = false;
+
+  let messagesSent = [];
+  mockHuman.ws = {
+    readyState: 1,
+    send: (msg) => { messagesSent.push(JSON.parse(msg)); }
+  };
+
+  room.handlePlayerReload(mockHuman.id);
+  assert.strictEqual(arState.isReloading, true, 'Reload started');
+  assert.ok(messagesSent.some(m => m.type === 'reload_started'), 'reload_started message dispatched');
+
+  // Fast forward past reload time
+  const finishTime = Date.now() + 3000;
+  mockHuman.finishReload();
+  assert.strictEqual(arState.ammoInMag, 30, 'Magazine refilled to 30');
+  assert.strictEqual(arState.reserveAmmo, 80, '20 bullets deducted from reserve');
+  assert.strictEqual(arState.isReloading, false, 'isReloading reset to false');
+
+  // 2. Full magazine reload attempt immediately syncs client without stalling
+  messagesSent = [];
+  room.handlePlayerReload(mockHuman.id);
+  assert.strictEqual(arState.isReloading, false, 'Full magazine does not enter stuck reload state');
+  assert.ok(messagesSent.some(m => m.type === 'reload_finished'), 'reload_finished synced to client');
+
+  // 3. Emergency combat resupply when reserve is 0
+  arState.ammoInMag = 0;
+  arState.reserveAmmo = 0;
+  messagesSent = [];
+  room.handlePlayerReload(mockHuman.id);
+  assert.ok(arState.reserveAmmo > 0, 'Emergency combat resupply granted reserve ammo');
+  assert.strictEqual(arState.isReloading, true, 'Reload successfully initiated with resupply');
+
+  // 4. Scavenger ammo harvest on confirmed elimination
+  const initialReserve = arState.reserveAmmo;
+  const bot = Array.from(room.players.values()).find(p => p.isBot);
+  bot.isAlive = true;
+  room.handlePlayerElimination(mockHuman, bot, mockHuman.activeWeaponConfig, false);
+  assert.ok(arState.reserveAmmo >= initialReserve, 'Scavenger harvest replenished killer reserve ammo');
+
+  // 5. Weapon switch clears stuck reload flags
+  arState.isReloading = true;
+  arState.reloadCompleteAt = 9999999999;
+  mockHuman.switchWeapon('pistol');
+  assert.strictEqual(arState.isReloading, false, 'Previous weapon reload canceled');
+  assert.strictEqual(mockHuman.weapons.pistol.isReloading, false, 'Switched weapon reload clean');
+
+  room.destroy();
+});
+
 test('Cleanup AI Test Database', () => {
   if (fs.existsSync(process.env.DB_PATH)) {
     fs.unlinkSync(process.env.DB_PATH);

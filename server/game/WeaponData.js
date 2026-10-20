@@ -7,7 +7,7 @@ const WEAPONS = {
     headshotMultiplier: 2.0, // 52 damage headshot
     fireRateMs: 100, // 600 RPM
     magSize: 30,
-    maxReserve: 120,
+    maxReserve: 240,
     reloadTimeMs: 2000,
     spread: 0.025,
     range: 120,
@@ -23,7 +23,7 @@ const WEAPONS = {
     headshotMultiplier: 2.0, // 190 damage headshot (instant kill)
     fireRateMs: 1200, // ~50 RPM
     magSize: 5,
-    maxReserve: 20,
+    maxReserve: 40,
     reloadTimeMs: 3200,
     spread: 0.005,
     range: 250,
@@ -39,7 +39,7 @@ const WEAPONS = {
     headshotMultiplier: 1.5,
     fireRateMs: 750, // 80 RPM
     magSize: 8,
-    maxReserve: 32,
+    maxReserve: 64,
     reloadTimeMs: 2400,
     spread: 0.09,
     range: 35,
@@ -55,7 +55,7 @@ const WEAPONS = {
     headshotMultiplier: 2.0, // 48 damage headshot
     fireRateMs: 160, // ~375 RPM semi-auto
     magSize: 15,
-    maxReserve: 60,
+    maxReserve: 120,
     reloadTimeMs: 1400,
     spread: 0.018,
     range: 60,

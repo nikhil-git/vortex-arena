@@ -261,12 +261,22 @@ class Room {
       if (!player.isAlive && player.respawnAt > 0 && now >= player.respawnAt) {
         const spawn = this.getNextSpawnPoint();
         player.respawn(spawn);
+
+        const weaponsAmmo = {};
+        for (const [wepId, wState] of Object.entries(player.weapons)) {
+          weaponsAmmo[wepId] = {
+            ammoInMag: wState.ammoInMag,
+            reserveAmmo: wState.reserveAmmo
+          };
+        }
+
         this.broadcast('player_respawned', {
           userId: player.id,
           position: player.position,
           rotation: player.rotation,
           health: player.health,
-          shield: player.shield
+          shield: player.shield,
+          weapons: weaponsAmmo
         });
       }
 
@@ -289,6 +299,7 @@ class Room {
         sh: player.shield,
         alive: player.isAlive,
         wep: player.activeWeaponId,
+        ammo: [player.activeWeaponState.ammoInMag, player.activeWeaponState.reserveAmmo],
         kills: player.matchKills,
         deaths: player.matchDeaths,
         score: player.matchScore
@@ -414,6 +425,20 @@ class Room {
       respawnCountdown: respawnDelay
     });
 
+    // SCAVENGER AMMO HARVEST: replenish 1 full magazine to killer's reserve ammo
+    if (killer && killer.isAlive) {
+      const kState = killer.activeWeaponState;
+      const kConfig = killer.activeWeaponConfig;
+      if (kState && kConfig) {
+        kState.reserveAmmo = Math.min(kConfig.maxReserve, kState.reserveAmmo + kConfig.magSize);
+        killer.send('ammo_harvested', {
+          weaponId: killer.activeWeaponId,
+          ammoInMag: kState.ammoInMag,
+          reserveAmmo: kState.reserveAmmo
+        });
+      }
+    }
+
     // AUTHORITATIVE PROGRESSION: Record confirmed kill in database if not practice mode and killer is human
     if (!this.isPractice && !killer.isBot) {
       const progressResult = statsService.recordKills(killer.id, 1, isHeadshot, weaponConfig.damage);
@@ -449,15 +474,65 @@ class Room {
     const player = this.players.get(userId);
     if (!player || !player.isAlive) return;
 
-    const started = player.startReload(Date.now());
+    const now = Date.now();
+    const state = player.activeWeaponState;
+    const config = player.activeWeaponConfig;
+
+    // 1. If currently marked as reloading and timer already elapsed, finish now
+    if (state.isReloading && now >= state.reloadCompleteAt) {
+      player.finishReload();
+      player.send('reload_finished', {
+        weaponId: player.activeWeaponId,
+        ammoInMag: state.ammoInMag,
+        reserveAmmo: state.reserveAmmo
+      });
+      return;
+    }
+
+    // 2. If already in active reload animation, ignore duplicate keypress
+    if (state.isReloading) {
+      return;
+    }
+
+    // 3. If magazine is already full, immediately sync client to resolve any client-side desync
+    if (state.ammoInMag >= config.magSize) {
+      player.send('reload_finished', {
+        weaponId: player.activeWeaponId,
+        ammoInMag: state.ammoInMag,
+        reserveAmmo: state.reserveAmmo
+      });
+      return;
+    }
+
+    // 4. Reserve ammo depletion recovery
+    if (state.reserveAmmo <= 0) {
+      if (this.isPractice) {
+        state.reserveAmmo = config.maxReserve;
+      } else {
+        // Tactical emergency combat resupply (+1 full mag)
+        state.reserveAmmo = config.magSize;
+        player.send('combat_resupply', {
+          weaponId: player.activeWeaponId,
+          message: 'Tactical combat ammo resupply acquired!'
+        });
+      }
+    }
+
+    const started = player.startReload(now);
     if (started) {
       player.send('reload_started', {
         weaponId: player.activeWeaponId,
-        durationMs: player.activeWeaponConfig.reloadTimeMs
+        durationMs: config.reloadTimeMs
       });
       this.broadcastExcept(userId, 'remote_player_reloading', {
         userId,
         weaponId: player.activeWeaponId
+      });
+    } else {
+      player.send('reload_finished', {
+        weaponId: player.activeWeaponId,
+        ammoInMag: state.ammoInMag,
+        reserveAmmo: state.reserveAmmo
       });
     }
   }

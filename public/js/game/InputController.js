@@ -191,7 +191,8 @@ export class InputController {
         }
       };
       jumpBtn.addEventListener('touchstart', handleJump, { passive: false });
-      jumpBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      jumpBtn.addEventListener('pointerdown', handleJump);
+      jumpBtn.addEventListener('click', handleJump);
     }
 
     const reloadBtn = document.getElementById('touch-btn-reload');
@@ -202,7 +203,23 @@ export class InputController {
         if (this.onReload) this.onReload();
       };
       reloadBtn.addEventListener('touchstart', handleReload, { passive: false });
-      reloadBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      reloadBtn.addEventListener('pointerdown', handleReload);
+      reloadBtn.addEventListener('click', handleReload);
+    }
+
+    // Allow clicking the HUD ammo box directly to reload weapon on desktop/mobile
+    const hudWepBox = document.querySelector('.hud-weapon-box');
+    if (hudWepBox) {
+      hudWepBox.style.cursor = 'pointer';
+      hudWepBox.title = 'Click to Reload Weapon (or press R)';
+      hudWepBox.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        if (this.onReload) this.onReload();
+      });
+      hudWepBox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.onReload) this.onReload();
+      });
     }
 
     const swapBtn = document.getElementById('touch-btn-swap');
@@ -215,7 +232,8 @@ export class InputController {
         }
       };
       swapBtn.addEventListener('touchstart', handleSwap, { passive: false });
-      swapBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      swapBtn.addEventListener('pointerdown', handleSwap);
+      swapBtn.addEventListener('click', handleSwap);
     }
   }
 

@@ -22,10 +22,10 @@ class App {
     // Local weapon state in match
     this.activeWeaponId = 'assault_rifle';
     this.weaponsState = {
-      assault_rifle: { name: 'V-44 Striker', mag: 30, reserve: 120 },
-      sniper_rifle: { name: 'Hawk-50 Anti-Materiel', mag: 5, reserve: 20 },
-      shotgun: { name: 'Breacher-12 Tactical', mag: 8, reserve: 32 },
-      pistol: { name: 'Pulse-9 Sidearm', mag: 15, reserve: 60 }
+      assault_rifle: { name: 'V-44 Striker', mag: 30, reserve: 240 },
+      sniper_rifle: { name: 'Hawk-50 Anti-Materiel', mag: 5, reserve: 40 },
+      shotgun: { name: 'Breacher-12 Tactical', mag: 8, reserve: 64 },
+      pistol: { name: 'Pulse-9 Sidearm', mag: 15, reserve: 120 }
     };
 
     // Single Player vs AI & Practice match configuration
@@ -476,9 +476,18 @@ class App {
 
       // Wire callbacks
       this.gameEngine.onShootCallback = (origin, dir) => {
+        // Block shooting while in the middle of a reload animation
+        if (this.gameEngine && this.gameEngine.weaponView && this.gameEngine.weaponView.isReloading) {
+          return;
+        }
+
         const wep = this.weaponsState[this.activeWeaponId];
         if (!wep || wep.mag <= 0) {
           if (window.soundEngine) window.soundEngine.playClick(window.soundEngine.ctx ? window.soundEngine.ctx.currentTime : 0, 750, 0.04);
+          // Auto-trigger reload on empty magazine if reserve bullets are available
+          if (wep && wep.reserve > 0) {
+            window.netClient.sendReload();
+          }
           return;
         }
 
@@ -684,6 +693,19 @@ class App {
           const dEl = document.getElementById('hud-deaths-count');
           if (kEl && kEl.textContent !== String(localSnap.kills)) kEl.textContent = localSnap.kills;
           if (dEl && dEl.textContent !== String(localSnap.deaths)) dEl.textContent = localSnap.deaths;
+
+          // Continuous authoritative ammo sync: ensure client never gets stuck in desync
+          if (localSnap.ammo && this.weaponsState[this.activeWeaponId]) {
+            const curWep = this.weaponsState[this.activeWeaponId];
+            const isPlayingReload = this.gameEngine && this.gameEngine.weaponView && this.gameEngine.weaponView.isReloading;
+            if (!isPlayingReload) {
+              if (curWep.mag !== localSnap.ammo[0] || curWep.reserve !== localSnap.ammo[1]) {
+                curWep.mag = localSnap.ammo[0];
+                curWep.reserve = localSnap.ammo[1];
+                this.updateHUDAmmo();
+              }
+            }
+          }
         }
       }
 
@@ -756,6 +778,31 @@ class App {
     net.on('player_respawned', (data) => {
       if (data.userId === this.currentUser.id) {
         this.updateHUDVitals(data.health, data.shield);
+
+        // Authoritatively restore full weapon loadout ammo on respawn
+        if (data.weapons) {
+          for (const [wepId, wData] of Object.entries(data.weapons)) {
+            if (this.weaponsState[wepId]) {
+              this.weaponsState[wepId].mag = wData.ammoInMag;
+              this.weaponsState[wepId].reserve = wData.reserveAmmo;
+            }
+          }
+        } else {
+          const defaults = { assault_rifle: 30, sniper_rifle: 5, shotgun: 8, pistol: 15 };
+          const maxRes = { assault_rifle: 240, sniper_rifle: 40, shotgun: 64, pistol: 120 };
+          for (const [wepId, wep] of Object.entries(this.weaponsState)) {
+            wep.mag = defaults[wepId] || 30;
+            wep.reserve = maxRes[wepId] || 120;
+          }
+        }
+
+        // Reset reload animation state on respawn
+        if (this.gameEngine && this.gameEngine.weaponView) {
+          this.gameEngine.weaponView.isReloading = false;
+          this.gameEngine.weaponView.reloadProgress = 0;
+        }
+        this.updateHUDAmmo();
+
         // Reset local position
         if (this.gameEngine) {
           this.gameEngine.input.position.set(data.position.x, data.position.y + 1.7, data.position.z);
@@ -778,6 +825,37 @@ class App {
         wep.reserve = data.reserveAmmo;
         this.updateHUDAmmo();
       }
+      if (this.gameEngine && this.gameEngine.weaponView) {
+        this.gameEngine.weaponView.isReloading = false;
+        this.gameEngine.weaponView.reloadProgress = 0;
+      }
+    });
+
+    net.on('weapon_switched', (data) => {
+      const wep = this.weaponsState[data.weaponId];
+      if (wep) {
+        wep.mag = data.ammoInMag;
+        wep.reserve = data.reserveAmmo;
+        this.updateHUDAmmo();
+      }
+      if (this.gameEngine && this.gameEngine.weaponView) {
+        this.gameEngine.weaponView.isReloading = false;
+        this.gameEngine.weaponView.reloadProgress = 0;
+      }
+    });
+
+    net.on('ammo_harvested', (data) => {
+      const wep = this.weaponsState[data.weaponId];
+      if (wep) {
+        wep.mag = data.ammoInMag;
+        wep.reserve = data.reserveAmmo;
+        this.updateHUDAmmo();
+      }
+      this.showToast('📦 Ammo Harvested (+1 Mag Reserve)', 'info');
+    });
+
+    net.on('combat_resupply', (data) => {
+      this.showToast('⚡ Tactical Combat Resupply: Emergency ammo acquired!', 'info');
     });
 
     net.on('milestone_unlocked', (data) => {
