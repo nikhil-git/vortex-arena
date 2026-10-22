@@ -17,6 +17,7 @@ const statsService = require('./services/statsService');
 // Game Engine
 const roomManager = require('./game/RoomManager');
 const Player = require('./game/Player');
+const { MapData } = require('./game/MapData');
 
 // Seed database and start server
 async function startServer() {
@@ -216,6 +217,11 @@ app.get('/api/matches/public', (req, res) => {
   res.json({ rooms });
 });
 
+// Playable Maps Registry API
+app.get('/api/maps', (req, res) => {
+  res.json({ maps: MapData.getAllMapsSummary() });
+});
+
 // -------------------------------------------------------------
 // WEBSOCKET REAL-TIME MULTIPLAYER ENGINE
 // -------------------------------------------------------------
@@ -265,7 +271,7 @@ wss.on('connection', (ws, req) => {
         // Leave any existing room
         roomManager.leaveRoom(authenticatedUser.id);
 
-        const room = roomManager.findOrCreateMatch({ gameMode: data.gameMode || 'ffa' });
+        const room = roomManager.findOrCreateMatch({ gameMode: data.gameMode || 'ffa', mapId: data.mapId });
         const equippedSkins = skinService.getEquippedSkins(authenticatedUser.id);
         player = new Player(authenticatedUser.id, authenticatedUser.username, ws, equippedSkins);
 
@@ -288,6 +294,7 @@ wss.on('connection', (ws, req) => {
           scoreLimit: data.scoreLimit || 25,
           matchDuration: data.matchDuration || 300,
           isPractice: Boolean(data.isPractice),
+          mapId: data.mapId || 'house',
           hostUserId: authenticatedUser.id
         });
 
@@ -314,6 +321,7 @@ wss.on('connection', (ws, req) => {
         const room = roomManager.createRoom({
           isPrivate: Boolean(data.isPrivate),
           gameMode: data.gameMode || 'ffa',
+          mapId: data.mapId || 'sector7',
           hostUserId: authenticatedUser.id,
           name: data.roomName || `${authenticatedUser.username}'s Arena`,
           minPlayers: data.isPrivate ? 1 : 2
@@ -323,6 +331,18 @@ wss.on('connection', (ws, req) => {
         player = new Player(authenticatedUser.id, authenticatedUser.username, ws, equippedSkins);
         room.addPlayer(player);
         roomManager.playerToRoom.set(player.id, room.code);
+        return;
+      }
+
+      if (action === 'set_map') {
+        const roomCode = roomManager.playerToRoom.get(authenticatedUser.id);
+        const room = roomManager.getRoom(roomCode);
+        if (room && room.hostUserId === authenticatedUser.id) {
+          const res = room.setMap(data.mapId);
+          if (!res.success) {
+            ws.send(JSON.stringify({ type: 'map_error', message: res.error }));
+          }
+        }
         return;
       }
 

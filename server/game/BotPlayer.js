@@ -22,7 +22,7 @@ const BOT_SKINS = [
 ];
 
 class BotPlayer extends Player {
-  constructor(botIndex, difficulty = 'medium', team = 'solo') {
+  constructor(botIndex, difficulty = 'medium', team = 'solo', mapId = 'house') {
     const botId = `bot_${Date.now()}_${botIndex}_${Math.floor(Math.random() * 1000)}`;
     const botName = `[BOT] ${BOT_NAMES[botIndex % BOT_NAMES.length]}`;
     
@@ -44,11 +44,12 @@ class BotPlayer extends Player {
     this.isBot = true;
     this.team = team;
     this.difficulty = difficulty;
+    this.mapId = mapId;
     this.lastDamagedAt = 0;
     this.lastAttackerId = null;
 
     // Initialize tactical AI controller
-    this.ai = new BotAI(this, difficulty);
+    this.ai = new BotAI(this, difficulty, mapId);
   }
 
   takeDamage(amount, attacker, isHeadshot = false) {

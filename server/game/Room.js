@@ -1,6 +1,7 @@
 const config = require('../config');
 const WEAPONS = require('./WeaponData');
 const { CollisionEngine } = require('./CollisionEngine');
+const { MapData } = require('./MapData');
 const statsService = require('../services/statsService');
 const friendsService = require('../services/friendsService');
 const db = require('../database/db');
@@ -48,6 +49,7 @@ class Room {
     this.spawnIndex = 0;
 
     // AI / Single Player configurations
+    this.mapId = options.mapId && MapData.isValidMap(options.mapId) ? options.mapId : (options.mapId || 'sector7');
     this.isAiMatch = Boolean(options.isAiMatch);
     this.aiDifficulty = options.aiDifficulty || 'medium';
     this.isPractice = Boolean(options.isPractice);
@@ -71,7 +73,7 @@ class Room {
         botTeam = red <= blue ? 'red' : 'blue';
       }
 
-      const bot = new BotPlayer(i, difficulty, botTeam);
+      const bot = new BotPlayer(i, difficulty, botTeam, this.mapId);
       const spawn = this.getNextSpawnPoint();
       bot.respawn(spawn);
       this.players.set(bot.id, bot);
@@ -181,9 +183,39 @@ class Room {
   }
 
   getNextSpawnPoint() {
-    const spawn = SPAWN_POINTS[this.spawnIndex % SPAWN_POINTS.length];
+    const points = MapData.getSpawnPoints(this.mapId);
+    if (!points || points.length === 0) {
+      return { x: 0, y: 0, z: 0, yaw: 0 };
+    }
+    const spawn = points[this.spawnIndex % points.length];
     this.spawnIndex++;
     return spawn;
+  }
+
+  setMap(mapId) {
+    if (this.state !== 'lobby') {
+      return { success: false, error: 'Cannot change map during active match' };
+    }
+    if (!MapData.isValidMap(mapId)) {
+      return { success: false, error: 'Invalid map ID' };
+    }
+    this.mapId = mapId;
+    this.spawnIndex = 0;
+
+    for (const player of this.players.values()) {
+      const spawn = this.getNextSpawnPoint();
+      player.respawn(spawn);
+      if (player.isBot && player.ai) {
+        player.ai.setMap(mapId);
+      }
+    }
+
+    this.broadcast('map_changed', {
+      mapId: this.mapId,
+      map: MapData.getMap(this.mapId)
+    });
+    this.notifyLobbyUpdate();
+    return { success: true, mapId: this.mapId };
   }
 
   startCountdown() {
@@ -219,7 +251,8 @@ class Room {
       timeRemaining: this.timeRemaining,
       scoreLimit: this.scoreLimit,
       gameMode: this.gameMode,
-      mapId: this.mapId || 'sector7',
+      mapId: this.mapId,
+      map: MapData.getMap(this.mapId),
       isAiMatch: this.isAiMatch,
       aiDifficulty: this.aiDifficulty,
       isPractice: this.isPractice,
@@ -371,7 +404,7 @@ class Room {
       return true;
     });
 
-    const hit = CollisionEngine.validateShot(shooter, rayOrigin, rayDir, targets, weaponConfig);
+    const hit = CollisionEngine.validateShot(shooter, rayOrigin, rayDir, targets, weaponConfig, this.mapId);
 
     if (hit) {
       const targetPlayer = hit.targetPlayer;
@@ -572,11 +605,12 @@ class Room {
     try {
       db.prepare(`
         INSERT INTO matches (id, room_name, game_mode, map_name, player_count, winner_id, duration_seconds)
-        VALUES (?, ?, ?, 'Sector-7 Arena', ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         matchId,
         this.name,
         this.gameMode,
+        MapData.getMap(this.mapId).name,
         playersList.length,
         winner ? winner.id : null,
         this.matchDuration - this.timeRemaining
@@ -685,6 +719,8 @@ class Room {
       name: this.name,
       isPrivate: this.isPrivate,
       gameMode: this.gameMode,
+      mapId: this.mapId,
+      mapName: MapData.getMap(this.mapId).name,
       maxPlayers: this.maxPlayers,
       playerCount: this.playerCount,
       hostUserId: this.hostUserId,

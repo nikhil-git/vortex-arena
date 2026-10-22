@@ -3,7 +3,9 @@
  * Verifies that hits cannot pierce through solid map obstacles or exceed weapon range.
  */
 
-// Arena static obstacle boxes (x, y, z center, and half extents hx, hy, hz)
+const { MapData } = require('./MapData');
+
+// Arena static obstacle boxes (legacy default for Sector-7 fallback)
 const ARENA_OBSTACLES = [
   // Outer perimeter boundary walls
   { min: [-40, 0, -41], max: [40, 8, -40] }, // North Wall
@@ -74,10 +76,16 @@ class CollisionEngine {
    * Cast a ray against static arena obstacles.
    * Returns nearest obstacle distance or Infinity.
    */
-  static getNearestObstacleDistance(origin, dir, maxRange = 250) {
+  static getNearestObstacleDistance(origin, dir, maxRange = 250, mapIdOrObstacles = null) {
     let nearestDist = maxRange;
+    let obstacles = ARENA_OBSTACLES;
+    if (Array.isArray(mapIdOrObstacles)) {
+      obstacles = mapIdOrObstacles;
+    } else if (typeof mapIdOrObstacles === 'string' && MapData) {
+      obstacles = MapData.getObstacles(mapIdOrObstacles);
+    }
 
-    for (const box of ARENA_OBSTACLES) {
+    for (const box of obstacles) {
       const t = this.rayAABB(origin, dir, box.min, box.max, nearestDist);
       if (t !== null && t < nearestDist) {
         nearestDist = t;
@@ -91,9 +99,9 @@ class CollisionEngine {
    * Authoritatively validate a shot against all other alive players.
    * Returns `{ hitPlayerId, isHeadshot, distance, hitPoint }` or null.
    */
-  static validateShot(shooterPlayer, rayOrigin, rayDir, targetPlayers, weapon) {
+  static validateShot(shooterPlayer, rayOrigin, rayDir, targetPlayers, weapon, mapId = null) {
     const maxRange = weapon.range || 150;
-    const obstacleDist = this.getNearestObstacleDistance(rayOrigin, rayDir, maxRange);
+    const obstacleDist = this.getNearestObstacleDistance(rayOrigin, rayDir, maxRange, mapId);
 
     let closestHit = null;
     let closestDist = obstacleDist; // Player must be closer than wall/obstacle

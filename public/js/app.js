@@ -29,11 +29,13 @@ class App {
     };
 
     // Single Player vs AI & Practice match configuration
+    this.selectedMapId = 'house';
+    this.mapModalContext = 'browse';
     this.spConfig = {
       mode: 'ffa',
       difficulty: 'medium',
       botCount: 5,
-      mapId: 'sector7',
+      mapId: 'house',
       scoreLimit: 25,
       duration: 300,
       isPractice: false
@@ -218,10 +220,7 @@ class App {
   }
 
   openCreateRoomModal() {
-    const name = prompt('Enter Custom Arena Name:', `${this.currentUser.username}'s Arena`);
-    if (!name) return;
-    const isPrivate = confirm('Make this room Private? (Requires Room Code or Invite to join)');
-    window.netClient.createRoom(name, isPrivate, 'ffa');
+    this.openMapSelectModal('browse');
   }
 
   openJoinCodeModal() {
@@ -238,6 +237,135 @@ class App {
   closeMobileDownloadModal() {
     const el = document.getElementById('modal-mobile-download');
     if (el) el.style.display = 'none';
+  }
+
+  // =========================================================================
+  // MAP SELECTION & ENVIRONMENTS BROWSER
+  // =========================================================================
+
+  openMapSelectModal(context = 'browse') {
+    this.mapModalContext = context; // 'browse', 'lobby', 'singleplayer'
+    const modal = document.getElementById('modal-map-selection');
+    if (!modal) return;
+
+    const targetMapId = (context === 'lobby' && this.currentRoom && this.currentRoom.mapId)
+      ? this.currentRoom.mapId
+      : (this.selectedMapId || 'house');
+    this.selectMap(targetMapId);
+
+    const subtitle = document.getElementById('map-modal-subtitle');
+    const footerBar = document.getElementById('map-modal-footer-bar');
+    if (subtitle) {
+      if (context === 'lobby') {
+        subtitle.textContent = 'Room Host: Choose the map for this match. All connected players and late joiners will synchronize to this map.';
+      } else if (context === 'singleplayer') {
+        subtitle.textContent = 'Select which environment to battle AI bots or practice in.';
+      } else {
+        subtitle.textContent = 'Browse the 6 distinct combat environments. Select to preview, play vs AI, or host a custom match.';
+      }
+    }
+
+    if (footerBar) {
+      footerBar.style.display = (context === 'lobby') ? 'none' : 'flex';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  closeMapSelectModal() {
+    const modal = document.getElementById('modal-map-selection');
+    if (modal) modal.style.display = 'none';
+  }
+
+  selectMap(mapId) {
+    this.selectedMapId = mapId;
+    document.querySelectorAll('.map-card').forEach(el => el.classList.remove('selected'));
+    const targetCard = document.getElementById(`map-card-${mapId}`);
+    if (targetCard) targetCard.classList.add('selected');
+
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+
+    const labelEl = document.getElementById('map-modal-selected-name');
+    if (labelEl) labelEl.textContent = nameMap[mapId] || 'Suburban Estate';
+
+    if (this.mapModalContext === 'lobby' && this.currentRoom && this.currentUser && this.currentRoom.hostUserId === this.currentUser.id) {
+      window.netClient.setMap(mapId);
+    }
+
+    const spMapSelect = document.getElementById('sp-map-select');
+    if (spMapSelect) spMapSelect.value = mapId;
+  }
+
+  confirmMapChoice(mapId) {
+    this.selectMap(mapId);
+    if (this.mapModalContext === 'lobby') {
+      this.closeMapSelectModal();
+      this.showToast(`Selected map set to ${mapId}!`);
+    } else if (this.mapModalContext === 'singleplayer') {
+      this.closeMapSelectModal();
+    }
+  }
+
+  launchAiOnSelectedMap() {
+    this.closeMapSelectModal();
+    this.spConfig.mapId = this.selectedMapId || 'house';
+    const spSelect = document.getElementById('sp-map-select');
+    if (spSelect) spSelect.value = this.spConfig.mapId;
+    this.openSinglePlayerModal(false);
+  }
+
+  launchHostOnSelectedMap() {
+    this.closeMapSelectModal();
+    const mapId = this.selectedMapId || 'house';
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const defaultName = `${this.currentUser ? this.currentUser.username : 'Operative'}'s ${nameMap[mapId] || 'Arena'}`;
+    const roomName = prompt('Enter Custom Arena Name:', defaultName);
+    if (!roomName) return;
+    const isPrivate = confirm('Make this room Private? (Requires Room Code or Invite to join)');
+    window.netClient.createRoom(roomName, isPrivate, 'ffa', mapId);
+  }
+
+  updateLobbyMapDisplay(mapId, mapName) {
+    const iconMap = {
+      house: '🏡',
+      farm: '🚜',
+      forest: '🌲',
+      minecraft: '🧱',
+      cruise: '🚢',
+      sector7: '🏢'
+    };
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+
+    const iconEl = document.getElementById('lobby-active-map-icon');
+    const nameEl = document.getElementById('lobby-active-map-name');
+    if (iconEl) iconEl.textContent = iconMap[mapId] || '🗺️';
+    if (nameEl) nameEl.textContent = mapName || nameMap[mapId] || 'Suburban Estate';
+
+    const changeMapBtn = document.getElementById('btn-lobby-change-map');
+    if (changeMapBtn && this.currentRoom && this.currentUser) {
+      changeMapBtn.style.display = (this.currentRoom.hostUserId === this.currentUser.id) ? 'inline-flex' : 'none';
+    }
   }
 
   // =========================================================================
@@ -332,7 +460,17 @@ class App {
     const gameMode = isPractice ? 'ffa' : (this.spConfig.mode || 'ffa');
     const scoreLimit = scoreSelect ? parseInt(scoreSelect.value, 10) : 25;
     const matchDuration = durSelect ? parseInt(durSelect.value, 10) : 300;
-    const mapId = mapSelect ? mapSelect.value : 'sector7';
+    const mapId = mapSelect ? mapSelect.value : (this.selectedMapId || 'house');
+
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const mapName = nameMap[mapId] || 'Suburban Estate';
 
     this.lastMatchConfig = {
       botCount,
@@ -341,11 +479,12 @@ class App {
       gameMode,
       scoreLimit,
       matchDuration,
-      mapId
+      mapId,
+      mapName
     };
 
     this.closeSinglePlayerModal();
-    this.showToast(`Deploying into Sector-7 Compound vs ${difficulty.toUpperCase()} AI...`);
+    this.showToast(`Deploying into ${mapName} vs ${difficulty.toUpperCase()} AI...`);
 
     window.netClient.createAiMatch(this.lastMatchConfig);
   }
@@ -356,7 +495,16 @@ class App {
       return;
     }
 
-    this.showToast(`Starting AI Rematch on Sector-7 Compound...`);
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const mapName = nameMap[this.lastMatchConfig.mapId] || 'Suburban Estate';
+    this.showToast(`Starting AI Rematch on ${mapName}...`);
     window.netClient.createAiMatch(this.lastMatchConfig);
   }
 
@@ -422,6 +570,17 @@ class App {
     this.navigateTo('gameplay');
     this.currentMatchInfo = matchData || {};
 
+    const activeMapId = (matchData && matchData.mapId) || (this.currentRoom && this.currentRoom.mapId) || this.spConfig.mapId || 'house';
+    const mapNames = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const mapName = (matchData && matchData.map && matchData.map.name) || mapNames[activeMapId] || 'Suburban Estate';
+
     // Update HUD Mode, Target, and AI Difficulty Badge
     const modeLabel = document.getElementById('hud-mode-label');
     const scoreTarget = document.getElementById('hud-score-target');
@@ -434,14 +593,14 @@ class App {
 
     if (modeLabel) {
       if (this.currentMatchInfo.isPractice) {
-        modeLabel.textContent = 'PRACTICE - TARGET TRAINING';
+        modeLabel.textContent = `PRACTICE - ${mapName.toUpperCase()}`;
       } else if (this.currentMatchInfo.isAiMatch) {
         const diff = (this.currentMatchInfo.aiDifficulty || 'medium').toUpperCase();
         const mode = (this.currentMatchInfo.gameMode || 'ffa').toUpperCase();
-        modeLabel.textContent = `VS AI (${diff}) - ${mode}`;
+        modeLabel.textContent = `${mapName.toUpperCase()} • VS AI (${diff})`;
       } else {
         const mode = (this.currentMatchInfo.gameMode || 'ffa').toUpperCase();
-        modeLabel.textContent = `${mode} - 12-PLAYER MULTIPLAYER`;
+        modeLabel.textContent = `${mapName.toUpperCase()} • 12P ${mode}`;
       }
     }
 
@@ -523,6 +682,7 @@ class App {
       };
     }
 
+    this.gameEngine.loadMap(activeMapId);
     this.gameEngine.setLocalPlayer(this.currentUser.id, this.currentUser.equippedSkins);
     this.switchActiveWeapon('assault_rifle');
     this.updateHUDVitals(100, 50);
@@ -652,12 +812,30 @@ class App {
       if (titleEl) titleEl.textContent = data.room.name;
       if (codeEl) codeEl.textContent = data.room.code;
 
+      if (data.room && data.room.mapId) {
+        this.selectedMapId = data.room.mapId;
+        this.updateLobbyMapDisplay(data.room.mapId, data.room.mapName);
+      }
+
       this.navigateTo('lobby');
     });
 
     net.on('lobby_updated', (data) => {
       this.currentRoom = data.room;
       this.renderLobbySlots(data.players);
+      if (data.room && data.room.mapId) {
+        this.selectedMapId = data.room.mapId;
+        this.updateLobbyMapDisplay(data.room.mapId, data.room.mapName);
+      }
+    });
+
+    net.on('map_changed', (data) => {
+      if (this.currentRoom) {
+        this.currentRoom.mapId = data.mapId;
+      }
+      this.selectedMapId = data.mapId;
+      this.updateLobbyMapDisplay(data.mapId, data.map ? data.map.name : null);
+      this.showToast(`🗺️ Host changed battleground map to ${data.map ? data.map.name : data.mapId}!`);
     });
 
     net.on('match_countdown_started', (data) => {

@@ -1,5 +1,6 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { Arena } from './Arena.js';
+import { MapBuilder } from './MapBuilder.js';
 import { PlayerModel } from './PlayerModel.js';
 import { WeaponViewModel } from './WeaponViewModel.js';
 import { ParticleSystem } from './ParticleSystem.js';
@@ -44,9 +45,11 @@ export class GameEngine {
 
     // Systems
     this.setupLighting();
-    this.arena = new Arena(this.scene);
+    this.currentMapId = null;
+    this.currentMapGroup = null;
     this.particles = new ParticleSystem(this.scene);
     this.weaponView = new WeaponViewModel(this.camera);
+    this.loadMap('house');
 
     this.remotePlayers = new Map(); // userId -> { model, targetPos, targetRot, lastSeen }
     this.localPlayerId = null;
@@ -127,6 +130,142 @@ export class GameEngine {
     addFloodlight(28, 24);
     addFloodlight(-26, 24);
     addFloodlight(26, -24);
+  }
+
+  loadMap(mapId = 'house') {
+    if (this.currentMapId === mapId && this.currentMapGroup) {
+      return;
+    }
+    this.currentMapId = mapId;
+
+    // 1. Dispose old map cleanly
+    if (this.currentMapGroup) {
+      MapBuilder.disposeMap(this.scene, this.currentMapGroup);
+      this.currentMapGroup = null;
+    }
+
+    // 2. Build procedural 3D map environment
+    this.currentMapGroup = MapBuilder.buildMap(this.scene, mapId);
+
+    // 3. Apply map lighting, sky, and fog
+    this.applyMapLighting(mapId);
+  }
+
+  applyMapLighting(mapId) {
+    const LIGHTING_CONFIGS = {
+      house: {
+        sky: 0x90caf9,
+        ground: 0x4caf50,
+        sunColor: 0xfffaed,
+        sunPos: [25, 45, 20],
+        ambient: 0xffffff,
+        ambientIntensity: 1.3,
+        fog: 0xb0bec5,
+        fogNear: 55,
+        fogFar: 190,
+        exposure: 1.35,
+        bounds: { minX: -27.5, maxX: 27.5, minZ: -27.5, maxZ: 27.5 }
+      },
+      farm: {
+        sky: 0x87ceeb,
+        ground: 0xd4a373,
+        sunColor: 0xfff3cf,
+        sunPos: [35, 55, 30],
+        ambient: 0xffeedd,
+        ambientIntensity: 1.4,
+        fog: 0xd8c29d,
+        fogNear: 70,
+        fogFar: 250,
+        exposure: 1.4,
+        bounds: { minX: -37.5, maxX: 37.5, minZ: -37.5, maxZ: 37.5 }
+      },
+      forest: {
+        sky: 0x78909c,
+        ground: 0x2e4726,
+        sunColor: 0xfff8e1,
+        sunPos: [20, 50, 15],
+        ambient: 0xe8f5e9,
+        ambientIntensity: 1.25,
+        fog: 0x546e7a,
+        fogNear: 45,
+        fogFar: 160,
+        exposure: 1.28,
+        bounds: { minX: -37.5, maxX: 37.5, minZ: -37.5, maxZ: 37.5 }
+      },
+      minecraft: {
+        sky: 0x70a5ff,
+        ground: 0x55a034,
+        sunColor: 0xffffff,
+        sunPos: [30, 60, 20],
+        ambient: 0xffffff,
+        ambientIntensity: 1.5,
+        fog: 0x90caf9,
+        fogNear: 80,
+        fogFar: 260,
+        exposure: 1.45,
+        bounds: { minX: -37.5, maxX: 37.5, minZ: -37.5, maxZ: 37.5 }
+      },
+      cruise: {
+        sky: 0x64b5f6,
+        ground: 0x01579b,
+        sunColor: 0xfffde7,
+        sunPos: [40, 55, 30],
+        ambient: 0xffffff,
+        ambientIntensity: 1.4,
+        fog: 0x90caf9,
+        fogNear: 80,
+        fogFar: 300,
+        exposure: 1.4,
+        bounds: { minX: -17.5, maxX: 17.5, minZ: -37.5, maxZ: 37.5 }
+      },
+      sector7: {
+        sky: 0x8ab4f8,
+        ground: 0x7c8ba1,
+        sunColor: 0xfffaed,
+        sunPos: [30, 55, 25],
+        ambient: 0xffffff,
+        ambientIntensity: 1.3,
+        fog: 0x8ab4f8,
+        fogNear: 65,
+        fogFar: 250,
+        exposure: 1.35,
+        bounds: { minX: -38.5, maxX: 38.5, minZ: -38.5, maxZ: 38.5 }
+      }
+    };
+
+    const cfg = LIGHTING_CONFIGS[mapId] || LIGHTING_CONFIGS.house;
+
+    if (this.scene) {
+      this.scene.background = new THREE.Color(cfg.sky);
+      if (this.scene.fog) {
+        this.scene.fog.color.setHex(cfg.fog);
+        this.scene.fog.near = cfg.fogNear;
+        this.scene.fog.far = cfg.fogFar;
+      }
+    }
+
+    if (this.hemiLight) {
+      this.hemiLight.color.setHex(cfg.sky);
+      this.hemiLight.groundColor.setHex(cfg.ground);
+    }
+
+    if (this.ambientLight) {
+      this.ambientLight.color.setHex(cfg.ambient);
+      this.ambientLight.intensity = cfg.ambientIntensity;
+    }
+
+    if (this.sunLight) {
+      this.sunLight.color.setHex(cfg.sunColor);
+      this.sunLight.position.set(...cfg.sunPos);
+    }
+
+    if (this.renderer) {
+      this.renderer.toneMappingExposure = cfg.exposure;
+    }
+
+    if (this.input) {
+      this.input.setBounds(cfg.bounds);
+    }
   }
 
   setBrightness(val) {

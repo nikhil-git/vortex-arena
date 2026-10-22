@@ -4,6 +4,7 @@
  */
 
 const { CollisionEngine, ARENA_OBSTACLES } = require('./CollisionEngine');
+const { MapData } = require('./MapData');
 const WEAPONS = require('./WeaponData');
 
 // Tactical Waypoint Graph covering Sector-7 Arena (-38 to +38 on X & Z)
@@ -107,10 +108,14 @@ const DIFFICULTY_CONFIG = {
 };
 
 class BotAI {
-  constructor(botPlayer, difficulty = 'medium') {
+  constructor(botPlayer, difficulty = 'medium', mapId = 'house') {
     this.bot = botPlayer;
     this.difficulty = difficulty.toLowerCase();
     this.config = DIFFICULTY_CONFIG[this.difficulty] || DIFFICULTY_CONFIG.medium;
+    this.mapId = mapId || 'house';
+    this.waypoints = MapData.getWaypoints(this.mapId);
+    this.obstacles = MapData.getObstacles(this.mapId);
+    this.bounds = MapData.getBounds(this.mapId);
 
     // AI State Machine: 'patrol', 'pursue', 'combat', 'cover'
     this.state = 'patrol';
@@ -133,16 +138,27 @@ class BotAI {
     this.strafeTimer = 0;
   }
 
+  setMap(mapId) {
+    if (!mapId) return;
+    this.mapId = mapId;
+    this.waypoints = MapData.getWaypoints(mapId);
+    this.obstacles = MapData.getObstacles(mapId);
+    this.bounds = MapData.getBounds(mapId);
+    this.currentWaypoint = this.getRandomWaypoint();
+  }
+
   getRandomWaypoint(excludeId = null) {
-    const pool = excludeId ? ARENA_WAYPOINTS.filter(w => w.id !== excludeId) : ARENA_WAYPOINTS;
-    return pool[Math.floor(Math.random() * pool.length)];
+    const list = (this.waypoints && this.waypoints.length > 0) ? this.waypoints : ARENA_WAYPOINTS;
+    const pool = excludeId ? list.filter(w => w.id !== excludeId) : list;
+    return pool[Math.floor(Math.random() * pool.length)] || list[0];
   }
 
   getNearestCoverWaypoint(excludePos = null) {
     let nearest = null;
     let minDist = Infinity;
+    const list = (this.waypoints && this.waypoints.length > 0) ? this.waypoints : ARENA_WAYPOINTS;
 
-    for (const wp of ARENA_WAYPOINTS) {
+    for (const wp of list) {
       if (!wp.isCover) continue;
       const dx = wp.x - this.bot.position.x;
       const dz = wp.z - this.bot.position.z;
@@ -167,6 +183,10 @@ class BotAI {
    */
   update(delta, room) {
     if (!this.bot.isAlive || room.state !== 'active') return;
+
+    if (room.mapId && room.mapId !== this.mapId) {
+      this.setMap(room.mapId);
+    }
 
     const now = Date.now();
 
@@ -202,9 +222,10 @@ class BotAI {
         break;
     }
 
-    // Keep bot within arena perimeter bounds
-    this.bot.position.x = Math.max(-38.0, Math.min(38.0, this.bot.position.x));
-    this.bot.position.z = Math.max(-38.0, Math.min(38.0, this.bot.position.z));
+    // Keep bot within active map bounds
+    const bounds = this.bounds || MapData.getBounds(this.mapId);
+    this.bot.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, this.bot.position.x));
+    this.bot.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, this.bot.position.z));
   }
 
   /**
@@ -260,7 +281,7 @@ class BotAI {
     if (dist === 0) return true;
 
     const dir = [dx / dist, dy / dist, dz / dist];
-    const nearestObstacle = CollisionEngine.getNearestObstacleDistance(origin, dir, dist);
+    const nearestObstacle = CollisionEngine.getNearestObstacleDistance(origin, dir, dist, this.mapId);
     return nearestObstacle >= dist - 0.2;
   }
 
@@ -495,11 +516,11 @@ class BotAI {
   }
 
   checkWallCollision(x, z) {
-    // Arena perimeter check (-38.5 to 38.5)
-    if (x < -38.5 || x > 38.5 || z < -38.5 || z > 38.5) return true;
+    const bounds = this.bounds || MapData.getBounds(this.mapId);
+    if (x < bounds.minX || x > bounds.maxX || z < bounds.minZ || z > bounds.maxZ) return true;
 
-    // Check against central compound and crates
-    for (const box of ARENA_OBSTACLES) {
+    const obstacles = (this.obstacles && this.obstacles.length > 0) ? this.obstacles : ARENA_OBSTACLES;
+    for (const box of obstacles) {
       // 0.6m radius clearance for bot cylinder
       if (x >= box.min[0] - 0.6 && x <= box.max[0] + 0.6 &&
           z >= box.min[2] - 0.6 && z <= box.max[2] + 0.6) {

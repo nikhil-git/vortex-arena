@@ -1,4 +1,5 @@
 const Room = require('./Room');
+const { MapData } = require('./MapData');
 const config = require('../config');
 
 class RoomManager {
@@ -44,15 +45,18 @@ class RoomManager {
     const botCount = Math.max(1, Math.min(11, options.botCount !== undefined ? options.botCount : 5));
     const difficulty = (options.difficulty || 'medium').toLowerCase();
     const isPractice = Boolean(options.isPractice);
+    const mapId = options.mapId && MapData.isValidMap(options.mapId) ? options.mapId : (options.mapId || 'sector7');
+    const mapInfo = MapData.getMap(mapId);
 
     const room = this.createRoom({
       roomCode,
-      name: isPractice ? 'Solo Target Training' : `Sector-7 vs ${difficulty.toUpperCase()} AI`,
+      name: isPractice ? `Solo Practice - ${mapInfo.name}` : `${mapInfo.name} vs ${difficulty.toUpperCase()} AI`,
       isPrivate: true,
       isAiMatch: true,
       aiDifficulty: difficulty,
       isPractice,
       botCount,
+      mapId,
       gameMode: options.gameMode || 'ffa',
       scoreLimit: options.scoreLimit || (isPractice ? 999 : 25),
       matchDuration: options.matchDuration || (isPractice ? 600 : 300),
@@ -72,18 +76,24 @@ class RoomManager {
    * Find available public match for matchmaking or create a new public room
    */
   findOrCreateMatch(options = {}) {
+    const requestedMapId = options.mapId;
     // 1. Look for existing open public room with available slot (<12 players)
     for (const room of this.rooms.values()) {
       if (!room.isPrivate && !room.isFull()) {
-        return room;
+        if (!requestedMapId || room.mapId === requestedMapId) {
+          return room;
+        }
       }
     }
 
     // 2. No open room found, create fresh public arena
+    const mapId = requestedMapId && MapData.isValidMap(requestedMapId) ? requestedMapId : 'sector7';
+    const mapInfo = MapData.getMap(mapId);
     return this.createRoom({
       isPrivate: false,
+      mapId,
       gameMode: options.gameMode || 'ffa',
-      name: `Public Sector ${this.rooms.size + 1}`
+      name: `Public ${mapInfo.name} #${this.rooms.size + 1}`
     });
   }
 
@@ -123,6 +133,8 @@ class RoomManager {
           code: room.code,
           name: room.name,
           gameMode: room.gameMode,
+          mapId: room.mapId,
+          mapName: MapData.getMap(room.mapId).name,
           playerCount: room.playerCount,
           maxPlayers: room.maxPlayers,
           state: room.state
