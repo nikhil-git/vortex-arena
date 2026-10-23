@@ -351,20 +351,36 @@ class Room {
     const player = this.players.get(userId);
     if (!player || !player.isAlive || this.state !== 'active') return;
 
-    // Update position and rotation with basic velocity sanity checks
+    // Update position with authoritative wall collision & boundary resolution
     if (input.position) {
-      player.position.x = input.position.x;
-      player.position.y = input.position.y;
-      player.position.z = input.position.z;
+      const curX = typeof player.position.x === 'number' ? player.position.x : 0;
+      const curY = typeof player.position.y === 'number' ? player.position.y : 0;
+      const curZ = typeof player.position.z === 'number' ? player.position.z : 0;
+
+      const targetX = Number.isFinite(input.position.x) ? input.position.x : curX;
+      const targetY = Number.isFinite(input.position.y) ? input.position.y : curY;
+      const targetZ = Number.isFinite(input.position.z) ? input.position.z : curZ;
+
+      // Authoritative collision & boundary resolution prevents clipping or walking outside map
+      const resolved = CollisionEngine.resolveMovement(
+        curX, curY, curZ,
+        targetX, targetZ,
+        0.4, 1.85,
+        this.mapId
+      );
+
+      player.position.x = resolved.x;
+      player.position.y = Math.max(0, targetY);
+      player.position.z = resolved.z;
     }
     if (input.rotation) {
-      player.rotation.yaw = input.rotation.yaw;
-      player.rotation.pitch = input.rotation.pitch;
+      player.rotation.yaw = Number.isFinite(input.rotation.yaw) ? input.rotation.yaw : player.rotation.yaw;
+      player.rotation.pitch = Number.isFinite(input.rotation.pitch) ? input.rotation.pitch : player.rotation.pitch;
     }
     if (input.velocity) {
-      player.velocity.x = input.velocity.x;
-      player.velocity.y = input.velocity.y;
-      player.velocity.z = input.velocity.z;
+      player.velocity.x = Number.isFinite(input.velocity.x) ? input.velocity.x : 0;
+      player.velocity.y = Number.isFinite(input.velocity.y) ? input.velocity.y : 0;
+      player.velocity.z = Number.isFinite(input.velocity.z) ? input.velocity.z : 0;
     }
   }
 

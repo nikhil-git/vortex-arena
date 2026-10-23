@@ -1,6 +1,7 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { Arena } from './Arena.js';
 import { MapBuilder } from './MapBuilder.js';
+import { MapData } from './MapData.js';
 import { PlayerModel } from './PlayerModel.js';
 import { WeaponViewModel } from './WeaponViewModel.js';
 import { ParticleSystem } from './ParticleSystem.js';
@@ -43,14 +44,6 @@ export class GameEngine {
 
     this.lastShootTime = 0;
 
-    // Systems
-    this.setupLighting();
-    this.currentMapId = null;
-    this.currentMapGroup = null;
-    this.particles = new ParticleSystem(this.scene);
-    this.weaponView = new WeaponViewModel(this.camera);
-    this.loadMap('house');
-
     this.remotePlayers = new Map(); // userId -> { model, targetPos, targetRot, lastSeen }
     this.localPlayerId = null;
 
@@ -77,6 +70,14 @@ export class GameEngine {
       (wepId) => this.handleSwitchWeapon(wepId),
       (show) => this.handleScoreboardToggle(show)
     );
+
+    // Systems
+    this.setupLighting();
+    this.currentMapId = null;
+    this.currentMapGroup = null;
+    this.particles = new ParticleSystem(this.scene);
+    this.weaponView = new WeaponViewModel(this.camera);
+    this.loadMap('house');
 
     // Network input sync rate limiter (30Hz)
     this.lastNetSync = 0;
@@ -133,22 +134,28 @@ export class GameEngine {
   }
 
   loadMap(mapId = 'house') {
-    if (this.currentMapId === mapId && this.currentMapGroup) {
-      return;
-    }
+    const isSameMap = (this.currentMapId === mapId && this.currentMapGroup);
     this.currentMapId = mapId;
 
-    // 1. Dispose old map cleanly
-    if (this.currentMapGroup) {
-      MapBuilder.disposeMap(this.scene, this.currentMapGroup);
-      this.currentMapGroup = null;
+    if (!isSameMap) {
+      // 1. Dispose old map cleanly
+      if (this.currentMapGroup) {
+        MapBuilder.disposeMap(this.scene, this.currentMapGroup);
+        this.currentMapGroup = null;
+      }
+
+      // 2. Build procedural 3D map environment
+      this.currentMapGroup = MapBuilder.buildMap(this.scene, mapId);
+
+      // 3. Apply map lighting, sky, and fog
+      this.applyMapLighting(mapId);
     }
 
-    // 2. Build procedural 3D map environment
-    this.currentMapGroup = MapBuilder.buildMap(this.scene, mapId);
-
-    // 3. Apply map lighting, sky, and fog
-    this.applyMapLighting(mapId);
+    // Always update bounds and obstacles on input controller
+    if (this.input) {
+      this.input.setBounds(MapData.getBounds(mapId));
+      this.input.setObstacles(MapData.getObstacles(mapId));
+    }
   }
 
   applyMapLighting(mapId) {
@@ -264,7 +271,8 @@ export class GameEngine {
     }
 
     if (this.input) {
-      this.input.setBounds(cfg.bounds);
+      this.input.setBounds(MapData.getBounds(mapId));
+      this.input.setObstacles(MapData.getObstacles(mapId));
     }
   }
 

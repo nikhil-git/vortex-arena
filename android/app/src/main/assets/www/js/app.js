@@ -872,6 +872,17 @@ class App {
           if (kEl && kEl.textContent !== String(localSnap.kills)) kEl.textContent = localSnap.kills;
           if (dEl && dEl.textContent !== String(localSnap.deaths)) dEl.textContent = localSnap.deaths;
 
+          // Server authoritative position reconciliation if client drifts or desyncs
+          if (localSnap.position && this.gameEngine && this.gameEngine.input && localSnap.isAlive) {
+            const inputPos = this.gameEngine.input.position;
+            const distSq = (inputPos.x - localSnap.position.x) ** 2 + (inputPos.z - localSnap.position.z) ** 2;
+            if (distSq > 6.25) { // Drift > 2.5m
+              inputPos.x = localSnap.position.x;
+              inputPos.z = localSnap.position.z;
+              this.gameEngine.camera.position.copy(inputPos);
+            }
+          }
+
           // Continuous authoritative ammo sync: ensure client never gets stuck in desync
           if (localSnap.ammo && this.weaponsState[this.activeWeaponId]) {
             const curWep = this.weaponsState[this.activeWeaponId];

@@ -143,6 +143,179 @@ class CollisionEngine {
 
     return closestHit;
   }
+
+  /**
+   * Check whether a bounding cylinder/box at (x, y, z) intersects any static map obstacles.
+   * Takes 3D vertical elevation (height) into account so players can jump over low barriers
+   * or walk under raised catwalks/archways.
+   */
+  static isColliding(x, y, z, radius = 0.4, height = 1.85, mapIdOrObstacles = null) {
+    let obstacles = ARENA_OBSTACLES;
+    if (Array.isArray(mapIdOrObstacles)) {
+      obstacles = mapIdOrObstacles;
+    } else if (typeof mapIdOrObstacles === 'string' && MapData) {
+      obstacles = MapData.getObstacles(mapIdOrObstacles);
+    }
+
+    for (let i = 0; i < obstacles.length; i++) {
+      const box = obstacles[i];
+      if (box && box.min && box.max) {
+        if (y + height > box.min[1] && y < box.max[1]) {
+          if (x >= box.min[0] - radius && x <= box.max[0] + radius &&
+              z >= box.min[2] - radius && z <= box.max[2] + radius) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Depenetrate character if intersecting or embedded inside an obstacle box.
+   * Calculates minimum translation vector (MTV) to push the character out to free playable space.
+   */
+  static depenetrate(x, y, z, radius = 0.4, height = 1.85, obstacles = ARENA_OBSTACLES, bounds = null) {
+    let resX = x;
+    let resZ = z;
+    const eps = 0.02;
+
+    for (let iter = 0; iter < 4; iter++) {
+      let pushed = false;
+      for (let i = 0; i < obstacles.length; i++) {
+        const box = obstacles[i];
+        if (box && box.min && box.max && (y + height > box.min[1]) && (y < box.max[1])) {
+          const minX = box.min[0] - radius;
+          const maxX = box.max[0] + radius;
+          const minZ = box.min[2] - radius;
+          const maxZ = box.max[2] + radius;
+
+          if (resX >= minX && resX <= maxX && resZ >= minZ && resZ <= maxZ) {
+            const dLeft = resX - minX;
+            const dRight = maxX - resX;
+            const dBottom = resZ - minZ;
+            const dTop = maxZ - resZ;
+
+            const minD = Math.min(dLeft, dRight, dBottom, dTop);
+            if (minD === dLeft) resX = minX - eps;
+            else if (minD === dRight) resX = maxX + eps;
+            else if (minD === dBottom) resZ = minZ - eps;
+            else resZ = maxZ + eps;
+
+            pushed = true;
+          }
+        }
+      }
+      if (!pushed) break;
+    }
+
+    if (bounds) {
+      const bMinX = bounds.minX !== undefined ? bounds.minX + radius : -38;
+      const bMaxX = bounds.maxX !== undefined ? bounds.maxX - radius : 38;
+      const bMinZ = bounds.minZ !== undefined ? bounds.minZ + radius : -38;
+      const bMaxZ = bounds.maxZ !== undefined ? bounds.maxZ - radius : 38;
+      resX = Math.max(bMinX, Math.min(bMaxX, resX));
+      resZ = Math.max(bMinZ, Math.min(bMaxZ, resZ));
+    }
+
+    return { x: resX, z: resZ };
+  }
+
+  /**
+   * Continuous substepped movement resolution with perimeter boundary clamping and wall sliding.
+   * Guarantees that neither human players nor AI bots can tunnel through walls during frame drops
+   * or high movement speeds, and prevents characters from escaping outside the map boundary.
+   */
+  static resolveMovement(curX, curY, curZ, targetX, targetZ, radius = 0.4, height = 1.85, mapIdOrObstacles = null, customBounds = null) {
+    let obstacles = ARENA_OBSTACLES;
+    let bounds = customBounds || { minX: -38.5, maxX: 38.5, minZ: -38.5, maxZ: 38.5 };
+
+    if (Array.isArray(mapIdOrObstacles)) {
+      obstacles = mapIdOrObstacles;
+    } else if (typeof mapIdOrObstacles === 'string' && MapData) {
+      obstacles = MapData.getObstacles(mapIdOrObstacles);
+      if (!customBounds) {
+        bounds = MapData.getBounds(mapIdOrObstacles);
+      }
+    }
+
+    const bMinX = bounds.minX !== undefined ? bounds.minX + radius : -38;
+    const bMaxX = bounds.maxX !== undefined ? bounds.maxX - radius : 38;
+    const bMinZ = bounds.minZ !== undefined ? bounds.minZ + radius : -38;
+    const bMaxZ = bounds.maxZ !== undefined ? bounds.maxZ - radius : 38;
+
+    const clampX = (x) => Math.max(bMinX, Math.min(bMaxX, x));
+    const clampZ = (z) => Math.max(bMinZ, Math.min(bMaxZ, z));
+
+    // Initial boundary clamp and depenetration of starting position
+    let posX = clampX(curX);
+    let posZ = clampZ(curZ);
+
+    const initialDepen = this.depenetrate(posX, curY, posZ, radius, height, obstacles, bounds);
+    posX = initialDepen.x;
+    posZ = initialDepen.z;
+
+    const clampedTargetX = clampX(targetX);
+    const clampedTargetZ = clampZ(targetZ);
+
+    const dx = clampedTargetX - posX;
+    const dz = clampedTargetZ - posZ;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist < 1e-5) {
+      return { x: posX, z: posZ, collided: false };
+    }
+
+    // Substepping: max 0.1m step size to prevent tunneling through thin walls
+    const maxStep = 0.1;
+    const numSteps = Math.min(48, Math.max(1, Math.ceil(dist / maxStep)));
+    const stepX = dx / numSteps;
+    const stepZ = dz / numSteps;
+
+    let hasCollided = false;
+
+    for (let s = 0; s < numSteps; s++) {
+      const tryX = clampX(posX + stepX);
+      const tryZ = clampZ(posZ + stepZ);
+
+      if (!this.isColliding(tryX, curY, tryZ, radius, height, obstacles)) {
+        posX = tryX;
+        posZ = tryZ;
+      } else {
+        hasCollided = true;
+        // Slide along X or Z axis if one direction is clear
+        const slideX = clampX(posX + stepX);
+        const slideZ = clampZ(posZ + stepZ);
+
+        const canSlideX = (stepX !== 0) && !this.isColliding(slideX, curY, posZ, radius, height, obstacles);
+        const canSlideZ = (stepZ !== 0) && !this.isColliding(posX, curY, slideZ, radius, height, obstacles);
+
+        if (canSlideX && !canSlideZ) {
+          posX = slideX;
+        } else if (canSlideZ && !canSlideX) {
+          posZ = slideZ;
+        } else if (canSlideX && canSlideZ) {
+          if (Math.abs(stepX) >= Math.abs(stepZ)) {
+            posX = slideX;
+          } else {
+            posZ = slideZ;
+          }
+        } else {
+          // Blocked on both axes
+          break;
+        }
+      }
+    }
+
+    // Final safety clamp & depenetration pass
+    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, obstacles, bounds);
+
+    return {
+      x: clampX(finalDepen.x),
+      z: clampZ(finalDepen.z),
+      collided: hasCollided
+    };
+  }
 }
 
 module.exports = {

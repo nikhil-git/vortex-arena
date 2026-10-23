@@ -362,13 +362,27 @@ class BotAI {
       const strafeAngle = baseYaw + (Math.PI / 2 * this.strafeDirection);
       const strafeSpeed = this.config.moveSpeed * 0.85;
 
-      const moveX = Math.sin(strafeAngle) * strafeSpeed * delta;
-      const moveZ = Math.cos(strafeAngle) * strafeSpeed * delta;
+      const strafeTargetX = this.bot.position.x + Math.sin(strafeAngle) * strafeSpeed * delta;
+      const strafeTargetZ = this.bot.position.z + Math.cos(strafeAngle) * strafeSpeed * delta;
 
-      // Check wall collision before moving
-      if (!this.checkWallCollision(this.bot.position.x + moveX, this.bot.position.z + moveZ)) {
-        this.bot.position.x += moveX;
-        this.bot.position.z += moveZ;
+      const resolved = CollisionEngine.resolveMovement(
+        this.bot.position.x,
+        this.bot.position.y,
+        this.bot.position.z,
+        strafeTargetX,
+        strafeTargetZ,
+        0.4,
+        1.85,
+        this.obstacles,
+        this.bounds
+      );
+
+      this.bot.position.x = resolved.x;
+      this.bot.position.z = resolved.z;
+
+      if (resolved.collided) {
+        this.strafeDirection *= -1;
+        this.strafeTimer = 0.8 + Math.random() * 0.8;
       }
     }
 
@@ -495,39 +509,41 @@ class BotAI {
     this.bot.rotation.pitch = 0;
 
     const moveStep = Math.min(dist, speed * delta);
-    const newX = this.bot.position.x + (dx / dist) * moveStep;
-    const newZ = this.bot.position.z + (dz / dist) * moveStep;
+    const stepTargetX = this.bot.position.x + (dx / dist) * moveStep;
+    const stepTargetZ = this.bot.position.z + (dz / dist) * moveStep;
 
-    // Check if new position collides with static obstacles
-    if (!this.checkWallCollision(newX, newZ)) {
-      this.bot.position.x = newX;
-      this.bot.position.z = newZ;
-    } else {
-      // Slide along obstacle axis
-      if (!this.checkWallCollision(newX, this.bot.position.z)) {
-        this.bot.position.x = newX;
-      } else if (!this.checkWallCollision(this.bot.position.x, newZ)) {
-        this.bot.position.z = newZ;
-      } else {
-        // Pick new waypoint if wall blocks path
-        this.currentWaypoint = this.getRandomWaypoint(this.currentWaypoint ? this.currentWaypoint.id : null);
-      }
+    const resolved = CollisionEngine.resolveMovement(
+      this.bot.position.x,
+      this.bot.position.y,
+      this.bot.position.z,
+      stepTargetX,
+      stepTargetZ,
+      0.4,
+      1.85,
+      this.obstacles,
+      this.bounds
+    );
+
+    const actualDist = Math.hypot(resolved.x - this.bot.position.x, resolved.z - this.bot.position.z);
+    this.bot.position.x = resolved.x;
+    this.bot.position.z = resolved.z;
+
+    if (resolved.collided && actualDist < 0.02) {
+      // Pick new waypoint if path is completely blocked
+      this.currentWaypoint = this.getRandomWaypoint(this.currentWaypoint ? this.currentWaypoint.id : null);
     }
   }
 
-  checkWallCollision(x, z) {
+  checkWallCollision(x, z, y = null) {
+    const py = y !== null ? y : (this.bot ? this.bot.position.y : 0);
     const bounds = this.bounds || MapData.getBounds(this.mapId);
-    if (x < bounds.minX || x > bounds.maxX || z < bounds.minZ || z > bounds.maxZ) return true;
+    const r = 0.4;
+    if (x < bounds.minX + r || x > bounds.maxX - r || z < bounds.minZ + r || z > bounds.maxZ - r) {
+      return true;
+    }
 
     const obstacles = (this.obstacles && this.obstacles.length > 0) ? this.obstacles : ARENA_OBSTACLES;
-    for (const box of obstacles) {
-      // 0.6m radius clearance for bot cylinder
-      if (x >= box.min[0] - 0.6 && x <= box.max[0] + 0.6 &&
-          z >= box.min[2] - 0.6 && z <= box.max[2] + 0.6) {
-        return true;
-      }
-    }
-    return false;
+    return CollisionEngine.isColliding(x, py, z, r, 1.85, obstacles);
   }
 }
 

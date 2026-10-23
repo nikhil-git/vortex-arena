@@ -385,18 +385,140 @@ export class InputController {
     this.obstacles = Array.isArray(obstacles) ? obstacles : [];
   }
 
-  checkCollision(x, z) {
-    const r = 0.45; // Player bounding cylinder radius
+  isColliding(x, y, z, radius = 0.4, height = 1.85) {
     for (let i = 0; i < this.obstacles.length; i++) {
       const box = this.obstacles[i];
-      if (box.min && box.max) {
-        if (x >= box.min[0] - r && x <= box.max[0] + r &&
-            z >= box.min[2] - r && z <= box.max[2] + r) {
-          return true;
+      if (box && box.min && box.max) {
+        if (y + height > box.min[1] && y < box.max[1]) {
+          if (x >= box.min[0] - radius && x <= box.max[0] + radius &&
+              z >= box.min[2] - radius && z <= box.max[2] + radius) {
+            return true;
+          }
         }
       }
     }
     return false;
+  }
+
+  depenetrate(x, y, z, radius = 0.4, height = 1.85) {
+    let resX = x;
+    let resZ = z;
+    const eps = 0.02;
+
+    for (let iter = 0; iter < 4; iter++) {
+      let pushed = false;
+      for (let i = 0; i < this.obstacles.length; i++) {
+        const box = this.obstacles[i];
+        if (box && box.min && box.max && (y + height > box.min[1]) && (y < box.max[1])) {
+          const minX = box.min[0] - radius;
+          const maxX = box.max[0] + radius;
+          const minZ = box.min[2] - radius;
+          const maxZ = box.max[2] + radius;
+
+          if (resX >= minX && resX <= maxX && resZ >= minZ && resZ <= maxZ) {
+            const dLeft = resX - minX;
+            const dRight = maxX - resX;
+            const dBottom = resZ - minZ;
+            const dTop = maxZ - resZ;
+
+            const minD = Math.min(dLeft, dRight, dBottom, dTop);
+            if (minD === dLeft) resX = minX - eps;
+            else if (minD === dRight) resX = maxX + eps;
+            else if (minD === dBottom) resZ = minZ - eps;
+            else resZ = maxZ + eps;
+
+            pushed = true;
+          }
+        }
+      }
+      if (!pushed) break;
+    }
+
+    const bMinX = this.bounds.minX !== undefined ? this.bounds.minX + radius : -38;
+    const bMaxX = this.bounds.maxX !== undefined ? this.bounds.maxX - radius : 38;
+    const bMinZ = this.bounds.minZ !== undefined ? this.bounds.minZ + radius : -38;
+    const bMaxZ = this.bounds.maxZ !== undefined ? this.bounds.maxZ - radius : 38;
+
+    resX = Math.max(bMinX, Math.min(bMaxX, resX));
+    resZ = Math.max(bMinZ, Math.min(bMaxZ, resZ));
+
+    return { x: resX, z: resZ };
+  }
+
+  resolveMovement(targetX, targetZ, radius = 0.4, height = 1.85) {
+    const bMinX = this.bounds.minX !== undefined ? this.bounds.minX + radius : -38;
+    const bMaxX = this.bounds.maxX !== undefined ? this.bounds.maxX - radius : 38;
+    const bMinZ = this.bounds.minZ !== undefined ? this.bounds.minZ + radius : -38;
+    const bMaxZ = this.bounds.maxZ !== undefined ? this.bounds.maxZ - radius : 38;
+
+    const clampX = (x) => Math.max(bMinX, Math.min(bMaxX, x));
+    const clampZ = (z) => Math.max(bMinZ, Math.min(bMaxZ, z));
+
+    const curY = Math.max(0, this.position.y - 1.7);
+
+    let posX = clampX(this.position.x);
+    let posZ = clampZ(this.position.z);
+
+    const initialDepen = this.depenetrate(posX, curY, posZ, radius, height);
+    posX = initialDepen.x;
+    posZ = initialDepen.z;
+
+    const clampedTargetX = clampX(targetX);
+    const clampedTargetZ = clampZ(targetZ);
+
+    const dx = clampedTargetX - posX;
+    const dz = clampedTargetZ - posZ;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist < 1e-5) {
+      this.position.x = posX;
+      this.position.z = posZ;
+      return;
+    }
+
+    const maxStep = 0.1;
+    const numSteps = Math.min(48, Math.max(1, Math.ceil(dist / maxStep)));
+    const stepX = dx / numSteps;
+    const stepZ = dz / numSteps;
+
+    for (let s = 0; s < numSteps; s++) {
+      const tryX = clampX(posX + stepX);
+      const tryZ = clampZ(posZ + stepZ);
+
+      if (!this.isColliding(tryX, curY, tryZ, radius, height)) {
+        posX = tryX;
+        posZ = tryZ;
+      } else {
+        const slideX = clampX(posX + stepX);
+        const slideZ = clampZ(posZ + stepZ);
+
+        const canSlideX = (stepX !== 0) && !this.isColliding(slideX, curY, posZ, radius, height);
+        const canSlideZ = (stepZ !== 0) && !this.isColliding(posX, curY, slideZ, radius, height);
+
+        if (canSlideX && !canSlideZ) {
+          posX = slideX;
+        } else if (canSlideZ && !canSlideX) {
+          posZ = slideZ;
+        } else if (canSlideX && canSlideZ) {
+          if (Math.abs(stepX) >= Math.abs(stepZ)) {
+            posX = slideX;
+          } else {
+            posZ = slideZ;
+          }
+        } else {
+          break;
+        }
+      }
+    }
+
+    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height);
+    this.position.x = clampX(finalDepen.x);
+    this.position.z = clampZ(finalDepen.z);
+  }
+
+  checkCollision(x, z) {
+    const curY = Math.max(0, this.position.y - 1.7);
+    return this.isColliding(x, curY, z, 0.4, 1.85);
   }
 
   update(delta) {
@@ -433,21 +555,12 @@ export class InputController {
     // Gravity
     this.velocity.y -= 19.6 * delta;
 
-    // Apply Velocity with wall sliding collision detection
-    const nextX = this.position.x + this.velocity.x * delta;
-    const nextZ = this.position.z + this.velocity.z * delta;
+    // Continuous substepped collision resolution & wall sliding
+    const targetX = this.position.x + this.velocity.x * delta;
+    const targetZ = this.position.z + this.velocity.z * delta;
 
-    if (!this.checkCollision(nextX, nextZ)) {
-      this.position.x = nextX;
-      this.position.z = nextZ;
-    } else {
-      // Slide along X or Z axis if one is clear
-      if (!this.checkCollision(nextX, this.position.z)) {
-        this.position.x = nextX;
-      } else if (!this.checkCollision(this.position.x, nextZ)) {
-        this.position.z = nextZ;
-      }
-    }
+    this.resolveMovement(targetX, targetZ, 0.4, 1.85);
+
     this.position.y += this.velocity.y * delta;
 
     // Arena Floor Collision
@@ -456,10 +569,6 @@ export class InputController {
       this.velocity.y = 0;
       this.isGrounded = true;
     }
-
-    // Arena Perimeter Bounds Clamp
-    this.position.x = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, this.position.x));
-    this.position.z = Math.max(this.bounds.minZ, Math.min(this.bounds.maxZ, this.position.z));
 
     this.camera.position.copy(this.position);
 
