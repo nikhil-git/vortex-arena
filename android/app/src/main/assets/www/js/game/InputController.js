@@ -44,6 +44,27 @@ export class InputController {
     if (this.isTouch) {
       this.setupTouchControls();
     }
+
+    // Immediately align camera to initial eye-level position and neutral rotation
+    this.camera.position.copy(this.position);
+    this.updateCameraRotation();
+  }
+
+  setPosition(x, y, z, yaw = null, pitch = null) {
+    // If y is ground/foot level (<= 0.5), convert to eye height (y + 1.7)
+    const eyeY = (y <= 0.5) ? y + 1.7 : y;
+    this.position.set(x, eyeY, z);
+    this.velocity.set(0, 0, 0);
+    this.isGrounded = true;
+
+    if (yaw !== null && Number.isFinite(yaw)) {
+      this.yaw = yaw;
+    }
+    if (pitch !== null && Number.isFinite(pitch)) {
+      this.pitch = pitch;
+    }
+    this.updateCameraRotation();
+    this.camera.position.copy(this.position);
   }
 
   setSensitivity(val) {
@@ -522,7 +543,14 @@ export class InputController {
   }
 
   update(delta) {
-    if (!this.isLocked && !this.isTouch) return { isMoving: false, speed: 0 };
+    if (!this.isLocked && !this.isTouch) {
+      // Even when not locked, enforce ground clearance and synchronize camera position
+      if (this.position.y < 1.7) {
+        this.position.y = 1.7;
+      }
+      this.camera.position.copy(this.position);
+      return { isMoving: false, speed: 0 };
+    }
 
     const moveSpeed = this.keys.sprint ? 9.2 : 6.0;
     const moveDir = new THREE.Vector3();

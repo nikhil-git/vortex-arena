@@ -9,6 +9,7 @@ module.exports = {
   MATCH_DURATION_SECONDS: 300, // 5 minutes
   SCORE_LIMIT: 25, // 25 kills to win FFA or TDM
   RESPAWN_DELAY_SECONDS: 3,
+  RESPAWN_PROTECTION_SECONDS: 3.0,
   
   // Starting weapons given to all players on spawn
   DEFAULT_WEAPONS: ['assault_rifle', 'pistol', 'shotgun', 'sniper_rifle']

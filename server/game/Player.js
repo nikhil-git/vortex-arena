@@ -24,6 +24,7 @@ class Player {
     this.shield = 50;
     this.isAlive = true;
     this.respawnAt = 0;
+    this.invulnerableUntil = 0; // Timestamp (ms) until which player is protected from damage
 
     // Match Scoring
     this.matchKills = 0;
@@ -136,8 +137,17 @@ class Player {
     return false;
   }
 
+  get isInvulnerable() {
+    return Date.now() < this.invulnerableUntil;
+  }
+
   takeDamage(amount, attackerPlayer = null, isHeadshot = false) {
-    if (!this.isAlive) return { damageApplied: 0, killed: false };
+    if (!this.isAlive) return { damageApplied: 0, killed: false, isHeadshot: false, isInvulnerable: false };
+
+    // Respawn Protection: 100% damage immunity while invulnerable timer is active
+    if (this.isInvulnerable) {
+      return { damageApplied: 0, killed: false, isHeadshot: false, isInvulnerable: true };
+    }
 
     let remaining = amount;
     let damageApplied = 0;
@@ -172,17 +182,22 @@ class Player {
         }
       }
 
-      return { damageApplied, killed: true, isHeadshot };
+      return { damageApplied, killed: true, isHeadshot, isInvulnerable: false };
     }
 
-    return { damageApplied, killed: false, isHeadshot };
+    return { damageApplied, killed: false, isHeadshot, isInvulnerable: false };
   }
 
-  respawn(spawnPoint) {
+  respawn(spawnPoint, protectionSeconds = 3.0) {
     this.health = this.maxHealth;
     this.shield = this.maxShield;
     this.isAlive = true;
-    this.position = { x: spawnPoint.x, y: spawnPoint.y, z: spawnPoint.z };
+    this.invulnerableUntil = Date.now() + Math.max(0, protectionSeconds * 1000);
+    this.position = {
+      x: spawnPoint.x,
+      y: (spawnPoint.y !== undefined && Number.isFinite(spawnPoint.y)) ? spawnPoint.y : 0,
+      z: spawnPoint.z
+    };
     this.rotation = { yaw: spawnPoint.yaw || 0, pitch: 0 };
     this.velocity = { x: 0, y: 0, z: 0 };
 
@@ -210,6 +225,8 @@ class Player {
       position: this.position,
       rotation: this.rotation,
       isAlive: this.isAlive,
+      isInvulnerable: this.isInvulnerable,
+      invulnerableUntil: this.invulnerableUntil,
       health: this.health,
       shield: this.shield,
       activeWeaponId: this.activeWeaponId,

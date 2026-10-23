@@ -1,6 +1,7 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { GameEngine } from './game/GameEngine.js';
 import { PlayerModel } from './game/PlayerModel.js';
+import { MapData } from './game/MapData.js';
 
 class App {
   constructor() {
@@ -684,8 +685,31 @@ class App {
 
     this.gameEngine.loadMap(activeMapId);
     this.gameEngine.setLocalPlayer(this.currentUser.id, this.currentUser.equippedSkins);
+
+    // Deterministically initialize player transform to authoritative spawn point immediately
+    const localSnap = (matchData && matchData.players) ? matchData.players.find(p => p.id === this.currentUser.id) : null;
+    if (localSnap && (localSnap.position || localSnap.pos)) {
+      const spX = localSnap.position ? localSnap.position.x : localSnap.pos[0];
+      const spY = localSnap.position ? (localSnap.position.y || 0) : (localSnap.pos[1] || 0);
+      const spZ = localSnap.position ? localSnap.position.z : localSnap.pos[2];
+      const spYaw = (localSnap.rotation && localSnap.rotation.yaw !== undefined) ? localSnap.rotation.yaw : (localSnap.rot ? localSnap.rot[0] : 0);
+      this.gameEngine.setLocalSpawn(spX, spY, spZ, spYaw);
+    } else if (matchData && matchData.spawnPoint) {
+      this.gameEngine.setLocalSpawn(matchData.spawnPoint.x, matchData.spawnPoint.y || 0, matchData.spawnPoint.z, matchData.spawnPoint.yaw || 0);
+    } else {
+      const spawns = MapData.getSpawnPoints(activeMapId);
+      if (spawns && spawns.length > 0) {
+        this.gameEngine.setLocalSpawn(spawns[0].x, spawns[0].y || 0, spawns[0].z, spawns[0].yaw || 0);
+      }
+    }
+
     this.switchActiveWeapon('assault_rifle');
     this.updateHUDVitals(100, 50);
+
+    // If matchData indicates respawn protection, activate HUD indicator
+    if (matchData && (matchData.isInvulnerable || matchData.invulnerableSeconds)) {
+      this.triggerRespawnProtection(matchData.invulnerableSeconds || 3.0);
+    }
 
     if (window.soundEngine) window.soundEngine.playMatchStart();
   }
@@ -730,6 +754,39 @@ class App {
     if (vignette) {
       vignette.classList.toggle('critical', hp <= 30 && hp > 0);
     }
+  }
+
+  triggerRespawnProtection(durationSeconds = 3.0) {
+    if (this.respawnShieldTimer) {
+      clearInterval(this.respawnShieldTimer);
+      this.respawnShieldTimer = null;
+    }
+
+    const badge = document.getElementById('respawn-shield-indicator');
+    const timerEl = document.getElementById('respawn-shield-countdown');
+    if (!badge) return;
+
+    badge.style.display = 'flex';
+    badge.classList.add('active');
+
+    let remainingMs = Math.round(durationSeconds * 1000);
+    if (timerEl) timerEl.textContent = `${(remainingMs / 1000).toFixed(1)}s`;
+
+    const start = performance.now();
+    this.respawnShieldTimer = setInterval(() => {
+      const elapsed = performance.now() - start;
+      const left = Math.max(0, remainingMs - elapsed);
+
+      if (timerEl) timerEl.textContent = `${(left / 1000).toFixed(1)}s`;
+
+      if (left <= 0) {
+        clearInterval(this.respawnShieldTimer);
+        this.respawnShieldTimer = null;
+        badge.classList.remove('active');
+        badge.style.display = 'none';
+        this.showToast('⚔️ Shield Expired — Combat Engaged!');
+      }
+    }, 100);
   }
 
   updateHUDAmmo() {
@@ -873,12 +930,14 @@ class App {
           if (dEl && dEl.textContent !== String(localSnap.deaths)) dEl.textContent = localSnap.deaths;
 
           // Server authoritative position reconciliation if client drifts or desyncs
-          if (localSnap.position && this.gameEngine && this.gameEngine.input && localSnap.isAlive) {
+          const snapPos = localSnap.pos ? { x: localSnap.pos[0], y: localSnap.pos[1], z: localSnap.pos[2] } : localSnap.position;
+          if (snapPos && this.gameEngine && this.gameEngine.input && localSnap.alive) {
             const inputPos = this.gameEngine.input.position;
-            const distSq = (inputPos.x - localSnap.position.x) ** 2 + (inputPos.z - localSnap.position.z) ** 2;
-            if (distSq > 6.25) { // Drift > 2.5m
-              inputPos.x = localSnap.position.x;
-              inputPos.z = localSnap.position.z;
+            const distSq = (inputPos.x - snapPos.x) ** 2 + (inputPos.z - snapPos.z) ** 2;
+            if (distSq > 9.0) { // Drift > 3.0m
+              inputPos.x = snapPos.x;
+              inputPos.y = (snapPos.y || 0) + 1.7; // Ensure eye height
+              inputPos.z = snapPos.z;
               this.gameEngine.camera.position.copy(inputPos);
             }
           }
@@ -968,6 +1027,10 @@ class App {
       if (data.userId === this.currentUser.id) {
         this.updateHUDVitals(data.health, data.shield);
 
+        // Immediately close respawn modal if still open
+        const modal = document.getElementById('respawn-modal');
+        if (modal) modal.classList.remove('active');
+
         // Authoritatively restore full weapon loadout ammo on respawn
         if (data.weapons) {
           for (const [wepId, wData] of Object.entries(data.weapons)) {
@@ -992,10 +1055,16 @@ class App {
         }
         this.updateHUDAmmo();
 
-        // Reset local position
+        // Deterministically position local player at spawn point at proper eye height
         if (this.gameEngine) {
-          this.gameEngine.input.position.set(data.position.x, data.position.y + 1.7, data.position.z);
-          this.gameEngine.camera.position.copy(this.gameEngine.input.position);
+          const spY = (data.position && data.position.y !== undefined) ? data.position.y : 0;
+          const spYaw = (data.rotation && data.rotation.yaw !== undefined) ? data.rotation.yaw : 0;
+          this.gameEngine.setLocalSpawn(data.position.x, spY, data.position.z, spYaw);
+        }
+
+        // Activate respawn protection HUD indicator
+        if (data.isInvulnerable) {
+          this.triggerRespawnProtection(data.invulnerableSeconds || 3.0);
         }
       }
     });

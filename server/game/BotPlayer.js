@@ -60,8 +60,8 @@ class BotPlayer extends Player {
     return super.takeDamage(amount, attacker, isHeadshot);
   }
 
-  respawn(spawnPoint) {
-    super.respawn(spawnPoint);
+  respawn(spawnPoint, protectionSeconds = 3.0) {
+    super.respawn(spawnPoint, protectionSeconds);
     if (this.ai) {
       this.ai.state = 'patrol';
       this.ai.currentWaypoint = this.ai.getRandomWaypoint();

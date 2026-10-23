@@ -317,6 +317,15 @@ export class GameEngine {
     }
   }
 
+  setLocalSpawn(x, y, z, yaw = 0) {
+    if (this.input) {
+      this.input.setPosition(x, y, z, yaw, 0);
+    } else {
+      this.camera.position.set(x, (y <= 0.5 ? y + 1.7 : y), z);
+      this.camera.rotation.y = yaw;
+    }
+  }
+
   syncRemotePlayers(playerSnapshots) {
     const activeIds = new Set();
 
@@ -333,6 +342,12 @@ export class GameEngine {
       if (!entry) {
         // Instantiate new 3D remote player model
         const model = new PlayerModel(snap, false);
+        // Snap immediately to spawn transform on creation without 5-second lerp from (0,0,0)
+        model.group.position.set(snap.pos[0], snap.pos[1], snap.pos[2]);
+        model.group.rotation.y = snap.rot[0];
+        if (model.headGroup) {
+          model.headGroup.rotation.x = snap.rot[1];
+        }
         this.scene.add(model.group);
         entry = {
           model,
@@ -349,11 +364,16 @@ export class GameEngine {
       entry.targetRotY = snap.rot[0];
       entry.targetRotX = snap.rot[1];
       entry.model.updateNameplate(snap.hp, snap.sh);
+      if (typeof entry.model.setInvulnerable === 'function') {
+        entry.model.setInvulnerable(Boolean(snap.inv || snap.isInvulnerable));
+      }
 
       if (!snap.alive && entry.model.isAlive) {
         entry.model.setDead();
       } else if (snap.alive && !entry.model.isAlive) {
         entry.model.setAlive();
+        // Snap to respawn position immediately on revival
+        entry.model.group.position.set(snap.pos[0], snap.pos[1], snap.pos[2]);
       }
     }
 

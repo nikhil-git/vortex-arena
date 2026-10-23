@@ -132,6 +132,20 @@ export class PlayerModel {
     rightLegMesh.castShadow = true;
     this.rightLeg.add(rightLegMesh);
     this.group.add(this.rightLeg);
+
+    // 6. Respawn Protection Forcefield Bubble (Shimmering energy shield)
+    const shieldGeo = new THREE.SphereGeometry(1.25, 16, 16);
+    const shieldMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.35,
+      wireframe: true
+    });
+    this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+    this.shieldMesh.position.set(0, 0.9, 0); // Enclose torso and head
+    this.shieldMesh.visible = false;
+    this.group.add(this.shieldMesh);
+    this.isInvulnerable = false;
   }
 
   buildNameplate() {
@@ -209,6 +223,19 @@ export class PlayerModel {
       this.rightLeg.rotation.x *= 0.8;
       this.leftArm.rotation.x *= 0.8;
       this.rightArm.rotation.x *= 0.8;
+    }
+
+    // Animate active respawn energy shield
+    if (this.isInvulnerable && this.shieldMesh) {
+      this.shieldMesh.rotation.y += delta * 2.5;
+      this.shieldMesh.rotation.x += delta * 1.5;
+    }
+  }
+
+  setInvulnerable(isInv) {
+    this.isInvulnerable = Boolean(isInv);
+    if (this.shieldMesh) {
+      this.shieldMesh.visible = this.isInvulnerable;
     }
   }
 

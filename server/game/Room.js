@@ -182,14 +182,73 @@ class Room {
     }
   }
 
-  getNextSpawnPoint() {
+  getNextSpawnPoint(playerToSpawn = null) {
+    return this.getSafeSpawnPoint(playerToSpawn);
+  }
+
+  getSafeSpawnPoint(playerToSpawn = null) {
     const points = MapData.getSpawnPoints(this.mapId);
     if (!points || points.length === 0) {
       return { x: 0, y: 0, z: 0, yaw: 0 };
     }
-    const spawn = points[this.spawnIndex % points.length];
-    this.spawnIndex++;
-    return spawn;
+
+    // Collect alive opponents to calculate safe distance
+    const enemies = [];
+    for (const p of this.players.values()) {
+      if (!p.isAlive) continue;
+      if (playerToSpawn && p.id === playerToSpawn.id) continue;
+      if (this.gameMode === 'tdm' && playerToSpawn && p.team === playerToSpawn.team) continue;
+      enemies.push(p);
+    }
+
+    // If no active enemies in the match, pick sequentially for fair initial distribution
+    if (enemies.length === 0) {
+      const spawn = points[this.spawnIndex % points.length];
+      this.spawnIndex++;
+      return spawn;
+    }
+
+    // Score candidate spawn points based on safety from enemies and obstacle cover
+    const scoredPoints = points.map(sp => {
+      let minEnemyDist = Infinity;
+      let hasEnemyLOS = false;
+
+      for (const enemy of enemies) {
+        const dx = enemy.position.x - sp.x;
+        const dz = enemy.position.z - sp.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < minEnemyDist) {
+          minEnemyDist = dist;
+        }
+
+        // Check line of sight from enemy to candidate spawn
+        const origin = [enemy.position.x, (enemy.position.y || 0) + 1.5, enemy.position.z];
+        const dir = [sp.x - enemy.position.x, 0, sp.z - enemy.position.z];
+        const dirLen = Math.hypot(dir[0], dir[2]);
+        if (dirLen > 0.01) {
+          dir[0] /= dirLen;
+          dir[2] /= dirLen;
+          const obsDist = CollisionEngine.getNearestObstacleDistance(origin, dir, dist, this.mapId);
+          if (obsDist >= dist - 0.5) {
+            hasEnemyLOS = true;
+          }
+        }
+      }
+
+      // Safety score: higher is better
+      let score = minEnemyDist;
+      if (hasEnemyLOS) score *= 0.35; // Penalize open sightlines
+      if (minEnemyDist < 10) score *= 0.2; // Severely penalize dangerous close proximity
+      else if (minEnemyDist >= 18) score *= 1.4; // Reward safe tactical standoff
+
+      // Add small random noise to prevent always picking the exact same point
+      score += Math.random() * 4.0;
+
+      return { sp, score };
+    });
+
+    scoredPoints.sort((a, b) => b.score - a.score);
+    return scoredPoints[0].sp;
   }
 
   setMap(mapId) {
@@ -240,10 +299,10 @@ class Room {
     this.state = 'active';
     this.timeRemaining = this.matchDuration;
 
-    // Respawn all players at tactical positions
+    // Position all players at safe tactical spawn points ready for match combat
     for (const player of this.players.values()) {
-      const spawn = this.getNextSpawnPoint();
-      player.respawn(spawn);
+      const spawn = this.getSafeSpawnPoint(player);
+      player.respawn(spawn, 0); // Match start: combat ready
       friendsService.updateUserStatus(player.id, true, 'in_match', this.code);
     }
 
@@ -292,8 +351,9 @@ class Room {
     // Process respawns and reload completions
     for (const player of this.players.values()) {
       if (!player.isAlive && player.respawnAt > 0 && now >= player.respawnAt) {
-        const spawn = this.getNextSpawnPoint();
-        player.respawn(spawn);
+        const respawnProtection = this.isPractice ? 0 : (config.RESPAWN_PROTECTION_SECONDS || 3.0);
+        const spawn = this.getSafeSpawnPoint(player);
+        player.respawn(spawn, respawnProtection);
 
         const weaponsAmmo = {};
         for (const [wepId, wState] of Object.entries(player.weapons)) {
@@ -309,7 +369,9 @@ class Room {
           rotation: player.rotation,
           health: player.health,
           shield: player.shield,
-          weapons: weaponsAmmo
+          weapons: weaponsAmmo,
+          isInvulnerable: true,
+          invulnerableSeconds: respawnProtection
         });
       }
 
@@ -331,6 +393,7 @@ class Room {
         hp: player.health,
         sh: player.shield,
         alive: player.isAlive,
+        inv: player.isInvulnerable,
         wep: player.activeWeaponId,
         ammo: [player.activeWeaponState.ammoInMag, player.activeWeaponState.reserveAmmo],
         kills: player.matchKills,
@@ -436,7 +499,8 @@ class Room {
         damageApplied: dmgResult.damageApplied,
         isHeadshot: hit.isHeadshot,
         hitPoint: hit.hitPoint,
-        targetKilled: dmgResult.killed
+        targetKilled: dmgResult.killed,
+        isInvulnerable: Boolean(dmgResult.isInvulnerable)
       });
 
       // Damage notification to victim
@@ -446,7 +510,8 @@ class Room {
         damageTaken: dmgResult.damageApplied,
         health: targetPlayer.health,
         shield: targetPlayer.shield,
-        isHeadshot: hit.isHeadshot
+        isHeadshot: hit.isHeadshot,
+        isInvulnerable: Boolean(dmgResult.isInvulnerable)
       });
 
       // If killed, handle death & authoritative progression

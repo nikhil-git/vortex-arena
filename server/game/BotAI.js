@@ -255,8 +255,10 @@ class BotAI {
 
       // Check line of sight (no solid arena obstacles blocking view)
       const hasLOS = this.hasLineOfSight(player.position);
-      if (hasLOS && dist < minDistance) {
-        minDistance = dist;
+      // Prioritize vulnerable targets over shielded targets
+      const effectiveDist = player.isInvulnerable ? (dist + 50) : dist;
+      if (hasLOS && effectiveDist < minDistance) {
+        minDistance = effectiveDist;
         bestTarget = player;
       }
     }
@@ -405,7 +407,7 @@ class BotAI {
       }
     }
 
-    if (this.isBursting) {
+    if (this.isBursting && !this.targetPlayer.isInvulnerable) {
       // Calculate ray origin and direction
       const origin = [this.bot.position.x, this.bot.position.y + 1.5, this.bot.position.z];
       const dirX = Math.sin(this.bot.rotation.yaw) * Math.cos(this.bot.rotation.pitch);
