@@ -22,11 +22,27 @@ class App {
     // Local weapon state in match
     this.activeWeaponId = 'assault_rifle';
     this.weaponsState = {
-      assault_rifle: { name: 'V-44 Striker', mag: 30, reserve: 120 },
-      sniper_rifle: { name: 'Hawk-50 Anti-Materiel', mag: 5, reserve: 20 },
-      shotgun: { name: 'Breacher-12 Tactical', mag: 8, reserve: 32 },
-      pistol: { name: 'Pulse-9 Sidearm', mag: 15, reserve: 60 }
+      assault_rifle: { name: 'V-44 Striker', mag: 30, reserve: 240 },
+      sniper_rifle: { name: 'Hawk-50 Anti-Materiel', mag: 5, reserve: 40 },
+      shotgun: { name: 'Breacher-12 Tactical', mag: 8, reserve: 64 },
+      pistol: { name: 'Pulse-9 Sidearm', mag: 15, reserve: 120 }
     };
+
+    // Single Player vs AI & Practice match configuration
+    this.selectedMapId = 'house';
+    this.mapModalContext = 'browse';
+    this.spConfig = {
+      mode: 'ffa',
+      difficulty: 'medium',
+      botCount: 5,
+      mapId: 'house',
+      scoreLimit: 25,
+      duration: 300,
+      isPractice: false
+    };
+    this.lastMatchConfig = null;
+    this.currentMatchInfo = null;
+    this.recentMilestoneReward = null;
 
     this.init();
   }
@@ -204,16 +220,292 @@ class App {
   }
 
   openCreateRoomModal() {
-    const name = prompt('Enter Custom Arena Name:', `${this.currentUser.username}'s Arena`);
-    if (!name) return;
-    const isPrivate = confirm('Make this room Private? (Requires Room Code or Invite to join)');
-    window.netClient.createRoom(name, isPrivate, 'ffa');
+    this.openMapSelectModal('browse');
   }
 
   openJoinCodeModal() {
     const code = prompt('Enter 6-character Room Code:');
     if (!code) return;
     window.netClient.joinRoom(code.toUpperCase().trim());
+  }
+
+  openMobileDownloadModal() {
+    const el = document.getElementById('modal-mobile-download');
+    if (el) el.style.display = 'flex';
+  }
+
+  closeMobileDownloadModal() {
+    const el = document.getElementById('modal-mobile-download');
+    if (el) el.style.display = 'none';
+  }
+
+  // =========================================================================
+  // MAP SELECTION & ENVIRONMENTS BROWSER
+  // =========================================================================
+
+  openMapSelectModal(context = 'browse') {
+    this.mapModalContext = context; // 'browse', 'lobby', 'singleplayer'
+    const modal = document.getElementById('modal-map-selection');
+    if (!modal) return;
+
+    const targetMapId = (context === 'lobby' && this.currentRoom && this.currentRoom.mapId)
+      ? this.currentRoom.mapId
+      : (this.selectedMapId || 'house');
+    this.selectMap(targetMapId);
+
+    const subtitle = document.getElementById('map-modal-subtitle');
+    const footerBar = document.getElementById('map-modal-footer-bar');
+    if (subtitle) {
+      if (context === 'lobby') {
+        subtitle.textContent = 'Room Host: Choose the map for this match. All connected players and late joiners will synchronize to this map.';
+      } else if (context === 'singleplayer') {
+        subtitle.textContent = 'Select which environment to battle AI bots or practice in.';
+      } else {
+        subtitle.textContent = 'Browse the 6 distinct combat environments. Select to preview, play vs AI, or host a custom match.';
+      }
+    }
+
+    if (footerBar) {
+      footerBar.style.display = (context === 'lobby') ? 'none' : 'flex';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  closeMapSelectModal() {
+    const modal = document.getElementById('modal-map-selection');
+    if (modal) modal.style.display = 'none';
+  }
+
+  selectMap(mapId) {
+    this.selectedMapId = mapId;
+    document.querySelectorAll('.map-card').forEach(el => el.classList.remove('selected'));
+    const targetCard = document.getElementById(`map-card-${mapId}`);
+    if (targetCard) targetCard.classList.add('selected');
+
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+
+    const labelEl = document.getElementById('map-modal-selected-name');
+    if (labelEl) labelEl.textContent = nameMap[mapId] || 'Suburban Estate';
+
+    if (this.mapModalContext === 'lobby' && this.currentRoom && this.currentUser && this.currentRoom.hostUserId === this.currentUser.id) {
+      window.netClient.setMap(mapId);
+    }
+
+    const spMapSelect = document.getElementById('sp-map-select');
+    if (spMapSelect) spMapSelect.value = mapId;
+  }
+
+  confirmMapChoice(mapId) {
+    this.selectMap(mapId);
+    if (this.mapModalContext === 'lobby') {
+      this.closeMapSelectModal();
+      this.showToast(`Selected map set to ${mapId}!`);
+    } else if (this.mapModalContext === 'singleplayer') {
+      this.closeMapSelectModal();
+    }
+  }
+
+  launchAiOnSelectedMap() {
+    this.closeMapSelectModal();
+    this.spConfig.mapId = this.selectedMapId || 'house';
+    const spSelect = document.getElementById('sp-map-select');
+    if (spSelect) spSelect.value = this.spConfig.mapId;
+    this.openSinglePlayerModal(false);
+  }
+
+  launchHostOnSelectedMap() {
+    this.closeMapSelectModal();
+    const mapId = this.selectedMapId || 'house';
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const defaultName = `${this.currentUser ? this.currentUser.username : 'Operative'}'s ${nameMap[mapId] || 'Arena'}`;
+    const roomName = prompt('Enter Custom Arena Name:', defaultName);
+    if (!roomName) return;
+    const isPrivate = confirm('Make this room Private? (Requires Room Code or Invite to join)');
+    window.netClient.createRoom(roomName, isPrivate, 'ffa', mapId);
+  }
+
+  updateLobbyMapDisplay(mapId, mapName) {
+    const iconMap = {
+      house: '🏡',
+      farm: '🚜',
+      forest: '🌲',
+      minecraft: '🧱',
+      cruise: '🚢',
+      sector7: '🏢'
+    };
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+
+    const iconEl = document.getElementById('lobby-active-map-icon');
+    const nameEl = document.getElementById('lobby-active-map-name');
+    if (iconEl) iconEl.textContent = iconMap[mapId] || '🗺️';
+    if (nameEl) nameEl.textContent = mapName || nameMap[mapId] || 'Suburban Estate';
+
+    const changeMapBtn = document.getElementById('btn-lobby-change-map');
+    if (changeMapBtn && this.currentRoom && this.currentUser) {
+      changeMapBtn.style.display = (this.currentRoom.hostUserId === this.currentUser.id) ? 'inline-flex' : 'none';
+    }
+  }
+
+  // =========================================================================
+  // SINGLE PLAYER VS COMPUTER & PRACTICE MODE SETUP
+  // =========================================================================
+
+  openSinglePlayerModal(isPractice = false) {
+    const modal = document.getElementById('modal-singleplayer-setup');
+    if (!modal) return;
+
+    this.spConfig.isPractice = Boolean(isPractice);
+    this.setSpMode(isPractice ? 'practice' : (this.spConfig.mode === 'practice' ? 'ffa' : this.spConfig.mode));
+    this.setSpDifficulty(this.spConfig.difficulty || 'medium');
+    this.onSpBotCountChange(this.spConfig.botCount || 5);
+
+    const titleEl = document.getElementById('sp-modal-title');
+    const descEl = document.getElementById('sp-modal-desc');
+    if (titleEl) {
+      titleEl.innerHTML = isPractice ? '🎯 Practice / Target Training' : '🤖 Play vs Computer (Single Player)';
+    }
+    if (descEl) {
+      descEl.textContent = isPractice 
+        ? 'Instant respawn aim training sandbox with bots. Practice mechanics and test weapons.'
+        : 'Fight against tactical computer-controlled AI bots with difficulty scaling and milestone progression.';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  closeSinglePlayerModal() {
+    const modal = document.getElementById('modal-singleplayer-setup');
+    if (modal) modal.style.display = 'none';
+  }
+
+  setSpMode(mode) {
+    this.spConfig.mode = mode;
+    this.spConfig.isPractice = (mode === 'practice');
+
+    document.querySelectorAll('.btn-mode-pill').forEach(el => el.classList.remove('active'));
+    const activeBtn = document.getElementById(`sp-mode-${mode}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const scoreSelect = document.getElementById('sp-score-select');
+    if (scoreSelect) {
+      if (mode === 'practice') {
+        scoreSelect.value = '999';
+      } else if (scoreSelect.value === '999') {
+        scoreSelect.value = '25';
+      }
+    }
+  }
+
+  setSpDifficulty(diff) {
+    this.spConfig.difficulty = diff;
+
+    document.querySelectorAll('.btn-diff-pill').forEach(el => el.classList.remove('active'));
+    const activeBtn = document.getElementById(`sp-diff-${diff}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const descMap = {
+      easy: 'Recruit AI: 550ms reaction time, relaxed aim accuracy, limited tactical movement. Great for beginners.',
+      medium: 'Veteran AI: 320ms reaction time, steady pursuit, cover seeking, and balanced firearm accuracy.',
+      hard: 'Elite AI: 180ms reaction time, dynamic strafing, rapid target acquisition, and tactical weapon switching.',
+      expert: 'Nightmare AI: 90ms lightning reactions, pinpoint accuracy, advanced cover maneuvers, and relentless aggression.'
+    };
+
+    const infoEl = document.getElementById('sp-diff-info');
+    if (infoEl) infoEl.textContent = descMap[diff] || descMap.medium;
+  }
+
+  onSpBotCountChange(count) {
+    const val = parseInt(count, 10);
+    this.spConfig.botCount = val;
+
+    const slider = document.getElementById('sp-bots-slider');
+    if (slider) slider.value = val;
+
+    const badge = document.getElementById('sp-bots-count-badge');
+    if (badge) {
+      badge.textContent = `${val} ${val === 1 ? 'Bot' : 'Bots'} (Total: ${val + 1} / 12 Combatants)`;
+    }
+  }
+
+  startSinglePlayerMatch() {
+    const mapSelect = document.getElementById('sp-map-select');
+    const scoreSelect = document.getElementById('sp-score-select');
+    const durSelect = document.getElementById('sp-duration-select');
+
+    const botCount = this.spConfig.botCount || 5;
+    const difficulty = this.spConfig.difficulty || 'medium';
+    const isPractice = this.spConfig.mode === 'practice';
+    const gameMode = isPractice ? 'ffa' : (this.spConfig.mode || 'ffa');
+    const scoreLimit = scoreSelect ? parseInt(scoreSelect.value, 10) : 25;
+    const matchDuration = durSelect ? parseInt(durSelect.value, 10) : 300;
+    const mapId = mapSelect ? mapSelect.value : (this.selectedMapId || 'house');
+
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const mapName = nameMap[mapId] || 'Suburban Estate';
+
+    this.lastMatchConfig = {
+      botCount,
+      difficulty,
+      isPractice,
+      gameMode,
+      scoreLimit,
+      matchDuration,
+      mapId,
+      mapName
+    };
+
+    this.closeSinglePlayerModal();
+    this.showToast(`Deploying into ${mapName} vs ${difficulty.toUpperCase()} AI...`);
+
+    window.netClient.createAiMatch(this.lastMatchConfig);
+  }
+
+  rematchAi() {
+    if (!this.lastMatchConfig) {
+      this.openSinglePlayerModal();
+      return;
+    }
+
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const mapName = nameMap[this.lastMatchConfig.mapId] || 'Suburban Estate';
+    this.showToast(`Starting AI Rematch on ${mapName}...`);
+    window.netClient.createAiMatch(this.lastMatchConfig);
   }
 
   startLobbyMatch() {
@@ -276,6 +568,66 @@ class App {
 
   enterGameplay(matchData) {
     this.navigateTo('gameplay');
+    this.currentMatchInfo = matchData || {};
+
+    const activeMapId = (matchData && matchData.mapId) || (this.currentRoom && this.currentRoom.mapId) || this.spConfig.mapId || 'house';
+    const mapNames = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+    const mapName = (matchData && matchData.map && matchData.map.name) || mapNames[activeMapId] || 'Suburban Estate';
+
+    // Update HUD Mode, Target, and AI Difficulty Badge
+    const modeLabel = document.getElementById('hud-mode-label');
+    const scoreTarget = document.getElementById('hud-score-target');
+    const aiBadge = document.getElementById('hud-ai-badge');
+    const kCount = document.getElementById('hud-kills-count');
+    const dCount = document.getElementById('hud-deaths-count');
+
+    if (kCount) kCount.textContent = '0';
+    if (dCount) dCount.textContent = '0';
+
+    if (modeLabel) {
+      if (this.currentMatchInfo.isPractice) {
+        modeLabel.textContent = `PRACTICE - ${mapName.toUpperCase()}`;
+      } else if (this.currentMatchInfo.isAiMatch) {
+        const diff = (this.currentMatchInfo.aiDifficulty || 'medium').toUpperCase();
+        const mode = (this.currentMatchInfo.gameMode || 'ffa').toUpperCase();
+        modeLabel.textContent = `${mapName.toUpperCase()} • VS AI (${diff})`;
+      } else {
+        const mode = (this.currentMatchInfo.gameMode || 'ffa').toUpperCase();
+        modeLabel.textContent = `${mapName.toUpperCase()} • 12P ${mode}`;
+      }
+    }
+
+    if (scoreTarget) {
+      if (this.currentMatchInfo.isPractice) {
+        scoreTarget.textContent = 'Unlimited Sandbox • Instant Respawn';
+      } else {
+        scoreTarget.textContent = `First to ${this.currentMatchInfo.scoreLimit || 25} Kills`;
+      }
+    }
+
+    if (aiBadge) {
+      if (this.currentMatchInfo.isPractice) {
+        aiBadge.style.display = 'inline-block';
+        aiBadge.textContent = '🎯 PRACTICE SANDBOX';
+        aiBadge.style.color = 'var(--emerald-green)';
+        aiBadge.style.borderColor = 'rgba(0, 255, 136, 0.4)';
+      } else if (this.currentMatchInfo.isAiMatch) {
+        aiBadge.style.display = 'inline-block';
+        const diff = (this.currentMatchInfo.aiDifficulty || 'medium').toUpperCase();
+        aiBadge.textContent = `🤖 AI DIFFICULTY: ${diff}`;
+        aiBadge.style.color = 'var(--cyan-glow)';
+        aiBadge.style.borderColor = 'rgba(0, 240, 255, 0.4)';
+      } else {
+        aiBadge.style.display = 'none';
+      }
+    }
 
     if (!this.gameEngine) {
       const container = document.getElementById('game-viewport');
@@ -283,9 +635,18 @@ class App {
 
       // Wire callbacks
       this.gameEngine.onShootCallback = (origin, dir) => {
+        // Block shooting while in the middle of a reload animation
+        if (this.gameEngine && this.gameEngine.weaponView && this.gameEngine.weaponView.isReloading) {
+          return;
+        }
+
         const wep = this.weaponsState[this.activeWeaponId];
         if (!wep || wep.mag <= 0) {
           if (window.soundEngine) window.soundEngine.playClick(window.soundEngine.ctx ? window.soundEngine.ctx.currentTime : 0, 750, 0.04);
+          // Auto-trigger reload on empty magazine if reserve bullets are available
+          if (wep && wep.reserve > 0) {
+            window.netClient.sendReload();
+          }
           return;
         }
 
@@ -321,6 +682,7 @@ class App {
       };
     }
 
+    this.gameEngine.loadMap(activeMapId);
     this.gameEngine.setLocalPlayer(this.currentUser.id, this.currentUser.equippedSkins);
     this.switchActiveWeapon('assault_rifle');
     this.updateHUDVitals(100, 50);
@@ -450,12 +812,30 @@ class App {
       if (titleEl) titleEl.textContent = data.room.name;
       if (codeEl) codeEl.textContent = data.room.code;
 
+      if (data.room && data.room.mapId) {
+        this.selectedMapId = data.room.mapId;
+        this.updateLobbyMapDisplay(data.room.mapId, data.room.mapName);
+      }
+
       this.navigateTo('lobby');
     });
 
     net.on('lobby_updated', (data) => {
       this.currentRoom = data.room;
       this.renderLobbySlots(data.players);
+      if (data.room && data.room.mapId) {
+        this.selectedMapId = data.room.mapId;
+        this.updateLobbyMapDisplay(data.room.mapId, data.room.mapName);
+      }
+    });
+
+    net.on('map_changed', (data) => {
+      if (this.currentRoom) {
+        this.currentRoom.mapId = data.mapId;
+      }
+      this.selectedMapId = data.mapId;
+      this.updateLobbyMapDisplay(data.mapId, data.map ? data.map.name : null);
+      this.showToast(`🗺️ Host changed battleground map to ${data.map ? data.map.name : data.mapId}!`);
     });
 
     net.on('match_countdown_started', (data) => {
@@ -481,6 +861,30 @@ class App {
         const secs = String(data.timeRemaining % 60).padStart(2, '0');
         const formatted = `${mins}:${secs}`;
         if (timerEl.textContent !== formatted) timerEl.textContent = formatted;
+      }
+
+      // Update local HUD kills & deaths display live
+      if (data.players && this.currentUser) {
+        const localSnap = data.players.find(p => p.id === this.currentUser.id);
+        if (localSnap) {
+          const kEl = document.getElementById('hud-kills-count');
+          const dEl = document.getElementById('hud-deaths-count');
+          if (kEl && kEl.textContent !== String(localSnap.kills)) kEl.textContent = localSnap.kills;
+          if (dEl && dEl.textContent !== String(localSnap.deaths)) dEl.textContent = localSnap.deaths;
+
+          // Continuous authoritative ammo sync: ensure client never gets stuck in desync
+          if (localSnap.ammo && this.weaponsState[this.activeWeaponId]) {
+            const curWep = this.weaponsState[this.activeWeaponId];
+            const isPlayingReload = this.gameEngine && this.gameEngine.weaponView && this.gameEngine.weaponView.isReloading;
+            if (!isPlayingReload) {
+              if (curWep.mag !== localSnap.ammo[0] || curWep.reserve !== localSnap.ammo[1]) {
+                curWep.mag = localSnap.ammo[0];
+                curWep.reserve = localSnap.ammo[1];
+                this.updateHUDAmmo();
+              }
+            }
+          }
+        }
       }
 
       // Update Scoreboard table (only if visible to eliminate 30Hz DOM thrashing)
@@ -552,6 +956,31 @@ class App {
     net.on('player_respawned', (data) => {
       if (data.userId === this.currentUser.id) {
         this.updateHUDVitals(data.health, data.shield);
+
+        // Authoritatively restore full weapon loadout ammo on respawn
+        if (data.weapons) {
+          for (const [wepId, wData] of Object.entries(data.weapons)) {
+            if (this.weaponsState[wepId]) {
+              this.weaponsState[wepId].mag = wData.ammoInMag;
+              this.weaponsState[wepId].reserve = wData.reserveAmmo;
+            }
+          }
+        } else {
+          const defaults = { assault_rifle: 30, sniper_rifle: 5, shotgun: 8, pistol: 15 };
+          const maxRes = { assault_rifle: 240, sniper_rifle: 40, shotgun: 64, pistol: 120 };
+          for (const [wepId, wep] of Object.entries(this.weaponsState)) {
+            wep.mag = defaults[wepId] || 30;
+            wep.reserve = maxRes[wepId] || 120;
+          }
+        }
+
+        // Reset reload animation state on respawn
+        if (this.gameEngine && this.gameEngine.weaponView) {
+          this.gameEngine.weaponView.isReloading = false;
+          this.gameEngine.weaponView.reloadProgress = 0;
+        }
+        this.updateHUDAmmo();
+
         // Reset local position
         if (this.gameEngine) {
           this.gameEngine.input.position.set(data.position.x, data.position.y + 1.7, data.position.z);
@@ -574,9 +1003,41 @@ class App {
         wep.reserve = data.reserveAmmo;
         this.updateHUDAmmo();
       }
+      if (this.gameEngine && this.gameEngine.weaponView) {
+        this.gameEngine.weaponView.isReloading = false;
+        this.gameEngine.weaponView.reloadProgress = 0;
+      }
+    });
+
+    net.on('weapon_switched', (data) => {
+      const wep = this.weaponsState[data.weaponId];
+      if (wep) {
+        wep.mag = data.ammoInMag;
+        wep.reserve = data.reserveAmmo;
+        this.updateHUDAmmo();
+      }
+      if (this.gameEngine && this.gameEngine.weaponView) {
+        this.gameEngine.weaponView.isReloading = false;
+        this.gameEngine.weaponView.reloadProgress = 0;
+      }
+    });
+
+    net.on('ammo_harvested', (data) => {
+      const wep = this.weaponsState[data.weaponId];
+      if (wep) {
+        wep.mag = data.ammoInMag;
+        wep.reserve = data.reserveAmmo;
+        this.updateHUDAmmo();
+      }
+      this.showToast('📦 Ammo Harvested (+1 Mag Reserve)', 'info');
+    });
+
+    net.on('combat_resupply', (data) => {
+      this.showToast('⚡ Tactical Combat Resupply: Emergency ammo acquired!', 'info');
     });
 
     net.on('milestone_unlocked', (data) => {
+      this.recentMilestoneReward = data.reward;
       this.showToast(`🎖️ REWARD UNLOCKED: ${data.reward.name}! (Kills: ${data.totalLifetimeKills})`, 'reward');
       if (window.soundEngine) window.soundEngine.playKill();
       this.refreshUserStats();
@@ -623,8 +1084,13 @@ class App {
     const isWinner = data.winner && data.winner.id === this.currentUser.id;
 
     if (titleEl) {
-      titleEl.textContent = isWinner ? 'VICTORY - TOP OPERATIVE' : 'MATCH COMPLETE';
-      titleEl.style.color = isWinner ? 'var(--amber-gold)' : 'var(--cyan-glow)';
+      if (data.isPractice) {
+        titleEl.textContent = 'PRACTICE SESSION COMPLETE';
+        titleEl.style.color = 'var(--emerald-green)';
+      } else {
+        titleEl.textContent = isWinner ? 'VICTORY - TOP OPERATIVE' : 'MATCH COMPLETE';
+        titleEl.style.color = isWinner ? 'var(--amber-gold)' : 'var(--cyan-glow)';
+      }
     }
 
     // Populate Results Table
@@ -650,6 +1116,51 @@ class App {
           document.getElementById('res-damage').textContent = p.damage;
         }
       });
+    }
+
+    // Duration display
+    const durationEl = document.getElementById('res-duration');
+    if (durationEl) {
+      const dur = data.durationSeconds || 0;
+      const mins = String(Math.floor(dur / 60)).padStart(2, '0');
+      const secs = String(dur % 60).padStart(2, '0');
+      durationEl.textContent = `${mins}:${secs}`;
+    }
+
+    // AI match options & Progression details
+    const progText = document.getElementById('res-progression-text');
+    const btnRematch = document.getElementById('btn-results-rematch');
+    const btnSetup = document.getElementById('btn-results-change-setup');
+
+    if (data.isAiMatch || data.isPractice) {
+      if (btnRematch) btnRematch.style.display = 'inline-block';
+      if (btnSetup) btnSetup.style.display = 'inline-block';
+
+      if (progText) {
+        if (data.isPractice) {
+          progText.textContent = 'Practice Sandbox: Targets defeated. Aim mechanics drilled without altering ranked stats.';
+        } else {
+          progText.textContent = `Single Player vs ${((data.aiDifficulty || 'Medium')).toUpperCase()} AI: Confirmed kills recorded authoritatively toward milestone rewards!`;
+        }
+      }
+    } else {
+      if (btnRematch) btnRematch.style.display = 'none';
+      if (btnSetup) btnSetup.style.display = 'none';
+      if (progText) {
+        progText.textContent = 'Online Multiplayer: Kills and match records authoritatively verified & persisted.';
+      }
+    }
+
+    // Rewards earned notice
+    const rewardsContainer = document.getElementById('res-rewards-container');
+    if (rewardsContainer) {
+      if (this.recentMilestoneReward) {
+        rewardsContainer.style.display = 'block';
+        rewardsContainer.textContent = `🎖️ Milestone Reward Unlocked: ${this.recentMilestoneReward.name}!`;
+        this.recentMilestoneReward = null;
+      } else {
+        rewardsContainer.style.display = 'none';
+      }
     }
 
     this.refreshUserStats();

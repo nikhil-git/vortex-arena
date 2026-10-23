@@ -36,6 +36,10 @@ export class InputController {
     this.touchJoystickOrigin = { x: 0, y: 0 };
     this.lastTouchLookPos = { x: 0, y: 0 };
 
+    // Active Map Boundaries & Obstacle Colliders
+    this.bounds = { minX: -38.5, maxX: 38.5, minZ: -38.5, maxZ: 38.5 };
+    this.obstacles = [];
+
     this.setupListeners();
     if (this.isTouch) {
       this.setupTouchControls();
@@ -191,7 +195,8 @@ export class InputController {
         }
       };
       jumpBtn.addEventListener('touchstart', handleJump, { passive: false });
-      jumpBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      jumpBtn.addEventListener('pointerdown', handleJump);
+      jumpBtn.addEventListener('click', handleJump);
     }
 
     const reloadBtn = document.getElementById('touch-btn-reload');
@@ -202,7 +207,23 @@ export class InputController {
         if (this.onReload) this.onReload();
       };
       reloadBtn.addEventListener('touchstart', handleReload, { passive: false });
-      reloadBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      reloadBtn.addEventListener('pointerdown', handleReload);
+      reloadBtn.addEventListener('click', handleReload);
+    }
+
+    // Allow clicking the HUD ammo box directly to reload weapon on desktop/mobile
+    const hudWepBox = document.querySelector('.hud-weapon-box');
+    if (hudWepBox) {
+      hudWepBox.style.cursor = 'pointer';
+      hudWepBox.title = 'Click to Reload Weapon (or press R)';
+      hudWepBox.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        if (this.onReload) this.onReload();
+      });
+      hudWepBox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.onReload) this.onReload();
+      });
     }
 
     const swapBtn = document.getElementById('touch-btn-swap');
@@ -215,7 +236,8 @@ export class InputController {
         }
       };
       swapBtn.addEventListener('touchstart', handleSwap, { passive: false });
-      swapBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      swapBtn.addEventListener('pointerdown', handleSwap);
+      swapBtn.addEventListener('click', handleSwap);
     }
   }
 
@@ -348,6 +370,35 @@ export class InputController {
     this.camera.rotation.x = this.pitch;
   }
 
+  setBounds(bounds) {
+    if (bounds) {
+      this.bounds = {
+        minX: bounds.minX !== undefined ? bounds.minX : -38.5,
+        maxX: bounds.maxX !== undefined ? bounds.maxX : 38.5,
+        minZ: bounds.minZ !== undefined ? bounds.minZ : -38.5,
+        maxZ: bounds.maxZ !== undefined ? bounds.maxZ : 38.5
+      };
+    }
+  }
+
+  setObstacles(obstacles) {
+    this.obstacles = Array.isArray(obstacles) ? obstacles : [];
+  }
+
+  checkCollision(x, z) {
+    const r = 0.45; // Player bounding cylinder radius
+    for (let i = 0; i < this.obstacles.length; i++) {
+      const box = this.obstacles[i];
+      if (box.min && box.max) {
+        if (x >= box.min[0] - r && x <= box.max[0] + r &&
+            z >= box.min[2] - r && z <= box.max[2] + r) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   update(delta) {
     if (!this.isLocked && !this.isTouch) return { isMoving: false, speed: 0 };
 
@@ -382,10 +433,22 @@ export class InputController {
     // Gravity
     this.velocity.y -= 19.6 * delta;
 
-    // Apply Velocity
-    this.position.x += this.velocity.x * delta;
+    // Apply Velocity with wall sliding collision detection
+    const nextX = this.position.x + this.velocity.x * delta;
+    const nextZ = this.position.z + this.velocity.z * delta;
+
+    if (!this.checkCollision(nextX, nextZ)) {
+      this.position.x = nextX;
+      this.position.z = nextZ;
+    } else {
+      // Slide along X or Z axis if one is clear
+      if (!this.checkCollision(nextX, this.position.z)) {
+        this.position.x = nextX;
+      } else if (!this.checkCollision(this.position.x, nextZ)) {
+        this.position.z = nextZ;
+      }
+    }
     this.position.y += this.velocity.y * delta;
-    this.position.z += this.velocity.z * delta;
 
     // Arena Floor Collision
     if (this.position.y <= 1.7) {
@@ -394,9 +457,9 @@ export class InputController {
       this.isGrounded = true;
     }
 
-    // Arena Perimeter Bounds Clamp (-38.5 to 38.5)
-    this.position.x = Math.max(-38.5, Math.min(38.5, this.position.x));
-    this.position.z = Math.max(-38.5, Math.min(38.5, this.position.z));
+    // Arena Perimeter Bounds Clamp
+    this.position.x = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, this.position.x));
+    this.position.z = Math.max(this.bounds.minZ, Math.min(this.bounds.maxZ, this.position.z));
 
     this.camera.position.copy(this.position);
 

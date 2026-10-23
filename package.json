@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node server/index.js",
-    "test": "node --test test/server.test.js test/ai.test.js test/map.test.js",
-    "test:all": "node --test test/server.test.js test/match.test.js test/ai.test.js test/map.test.js"
+    "test": "node --test test/server.test.js test/ai.test.js test/map.test.js test/combat_maps.test.js",
+    "test:all": "node --test test/server.test.js test/match.test.js test/ai.test.js test/map.test.js test/combat_maps.test.js"
   },
   "keywords": [],
   "author": "",

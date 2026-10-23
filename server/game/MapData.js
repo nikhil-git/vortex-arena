@@ -34,18 +34,18 @@ const MAPS = {
       exposure: 1.35
     },
     spawnPoints: [
-      { x: -18, y: 0, z: 22, yaw: -Math.PI / 4 }, // Front driveway
+      { x: -14, y: 0, z: 20, yaw: -Math.PI / 4 }, // Front driveway
       { x: 0, y: 0, z: 20, yaw: Math.PI },        // Front porch
       { x: 18, y: 0, z: 22, yaw: Math.PI / 4 },   // Front lawn east
-      { x: 9, y: 0, z: 8, yaw: -Math.PI / 2 },    // Living room corner
-      { x: -9, y: 0, z: 8, yaw: Math.PI / 2 },    // Kitchen corner
-      { x: 0, y: 0, z: 2, yaw: Math.PI },         // Central hallway
-      { x: 8, y: 0, z: -6, yaw: 0 },              // Master bedroom
-      { x: -8, y: 0, z: -6, yaw: 0 },             // Guest bedroom
-      { x: 0, y: 0, z: -16, yaw: 0 },             // Back patio
+      { x: 6, y: 0, z: 3, yaw: -Math.PI / 2 },    // Living room entrance
+      { x: -7, y: 0, z: 2, yaw: Math.PI / 2 },    // Kitchen open floor
+      { x: 0, y: 0, z: 6, yaw: Math.PI },         // Central hallway doorway
+      { x: 5, y: 0, z: -4, yaw: 0 },              // Master bedroom open floor
+      { x: -5, y: 0, z: -4, yaw: 0 },             // Guest bedroom open floor
+      { x: 6, y: 0, z: -15, yaw: 0 },             // Back patio walkway
       { x: -18, y: 0, z: -22, yaw: Math.PI / 4 }, // Backyard west
       { x: 18, y: 0, z: -22, yaw: -Math.PI / 4 }, // Backyard east
-      { x: -22, y: 0, z: -14, yaw: Math.PI / 2 }  // Garden shed corner
+      { x: -16, y: 0, z: -14, yaw: Math.PI / 2 }  // Garden shed yard
     ],
     obstacles: [
       // Outer Wooden Perimeter Fence (1.6m tall)
@@ -101,24 +101,24 @@ const MAPS = {
       { min: [-24, 0, 16], max: [-18, 1.8, 22], name: 'Front Car/Van Cover' }
     ],
     waypoints: [
-      { id: 'front_driveway', x: -18, y: 0, z: 20, isCover: true },
+      { id: 'front_driveway', x: -14, y: 0, z: 19, isCover: true },
       { id: 'front_porch', x: 0, y: 0, z: 16, isCover: true },
       { id: 'front_lawn', x: 16, y: 0, z: 20, isCover: false },
-      { id: 'living_room_center', x: 6, y: 0, z: 6, isCover: true },
-      { id: 'living_room_sofa', x: 7, y: 0, z: 9, isCover: true },
-      { id: 'kitchen_center', x: -6, y: 0, z: 6, isCover: true },
-      { id: 'kitchen_island', x: -9, y: 0, z: 8, isCover: true },
-      { id: 'central_hallway', x: 0, y: 0, z: 2, isCover: false },
-      { id: 'master_bedroom', x: 6, y: 0, z: -6, isCover: true },
-      { id: 'master_bed_corner', x: 10, y: 0, z: -8, isCover: true },
-      { id: 'guest_bedroom', x: -6, y: 0, z: -6, isCover: true },
-      { id: 'guest_closet', x: -10, y: 0, z: -8, isCover: true },
-      { id: 'back_patio', x: 0, y: 0, z: -15, isCover: true },
-      { id: 'patio_table', x: 0, y: 0, z: -18, isCover: true },
+      { id: 'living_room_center', x: 6, y: 0, z: 3, isCover: false },
+      { id: 'living_room_sofa', x: 8, y: 0, z: 6, isCover: true },
+      { id: 'kitchen_center', x: -6, y: 0, z: 2, isCover: false },
+      { id: 'kitchen_island', x: -8, y: 0, z: 2.5, isCover: true },
+      { id: 'central_hallway', x: 0, y: 0, z: 6, isCover: false },
+      { id: 'master_bedroom', x: 5, y: 0, z: -4, isCover: false },
+      { id: 'master_bed_corner', x: 5, y: 0, z: -8, isCover: true },
+      { id: 'guest_bedroom', x: -5, y: 0, z: -4, isCover: false },
+      { id: 'guest_closet', x: -5, y: 0, z: -8, isCover: true },
+      { id: 'back_patio', x: 6, y: 0, z: -15, isCover: false },
+      { id: 'patio_table', x: -5, y: 0, z: -17, isCover: true },
       { id: 'backyard_west', x: -16, y: 0, z: -20, isCover: true },
-      { id: 'garden_shed', x: -21, y: 0, z: -16, isCover: true },
+      { id: 'garden_shed', x: -16, y: 0, z: -16, isCover: true },
       { id: 'backyard_east', x: 16, y: 0, z: -20, isCover: true },
-      { id: 'bbq_area', x: 10, y: 0, z: -22, isCover: true },
+      { id: 'bbq_area', x: 6, y: 0, z: -22, isCover: true },
       { id: 'side_alley_west', x: -18, y: 0, z: 0, isCover: false },
       { id: 'side_alley_east', x: 18, y: 0, z: 0, isCover: false }
     ]
@@ -147,16 +147,16 @@ const MAPS = {
     },
     spawnPoints: [
       { x: -20, y: 0, z: -8, yaw: 0 },              // Barn south entrance
-      { x: -20, y: 0, z: -22, yaw: Math.PI / 2 },   // Inside big barn
+      { x: -20, y: 0, z: -16, yaw: Math.PI / 2 },   // Inside big barn aisle
       { x: -4, y: 0, z: -18, yaw: -Math.PI / 2 },   // Grain silo alley
-      { x: 7, y: 0, z: -8, yaw: Math.PI },          // Tractor workyard
+      { x: 7, y: 0, z: -6, yaw: Math.PI },          // Tractor workyard
       { x: 22, y: 0, z: -24, yaw: -Math.PI / 4 },   // North wheat field
       { x: 30, y: 0, z: -4, yaw: -Math.PI / 2 },    // East dirt road
       { x: 14, y: 0, z: 8, yaw: Math.PI / 4 },      // Farmhouse veranda
-      { x: 22, y: 0, z: 20, yaw: -3 * Math.PI / 4 },// Farmhouse interior
-      { x: 8, y: 0, z: 28, yaw: Math.PI },          // South corn field
+      { x: 20, y: 0, z: 18, yaw: -3 * Math.PI / 4 },// Farmhouse interior
+      { x: 2, y: 0, z: 28, yaw: Math.PI },          // South corn field
       { x: -8, y: 0, z: 30, yaw: 0 },               // South windmill
-      { x: -26, y: 0, z: 22, yaw: Math.PI / 4 },    // Tool shed paddock
+      { x: -20, y: 0, z: 22, yaw: Math.PI / 4 },    // Tool shed paddock
       { x: -32, y: 0, z: 4, yaw: Math.PI / 2 }      // West pasture
     ],
     obstacles: [
@@ -209,23 +209,23 @@ const MAPS = {
     ],
     waypoints: [
       { id: 'barn_front', x: -20, y: 0, z: -7, isCover: true },
-      { id: 'barn_interior', x: -20, y: 0, z: -20, isCover: true },
-      { id: 'barn_loft', x: -25, y: 0, z: -25, isCover: true },
+      { id: 'barn_interior', x: -20, y: 0, z: -16, isCover: true },
+      { id: 'barn_loft', x: -25, y: 0, z: -16, isCover: true },
       { id: 'silo_alley', x: -4, y: 0, z: -17, isCover: true },
-      { id: 'tractor_yard', x: 7, y: 0, z: -7, isCover: true },
-      { id: 'hay_stack_north', x: 19, y: 0, z: -19, isCover: true },
+      { id: 'tractor_yard', x: 7, y: 0, z: -6, isCover: true },
+      { id: 'hay_stack_north', x: 13, y: 0, z: -19, isCover: true },
       { id: 'north_wheat_field', x: 26, y: 0, z: -28, isCover: false },
       { id: 'east_dirt_road', x: 32, y: 0, z: 0, isCover: false },
-      { id: 'farmhouse_porch', x: 10, y: 0, z: 18, isCover: true },
+      { id: 'farmhouse_porch', x: 6, y: 0, z: 18, isCover: true },
       { id: 'farmhouse_interior', x: 20, y: 0, z: 18, isCover: true },
       { id: 'farmhouse_rear', x: 20, y: 0, z: 28, isCover: true },
-      { id: 'center_crossroads', x: 0, y: 0, z: 0, isCover: true },
-      { id: 'center_hay', x: -3, y: 0, z: -1, isCover: true },
-      { id: 'south_corn_field', x: 10, y: 0, z: 30, isCover: false },
-      { id: 'water_tower', x: 8, y: 0, z: 24, isCover: true },
+      { id: 'center_crossroads', x: 2, y: 0, z: 2, isCover: true },
+      { id: 'center_hay', x: 2, y: 0, z: -2, isCover: true },
+      { id: 'south_corn_field', x: 2, y: 0, z: 34, isCover: false },
+      { id: 'water_tower', x: 2, y: 0, z: 26, isCover: true },
       { id: 'south_windmill', x: -8, y: 0, z: 28, isCover: true },
-      { id: 'south_hay_stack', x: -21, y: 0, z: 15, isCover: true },
-      { id: 'tool_shed', x: -28, y: 0, z: 22, isCover: true },
+      { id: 'south_hay_stack', x: -15, y: 0, z: 15, isCover: true },
+      { id: 'tool_shed', x: -21, y: 0, z: 22, isCover: true },
       { id: 'west_pasture', x: -32, y: 0, z: 0, isCover: false },
       { id: 'west_road_lane', x: -16, y: 0, z: 0, isCover: false }
     ]
@@ -257,9 +257,9 @@ const MAPS = {
       { x: -24, y: 0, z: -24, yaw: Math.PI / 4 },  // NW pine grove
       { x: 24, y: 0, z: -24, yaw: -Math.PI / 4 }, // NE oak clearing
       { x: -30, y: 0, z: -2, yaw: Math.PI / 2 },   // West mossy crags
-      { x: 0, y: 0, z: 0, yaw: 0 },                // Campsite stone ring
+      { x: 0, y: 0, z: -5, yaw: 0 },               // Campsite clearing
       { x: 30, y: 0, z: 2, yaw: -Math.PI / 2 },    // East granite ridge
-      { x: -24, y: 0, z: 24, yaw: -3 * Math.PI / 4 }, // SW shaded hollow
+      { x: -18, y: 0, z: 26, yaw: -3 * Math.PI / 4 }, // SW shaded hollow
       { x: 0, y: 0, z: 32, yaw: 0 },               // South creek path
       { x: 24, y: 0, z: 24, yaw: 3 * Math.PI / 4 },// SE tall timber
       { x: -14, y: 0, z: -10, yaw: Math.PI / 4 },  // Fallen log trail
@@ -308,20 +308,20 @@ const MAPS = {
       { id: 'north_trail', x: 0, y: 0, z: -30, isCover: false },
       { id: 'north_boulders', x: 0, y: 0, z: -20, isCover: true },
       { id: 'nw_clearing', x: -22, y: 0, z: -22, isCover: true },
-      { id: 'nw_fallen_log', x: -14, y: 0, z: -14, isCover: true },
-      { id: 'ne_pines', x: 22, y: 0, z: -22, isCover: true },
-      { id: 'ne_rock_cover', x: 21, y: 0, z: -16, isCover: true },
-      { id: 'west_crags', x: -25, y: 0, z: 0, isCover: true },
+      { id: 'nw_fallen_log', x: -14, y: 0, z: -11, isCover: true },
+      { id: 'ne_pines', x: 16, y: 0, z: -24, isCover: true },
+      { id: 'ne_rock_cover', x: 16, y: 0, z: -15, isCover: true },
+      { id: 'west_crags', x: -19, y: 0, z: 0, isCover: true },
       { id: 'west_trail', x: -16, y: 0, z: 0, isCover: false },
-      { id: 'campsite_center', x: 0, y: 0, z: 0, isCover: true },
+      { id: 'campsite_center', x: 0, y: 0, z: -4.5, isCover: true },
       { id: 'campsite_north', x: 0, y: 0, z: -6, isCover: false },
       { id: 'campsite_south', x: 0, y: 0, z: 6, isCover: false },
-      { id: 'east_ridge', x: 25, y: 0, z: 0, isCover: true },
+      { id: 'east_ridge', x: 19, y: 0, z: 0, isCover: true },
       { id: 'east_trail', x: 16, y: 0, z: 0, isCover: false },
-      { id: 'se_fallen_log', x: 14, y: 0, z: 15, isCover: true },
+      { id: 'se_fallen_log', x: 14, y: 0, z: 12, isCover: true },
       { id: 'se_grove', x: 24, y: 0, z: 22, isCover: true },
-      { id: 'south_boulders', x: -8, y: 0, z: 24, isCover: true },
-      { id: 'sw_clearing', x: -22, y: 0, z: 22, isCover: true },
+      { id: 'south_boulders', x: -2, y: 0, z: 24, isCover: true },
+      { id: 'sw_clearing', x: -18, y: 0, z: 20, isCover: true },
       { id: 'south_creek', x: 0, y: 0, z: 30, isCover: false },
       { id: 'ranger_hollow', x: -8, y: 0, z: 12, isCover: true },
       { id: 'overlook_point', x: 12, y: 0, z: -8, isCover: true }
@@ -350,18 +350,18 @@ const MAPS = {
       exposure: 1.45
     },
     spawnPoints: [
-      { x: -20, y: 0, z: -22, yaw: Math.PI / 4 },   // NW hill base
+      { x: -11, y: 0, z: -22, yaw: Math.PI / 4 },   // NW hill base
       { x: -22, y: 3.0, z: -16, yaw: Math.PI / 2 }, // NW hill plateau (elevated)
       { x: 0, y: 0, z: -20, yaw: Math.PI },         // North canal bank
       { x: 18, y: 0, z: -12, yaw: -Math.PI / 2 },   // Watchtower courtyard
-      { x: 20, y: 5.0, z: -20, yaw: -3 * Math.PI / 4 }, // Watchtower battlements (sniper)
+      { x: 14, y: 0, z: -20, yaw: -3 * Math.PI / 4 }, // Watchtower battlements approach
       { x: 0, y: 0, z: -6, yaw: 0 },                // Bridge north approach
       { x: 0, y: 0, z: 6, yaw: Math.PI },           // Bridge south approach
       { x: -24, y: 0, z: -4, yaw: Math.PI / 2 },    // West canal path
       { x: 24, y: 0, z: 4, yaw: -Math.PI / 2 },     // East canal path
       { x: -14, y: 0, z: 18, yaw: 0 },              // Block house porch
       { x: -19, y: 0, z: 19, yaw: Math.PI / 2 },    // Block house interior
-      { x: 20, y: 0, z: 22, yaw: -3 * Math.PI / 4 } // SE block quarry
+      { x: 15, y: 0, z: 22, yaw: -3 * Math.PI / 4 } // SE block quarry
     ],
     obstacles: [
       // Outer Bedrock Boundary Block Walls (4m tall)
@@ -404,11 +404,11 @@ const MAPS = {
       { min: [18, 0, 20], max: [24, 2.5, 26], name: 'SE Quarry Blocks' }
     ],
     waypoints: [
-      { id: 'nw_hill_base', x: -18, y: 0, z: -20, isCover: true },
+      { id: 'nw_hill_base', x: -11, y: 0, z: -20, isCover: true },
       { id: 'nw_plateau', x: -22, y: 3.0, z: -20, isCover: true },
       { id: 'north_canal', x: 0, y: 0, z: -16, isCover: false },
       { id: 'ne_tower_base', x: 18, y: 0, z: -12, isCover: true },
-      { id: 'ne_tower_top', x: 20, y: 5.0, z: -20, isCover: true },
+      { id: 'ne_tower_top', x: 14, y: 0, z: -20, isCover: true },
       { id: 'bridge_north', x: 0, y: 0, z: -6, isCover: true },
       { id: 'bridge_center', x: 0, y: 0, z: 0, isCover: false },
       { id: 'bridge_south', x: 0, y: 0, z: 6, isCover: true },
@@ -416,12 +416,12 @@ const MAPS = {
       { id: 'east_bank', x: 20, y: 0, z: 0, isCover: false },
       { id: 'voxel_house_door', x: -13, y: 0, z: 19, isCover: true },
       { id: 'voxel_house_room', x: -19, y: 0, z: 19, isCover: true },
-      { id: 'se_quarry', x: 20, y: 0, z: 20, isCover: true },
+      { id: 'se_quarry', x: 15, y: 0, z: 20, isCover: true },
       { id: 'south_trail', x: 0, y: 0, z: 20, isCover: false },
-      { id: 'center_cover_nw', x: -10, y: 0, z: -7, isCover: true },
-      { id: 'center_cover_ne', x: 10, y: 0, z: -7, isCover: true },
-      { id: 'center_cover_sw', x: -7, y: 0, z: 7, isCover: true },
-      { id: 'center_cover_se', x: 8, y: 0, z: 7, isCover: true },
+      { id: 'center_cover_nw', x: -10, y: 0, z: -4, isCover: true },
+      { id: 'center_cover_ne', x: 10, y: 0, z: -4, isCover: true },
+      { id: 'center_cover_sw', x: -7, y: 0, z: 4, isCover: true },
+      { id: 'center_cover_se', x: 8, y: 0, z: 4, isCover: true },
       { id: 'tree_line_west', x: -25, y: 0, z: 10, isCover: true },
       { id: 'tree_line_east', x: 25, y: 0, z: 12, isCover: true }
     ]
@@ -434,8 +434,8 @@ const MAPS = {
     style: 'Multi-Level Deck Skirmish & Long Flanking Corridors',
     description: 'A grand ocean liner sailing deep blue seas with multi-tier sun decks, swimming pool, navigation bridge, cabins promenade, and lifeboats.',
     recommendedWeapons: ['Assault Rifle', 'Shotgun', 'Sniper Rifle'],
-    dimensions: '80m x 42m',
-    bounds: { minX: -38, maxX: 38, minZ: -18, maxZ: 18, floorY: 0, ceilingY: 16 },
+    dimensions: '38m x 78m',
+    bounds: { minX: -18, maxX: 18, minZ: -38, maxZ: 38, floorY: 0, ceilingY: 16 },
     lighting: {
       skyColor: 0x4fc3f7,
       groundColor: 0x0288d1,
@@ -449,75 +449,63 @@ const MAPS = {
       exposure: 1.4
     },
     spawnPoints: [
-      { x: 32, y: 0, z: 0, yaw: -Math.PI / 2 },     // Forward bow deck
-      { x: 26, y: 0, z: -10, yaw: Math.PI / 4 },    // Starboard bow
-      { x: 26, y: 0, z: 10, yaw: -Math.PI / 4 },    // Port bow
-      { x: 12, y: 3.5, z: 0, yaw: -Math.PI / 2 },   // Bridge upper sun deck
-      { x: 0, y: 0, z: -12, yaw: Math.PI / 2 },     // Starboard promenade
-      { x: 0, y: 0, z: 12, yaw: -Math.PI / 2 },     // Port promenade
-      { x: -4, y: 0, z: 0, yaw: Math.PI / 2 },      // Funnel deck shadow
-      { x: -14, y: 0, z: -8, yaw: 0 },              // Pool deck starboard
-      { x: -14, y: 0, z: 8, yaw: 0 },               // Pool deck port
-      { x: -30, y: 0, z: -10, yaw: Math.PI / 4 },   // Stern lounge
-      { x: -24, y: 0, z: 8, yaw: -3 * Math.PI / 4 },// Stern pool edge
-      { x: -34, y: 0, z: 0, yaw: Math.PI / 2 }      // Aft railing overlook
+      { x: 0, y: 0, z: -36, yaw: 0 },               // Forward bow deck
+      { x: 12, y: 0, z: -36, yaw: -Math.PI / 4 },   // Starboard bow
+      { x: -12, y: 0, z: -36, yaw: Math.PI / 4 },   // Port bow
+      { x: 0, y: 0, z: -18, yaw: 0 },               // Bridge overlook promenade
+      { x: 12, y: 0, z: 0, yaw: Math.PI },          // Starboard promenade
+      { x: -12, y: 0, z: 0, yaw: Math.PI },         // Port promenade
+      { x: 0, y: 0, z: -7, yaw: Math.PI },          // Funnel deck sun court
+      { x: 10, y: 0, z: 4, yaw: -Math.PI / 2 },     // Pool deck starboard
+      { x: -9, y: 0, z: 4, yaw: Math.PI / 2 },      // Pool deck port
+      { x: 10, y: 0, z: 36, yaw: Math.PI },         // Stern lounge starboard
+      { x: -10, y: 0, z: 36, yaw: Math.PI },        // Stern lounge port
+      { x: 0, y: 0, z: 36, yaw: Math.PI }           // Aft railing center
     ],
     obstacles: [
-      // Ship Outer Deck Safety Railings (1.3m tall all around the hull perimeter)
-      { min: [-38, 0, -18.5], max: [38, 1.3, -18], name: 'Starboard Railing' },
-      { min: [-38, 0, 18], max: [38, 1.3, 18.5], name: 'Port Railing' },
-      { min: [-38.5, 0, -18], max: [-38, 1.3, 18], name: 'Stern Railing' },
-      { min: [37.5, 0, -18], max: [38, 1.3, 18], name: 'Bow Railing' },
+      // Ship Outer Deck Safety Railings (1.5m tall all around the hull perimeter)
+      { min: [-18.5, 0, -38], max: [-17.5, 1.5, 38], name: 'Port Railing' },
+      { min: [17.5, 0, -38], max: [18.5, 1.5, 38], name: 'Starboard Railing' },
+      { min: [-18, 0, -38.5], max: [18, 1.5, -37.5], name: 'Bow Railing' },
+      { min: [-18, 0, 37.5], max: [18, 1.5, 38.5], name: 'Stern Railing' },
 
-      // Navigation Bridge & Upper Deck Superstructure (x=[4, 22], z=[-10, 10], 4m tall)
-      { min: [4, 0, -10], max: [22, 4.0, -9], name: 'Bridge South Wall' },
-      { min: [4, 0, 9], max: [22, 4.0, 10], name: 'Bridge North Wall' },
-      { min: [21, 0, -10], max: [22, 4.0, 10], name: 'Bridge Front Wall' },
-      // Bridge rear wall with central doorway
-      { min: [4, 0, -10], max: [5, 4.0, -3], name: 'Bridge Rear Wall A' },
-      { min: [4, 0, 3], max: [5, 4.0, 10], name: 'Bridge Rear Wall B' },
+      // Navigation Bridge & Upper Superstructure (z=[-34, -20], x=[-14, 14], 6.5m tall)
+      { min: [-14, 0, -34], max: [14, 6.5, -20], name: 'Bridge Superstructure' },
 
-      // Iconic Ocean Liner Funnel (Smokestack at x=[-8, 2], z=[-3.5, 3.5], 7m tall)
-      { min: [-8, 0, -3.5], max: [2, 7.0, 3.5], name: 'Smokestack Funnel' },
+      // Giant Iconic Red & White Cruise Smokestack Funnel (z=[-16, -10], x=[-3.5, 3.5], 9m tall)
+      { min: [-3.5, 0, -16], max: [3.5, 9.0, -10], name: 'Smokestack Funnel' },
 
-      // Swimming Pool Rim & Sunken Basin (x=[-30, -18], z=[-6, 6], 1.2m barrier)
-      { min: [-30, 0, -6.5], max: [-18, 1.2, -5.5], name: 'Pool Rim Starboard' },
-      { min: [-30, 0, 5.5], max: [-18, 1.2, 6.5], name: 'Pool Rim Port' },
-      { min: [-30.5, 0, -6], max: [-29.5, 1.2, 6], name: 'Pool Rim Aft' },
-      { min: [-18.5, 0, -6], max: [-17.5, 1.2, 6], name: 'Pool Rim Forward' },
+      // Midship Swimming Pool Basin & Border (z=[-4, 12], x=[-6.4, 6.4], 0.5m barrier)
+      { min: [-6.4, 0, -4], max: [6.4, 0.5, 12], name: 'Swimming Pool Border' },
 
-      // Lifeboat Stations (Raised davits providing hard lateral cover)
-      { min: [-12, 0, -16.5], max: [-2, 2.2, -14], name: 'Lifeboat Starboard 1' },
-      { min: [8, 0, -16.5], max: [18, 2.2, -14], name: 'Lifeboat Starboard 2' },
-      { min: [-12, 0, 14], max: [-2, 2.2, 16.5], name: 'Lifeboat Port 1' },
-      { min: [8, 0, 14], max: [18, 2.2, 16.5], name: 'Lifeboat Port 2' },
+      // Poolside Tiki/Cocktail Bar Counter (West of pool)
+      { min: [-14.5, 0, 0.5], max: [-11.5, 1.2, 7.5], name: 'Cocktail Bar Counter' },
 
-      // Deck Cargo Containers & Lounge Bars
-      { min: [26, 0, -5], max: [30, 2.2, 5], name: 'Forward Cargo Crates' },
-      { min: [-35, 0, -8], max: [-32, 1.2, -4], name: 'Lounge Bar Counter' },
-      { min: [-35, 0, 4], max: [-32, 1.2, 8], name: 'Deck Towel Cabana' }
+      // Stern Promenade Cabins & Dining Superstructure (z=[20, 34], x=[-13, 13], 5m tall)
+      { min: [-13, 0, 20], max: [13, 5.0, 34], name: 'Stern Superstructure' },
+
+      // Lifeboat Stations (Port & Starboard)
+      { min: [-18, 0, -9], max: [-15.5, 2.5, -3], name: 'Lifeboat Port 1' },
+      { min: [-18, 0, 11], max: [-15.5, 2.5, 17], name: 'Lifeboat Port 2' },
+      { min: [15.5, 0, -9], max: [18, 2.5, -3], name: 'Lifeboat Starboard 1' },
+      { min: [15.5, 0, 11], max: [18, 2.5, 17], name: 'Lifeboat Starboard 2' }
     ],
     waypoints: [
-      { id: 'bow_point', x: 34, y: 0, z: 0, isCover: true },
-      { id: 'bow_starboard', x: 25, y: 0, z: -10, isCover: true },
-      { id: 'bow_port', x: 25, y: 0, z: 10, isCover: true },
-      { id: 'forward_cargo', x: 28, y: 0, z: 0, isCover: true },
-      { id: 'bridge_front', x: 20, y: 0, z: 0, isCover: false },
-      { id: 'starboard_promenade_fwd', x: 12, y: 0, z: -13, isCover: true },
-      { id: 'port_promenade_fwd', x: 12, y: 0, z: 13, isCover: true },
-      { id: 'bridge_upper_deck', x: 12, y: 3.5, z: 0, isCover: true },
-      { id: 'bridge_rear_door', x: 4, y: 0, z: 0, isCover: true },
-      { id: 'starboard_promenade_mid', x: 0, y: 0, z: -13, isCover: true },
-      { id: 'port_promenade_mid', x: 0, y: 0, z: 13, isCover: true },
-      { id: 'funnel_starboard', x: -3, y: 0, z: -5, isCover: true },
-      { id: 'funnel_port', x: -3, y: 0, z: 5, isCover: true },
-      { id: 'pool_forward', x: -15, y: 0, z: 0, isCover: true },
-      { id: 'pool_starboard', x: -24, y: 0, z: -9, isCover: true },
-      { id: 'pool_port', x: -24, y: 0, z: 9, isCover: true },
-      { id: 'pool_aft', x: -32, y: 0, z: 0, isCover: true },
-      { id: 'stern_lounge', x: -34, y: 0, z: -10, isCover: true },
-      { id: 'stern_cabana', x: -34, y: 0, z: 10, isCover: true },
-      { id: 'aft_flagpole', x: -36, y: 0, z: 0, isCover: false }
+      { id: 'bow_deck', x: 0, y: 0, z: -36, isCover: false },
+      { id: 'bow_starboard', x: 12, y: 0, z: -36, isCover: true },
+      { id: 'bow_port', x: -12, y: 0, z: -36, isCover: true },
+      { id: 'bridge_catwalk', x: 0, y: 0, z: -18, isCover: true },
+      { id: 'funnel_deck', x: 0, y: 0, z: -7, isCover: true },
+      { id: 'promenade_east_fwd', x: 12, y: 0, z: -10, isCover: true },
+      { id: 'promenade_west_fwd', x: -12, y: 0, z: -10, isCover: true },
+      { id: 'pool_deck_east', x: 10, y: 0, z: 4, isCover: true },
+      { id: 'pool_deck_west', x: -9, y: 0, z: 4, isCover: true },
+      { id: 'promenade_east_mid', x: 12, y: 0, z: 14, isCover: true },
+      { id: 'promenade_west_mid', x: -12, y: 0, z: 14, isCover: true },
+      { id: 'stern_deck_north', x: 0, y: 0, z: 16, isCover: true },
+      { id: 'stern_lounge_east', x: 10, y: 0, z: 36, isCover: true },
+      { id: 'stern_lounge_west', x: -10, y: 0, z: 36, isCover: true },
+      { id: 'aft_railings', x: 0, y: 0, z: 36, isCover: false }
     ]
   },
 
@@ -588,16 +576,16 @@ const MAPS = {
       { id: 'center_s', x: 0, y: 0, z: 8, isCover: true },
       { id: 'center_w', x: -8, y: 0, z: 0, isCover: true },
       { id: 'center_e', x: 8, y: 0, z: 0, isCover: true },
-      { id: 'crates_nw', x: -16, y: 0, z: -16, isCover: true },
-      { id: 'crates_ne', x: 16, y: 0, z: -16, isCover: true },
-      { id: 'crates_sw', x: -16, y: 0, z: 16, isCover: true },
-      { id: 'crates_se', x: 16, y: 0, z: 16, isCover: true },
-      { id: 'barricade_n1', x: -6, y: 0, z: -14.5, isCover: true },
-      { id: 'barricade_n2', x: 6, y: 0, z: -14.5, isCover: true },
-      { id: 'barricade_s1', x: -6, y: 0, z: 14.5, isCover: true },
-      { id: 'barricade_s2', x: 6, y: 0, z: 14.5, isCover: true },
-      { id: 'barricade_w', x: -24, y: 0, z: 0, isCover: true },
-      { id: 'barricade_e', x: 24, y: 0, z: 0, isCover: true },
+      { id: 'crates_nw', x: -11, y: 0, z: -16, isCover: true },
+      { id: 'crates_ne', x: 11, y: 0, z: -16, isCover: true },
+      { id: 'crates_sw', x: -11, y: 0, z: 16, isCover: true },
+      { id: 'crates_se', x: 11, y: 0, z: 16, isCover: true },
+      { id: 'barricade_n1', x: -6, y: 0, z: -12, isCover: true },
+      { id: 'barricade_n2', x: 6, y: 0, z: -12, isCover: true },
+      { id: 'barricade_s1', x: -6, y: 0, z: 12, isCover: true },
+      { id: 'barricade_s2', x: 6, y: 0, z: 12, isCover: true },
+      { id: 'barricade_w', x: -21, y: 0, z: 0, isCover: true },
+      { id: 'barricade_e', x: 21, y: 0, z: 0, isCover: true },
       { id: 'platform_nw', x: -28, y: 3.5, z: -24, isCover: true },
       { id: 'platform_se', x: 28, y: 3.5, z: 24, isCover: true },
       { id: 'platform_sw', x: -26, y: 3.5, z: 24, isCover: true },

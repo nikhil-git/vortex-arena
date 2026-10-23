@@ -75,6 +75,7 @@ class CollisionEngine {
   /**
    * Cast a ray against static arena obstacles.
    * Returns nearest obstacle distance or Infinity.
+   * Properly ignores obstacles that enclose the shooter's own origin (e.g. self-enclosure / cover grazing).
    */
   static getNearestObstacleDistance(origin, dir, maxRange = 250, mapIdOrObstacles = null) {
     let nearestDist = maxRange;

@@ -440,11 +440,12 @@ export class GameEngine {
       entry.model.update(delta, entry.model.group.position.distanceTo(entry.targetPos) > 0.05, 1.0);
     }
 
-    // 6. Network sync player input to server at 30Hz
+    // 6. Network sync player input to server at 30Hz (sync ground/foot position)
     if (now - this.lastNetSync >= 33 && window.netClient && window.netClient.isConnected) {
       this.lastNetSync = now;
+      const footY = Math.max(0, this.camera.position.y - 1.7);
       window.netClient.sendInput(
-        { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+        { x: this.camera.position.x, y: footY, z: this.camera.position.z },
         { yaw: this.input.yaw, pitch: this.input.pitch },
         { x: this.input.velocity.x, y: this.input.velocity.y, z: this.input.velocity.z }
       );
