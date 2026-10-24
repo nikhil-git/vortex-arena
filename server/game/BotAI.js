@@ -178,6 +178,24 @@ class BotAI {
     return nearest || this.getRandomWaypoint();
   }
 
+  getBestNavWaypoint(targetPos) {
+    const list = (this.waypoints && this.waypoints.length > 0) ? this.waypoints : ARENA_WAYPOINTS;
+    let best = null;
+    let bestScore = Infinity;
+
+    for (const wp of list) {
+      const distFromBot = Math.hypot(wp.x - this.bot.position.x, wp.z - this.bot.position.z);
+      const distToTarget = Math.hypot(wp.x - targetPos.x, wp.z - targetPos.z);
+      if (distFromBot < 1.0) continue;
+      const score = distFromBot + distToTarget * 1.5;
+      if (score < bestScore) {
+        bestScore = score;
+        best = wp;
+      }
+    }
+    return best || this.getRandomWaypoint();
+  }
+
   /**
    * Main AI decision tick called at 30Hz
    */
@@ -222,10 +240,11 @@ class BotAI {
         break;
     }
 
-    // Keep bot within active map bounds
+    // Keep bot strictly within active map bounds (taking bot radius into account)
     const bounds = this.bounds || MapData.getBounds(this.mapId);
-    this.bot.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, this.bot.position.x));
-    this.bot.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, this.bot.position.z));
+    const r = 0.4;
+    this.bot.position.x = Math.max(bounds.minX + r, Math.min(bounds.maxX - r, this.bot.position.x));
+    this.bot.position.z = Math.max(bounds.minZ + r, Math.min(bounds.maxZ - r, this.bot.position.z));
   }
 
   /**
@@ -427,7 +446,17 @@ class BotAI {
       return;
     }
 
-    this.moveTo(this.lastSeenTargetPos.x, this.lastSeenTargetPos.z, delta, this.config.moveSpeed);
+    // Check if direct line-of-sight is blocked by obstacles
+    const hasLOS = this.hasLineOfSight(this.lastSeenTargetPos);
+    if (!hasLOS) {
+      // Navigate via tactical waypoints around walls rather than ramming into solid obstacles
+      if (!this.currentWaypoint || Math.hypot(this.currentWaypoint.x - this.bot.position.x, this.currentWaypoint.z - this.bot.position.z) < 2.0) {
+        this.currentWaypoint = this.getBestNavWaypoint(this.lastSeenTargetPos);
+      }
+      this.moveTo(this.currentWaypoint.x, this.currentWaypoint.z, delta, this.config.moveSpeed);
+    } else {
+      this.moveTo(this.lastSeenTargetPos.x, this.lastSeenTargetPos.z, delta, this.config.moveSpeed);
+    }
 
     // If close enough or regained LOS, transition to combat
     const dist = Math.hypot(

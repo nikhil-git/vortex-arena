@@ -241,6 +241,105 @@ test('AI Bots: Continuous Navigation and Strafing Stays Inside Playable Boundari
   }
 });
 
+test('Map Objects & Structures: Collision Detection Prevents Passing Through Furniture, Silos, Tractors, Cabins, Tents, Trees & Loungers', () => {
+  const objectChecks = [
+    // House: Furniture
+    { mapId: 'house', name: 'Living Room Sofa', testPos: [7, 0, 9], approachFrom: [7, 0, 5] },
+    { mapId: 'house', name: 'Kitchen Counter Island', testPos: [-11, 0, 6], approachFrom: [-6, 0, 6] },
+    { mapId: 'house', name: 'Dining Table', testPos: [-5, 0, 6], approachFrom: [-1, 0, 6] },
+    { mapId: 'house', name: 'Master Bed', testPos: [8.5, 0, -8], approachFrom: [4, 0, -8] },
+
+    // Farm: Structures, Tractor, Tank, Silos, Hay
+    { mapId: 'farm', name: 'Farmhouse Front Wall', testPos: [20, 0, 6.3], approachFrom: [20, 0, 2] },
+    { mapId: 'farm', name: 'Heavy Farm Tractor', testPos: [6.0, 0, -8.0], approachFrom: [6.0, 0, -3.0] },
+    { mapId: 'farm', name: 'Elevated Water Tank', testPos: [-28.0, 0, 6.0], approachFrom: [-28.0, 0, 0.0] },
+    { mapId: 'farm', name: 'Grain Silo', testPos: [-6.0, 0, -18.0], approachFrom: [-6.0, 0, -10.0] },
+    { mapId: 'farm', name: 'Hay Bale Stacks', testPos: [-15.0, 0, 7.5], approachFrom: [-15.0, 0, 2.0] },
+
+    // Forest: Boulders, Pine Trees, Campsite Tents, Supply Crates
+    { mapId: 'forest', name: 'Boulder Alpha', testPos: [-14, 0, 0], approachFrom: [-14, 0, -5] },
+    { mapId: 'forest', name: 'Mature Pine Tree Trunk', testPos: [-14, 0, -14], approachFrom: [-14, 0, -9] },
+    { mapId: 'forest', name: 'Campsite Tent', testPos: [-4, 0, 4], approachFrom: [-4, 0, 0] },
+    { mapId: 'forest', name: 'Supply Crates', testPos: [-3.1, 0, -2.7], approachFrom: [-3.1, 0, 2] },
+
+    // Minecraft: Cabin, Stepped Hills, Cubic Tree Trunks
+    { mapId: 'minecraft', name: 'Voxel Oak Cabin Wall', testPos: [-20, 0, -21.5], approachFrom: [-20, 0, -17] },
+    { mapId: 'minecraft', name: 'Stepped Voxel Hill', testPos: [-26, 0, 6], approachFrom: [-16, 0, 6] },
+    { mapId: 'minecraft', name: 'Cubic Pine Trunk', testPos: [-16, 0, 16], approachFrom: [-16, 0, 10] },
+
+    // Cruise Ship: Loungers, Bar, Funnel, Bridge
+    { mapId: 'cruise', name: 'Deck Chair E3', testPos: [9.5, 0, 5.0], approachFrom: [14, 0, 5.0] },
+    { mapId: 'cruise', name: 'Deck Chair W3', testPos: [-9.5, 0, 5.0], approachFrom: [-6, 0, 5.0] },
+    { mapId: 'cruise', name: 'Cocktail Bar Counter', testPos: [-13, 0, 4.0], approachFrom: [-16, 0, 4.0] },
+    { mapId: 'cruise', name: 'Smokestack Funnel', testPos: [0, 0, -13], approachFrom: [0, 0, -8] },
+    { mapId: 'cruise', name: 'Swimming Pool Border', testPos: [0, 0, 4.0], approachFrom: [0, 0, -7] }
+  ];
+
+  for (const obj of objectChecks) {
+    // 1. Position inside object must trigger collision
+    const col = CollisionEngine.isColliding(obj.testPos[0], obj.testPos[1], obj.testPos[2], 0.4, 1.85, obj.mapId);
+    assert.strictEqual(col, true, `Map ${obj.mapId}: position inside ${obj.name} must register collision`);
+
+    // 2. Direct approach movement into object must be blocked before penetrating
+    const moveRes = CollisionEngine.resolveMovement(
+      obj.approachFrom[0], obj.approachFrom[1], obj.approachFrom[2],
+      obj.testPos[0], obj.testPos[2],
+      0.4, 1.85,
+      obj.mapId
+    );
+
+    assert.strictEqual(moveRes.collided, true, `Map ${obj.mapId}: moving toward ${obj.name} must trigger collision`);
+    // Resulting position must NOT be inside the object
+    const finalCol = CollisionEngine.isColliding(moveRes.x, obj.testPos[1], moveRes.z, 0.4, 1.85, obj.mapId);
+    assert.strictEqual(finalCol, false, `Map ${obj.mapId}: resolved position against ${obj.name} must be in free space`);
+  }
+});
+
+test('Perimeter Boundary Jumping: Players Cannot Jump Over Perimeter Fences or Railings Into Non-Playable Void or Ocean', () => {
+  const mapIds = ['house', 'farm', 'forest', 'minecraft', 'cruise', 'sector7'];
+  const jumpFootHeight = 1.65; // High jump foot elevation above typical fence (1.4m)
+
+  for (const mapId of mapIds) {
+    const obstacles = MapData.getObstacles(mapId);
+    const boundaryObstacles = obstacles.filter(o => o.isBoundary);
+    assert.ok(boundaryObstacles.length >= 4, `Map ${mapId} must have at least 4 perimeter boundary barriers`);
+
+    for (const bObs of boundaryObstacles) {
+      // Calculate a point within the boundary wall
+      const midX = (bObs.min[0] + bObs.max[0]) / 2;
+      const midZ = (bObs.min[2] + bObs.max[2]) / 2;
+
+      // Jumping in the air at foot height 1.65m inside the boundary barrier MUST still collide
+      const colAtJumpApex = CollisionEngine.isColliding(midX, jumpFootHeight, midZ, 0.4, 1.85, mapId);
+      assert.strictEqual(
+        colAtJumpApex,
+        true,
+        `Map ${mapId}: Jumping player at y=${jumpFootHeight} must collide with boundary barrier '${bObs.name}'`
+      );
+    }
+
+    // Test running and jumping over perimeter boundary to escape map
+    const bounds = MapData.getBounds(mapId);
+    // Start inside perimeter, jump toward 50m outside bounds
+    const escapeResult = CollisionEngine.resolveMovement(
+      0, jumpFootHeight, 0,
+      bounds.maxX + 30, bounds.maxZ + 30,
+      0.4, 1.85,
+      mapId
+    );
+
+    assert.strictEqual(escapeResult.collided, true, `Map ${mapId}: Leap outside boundaries must be blocked`);
+    assert.ok(
+      escapeResult.x <= bounds.maxX - 0.4 + 0.001,
+      `Map ${mapId}: Jumping player X=${escapeResult.x} must be stopped inside maxX=${bounds.maxX}`
+    );
+    assert.ok(
+      escapeResult.z <= bounds.maxZ - 0.4 + 0.001,
+      `Map ${mapId}: Jumping player Z=${escapeResult.z} must be stopped inside maxZ=${bounds.maxZ}`
+    );
+  }
+});
+
 test('Cleanup Movement & Bounds Test Database', () => {
   try {
     if (mockHuman && mockHuman.id) {

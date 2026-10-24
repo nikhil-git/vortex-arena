@@ -967,8 +967,11 @@ class App {
           if (snapPos && this.gameEngine && this.gameEngine.input && localSnap.alive && !this.gameEngine.isDead) {
             const inputPos = this.gameEngine.input.position;
             const distSq = (inputPos.x - snapPos.x) ** 2 + (inputPos.z - snapPos.z) ** 2;
-            if (distSq > 9.0) { // Drift > 3.0m
+            if (distSq > 0.49) { // Significant drift > 0.7m (e.g. wall clipping or collision rejection): snap to server position
               this.gameEngine.input.setPosition(snapPos.x, (snapPos.y || 0) + 1.7, snapPos.z);
+            } else if (distSq > 0.04) { // Minor prediction drift (0.2m - 0.7m): smoothly blend towards authoritative coordinates
+              inputPos.x = THREE.MathUtils.lerp(inputPos.x, snapPos.x, 0.25);
+              inputPos.z = THREE.MathUtils.lerp(inputPos.z, snapPos.z, 0.25);
             }
           }
 

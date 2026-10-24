@@ -1,4 +1,5 @@
 import * as THREE from '/vendor/three/three.module.js';
+import { MapData } from './MapData.js';
 
 export class InputController {
   constructor(camera, domElement, onShoot, onReload, onSwitchWeapon, onScoreboardToggle) {
@@ -37,8 +38,8 @@ export class InputController {
     this.lastTouchLookPos = { x: 0, y: 0 };
 
     // Active Map Boundaries & Obstacle Colliders
-    this.bounds = { minX: -38.5, maxX: 38.5, minZ: -38.5, maxZ: 38.5 };
-    this.obstacles = [];
+    this.bounds = MapData.getBounds('house');
+    this.obstacles = MapData.getObstacles('house');
 
     this.setupListeners();
     if (this.isTouch) {
@@ -53,7 +54,10 @@ export class InputController {
   setPosition(x, y, z, yaw = null, pitch = null) {
     // If y is ground/foot level (<= 0.5), convert to eye height (y + 1.7)
     const eyeY = (y <= 0.5) ? y + 1.7 : y;
-    this.position.set(x, eyeY, z);
+    const footY = Math.max(0, eyeY - 1.7);
+    const depen = this.depenetrate(x, footY, z, 0.4, 1.85);
+
+    this.position.set(depen.x, eyeY, depen.z);
     this.velocity.set(0, 0, 0);
     this.isGrounded = true;
 
@@ -411,7 +415,8 @@ export class InputController {
     for (let i = 0; i < this.obstacles.length; i++) {
       const box = this.obstacles[i];
       if (box && box.min && box.max) {
-        if (y + height > box.min[1] && y < box.max[1]) {
+        const isVertOverlap = box.isBoundary ? true : (y + height > box.min[1] && y < box.max[1]);
+        if (isVertOverlap) {
           if (x >= box.min[0] - radius && x <= box.max[0] + radius &&
               z >= box.min[2] - radius && z <= box.max[2] + radius) {
             return true;
@@ -422,7 +427,7 @@ export class InputController {
     return false;
   }
 
-  depenetrate(x, y, z, radius = 0.4, height = 1.85) {
+  depenetrate(x, y, z, radius = 0.4, height = 1.85, prevX = null, prevZ = null) {
     let resX = x;
     let resZ = z;
     const eps = 0.002;
@@ -431,7 +436,8 @@ export class InputController {
       let pushed = false;
       for (let i = 0; i < this.obstacles.length; i++) {
         const box = this.obstacles[i];
-        if (box && box.min && box.max && (y + height > box.min[1]) && (y < box.max[1])) {
+        const isVert = box && box.min && box.max && (box.isBoundary ? true : ((y + height > box.min[1]) && (y < box.max[1])));
+        if (isVert) {
           const minX = box.min[0] - radius;
           const maxX = box.max[0] + radius;
           const minZ = box.min[2] - radius;
@@ -443,11 +449,29 @@ export class InputController {
             const dBottom = resZ - minZ;
             const dTop = maxZ - resZ;
 
-            const minD = Math.min(dLeft, dRight, dBottom, dTop);
-            if (minD === dLeft) resX = minX - eps;
-            else if (minD === dRight) resX = maxX + eps;
-            else if (minD === dBottom) resZ = minZ - eps;
-            else resZ = maxZ + eps;
+            if (prevX !== null && prevZ !== null) {
+              if (prevX <= box.min[0] - radius) {
+                resX = minX - eps;
+              } else if (prevX >= box.max[0] + radius) {
+                resX = maxX + eps;
+              } else if (prevZ <= box.min[2] - radius) {
+                resZ = minZ - eps;
+              } else if (prevZ >= box.max[2] + radius) {
+                resZ = maxZ + eps;
+              } else {
+                const minD = Math.min(dLeft, dRight, dBottom, dTop);
+                if (minD === dLeft) resX = minX - eps;
+                else if (minD === dRight) resX = maxX + eps;
+                else if (minD === dBottom) resZ = minZ - eps;
+                else resZ = maxZ + eps;
+              }
+            } else {
+              const minD = Math.min(dLeft, dRight, dBottom, dTop);
+              if (minD === dLeft) resX = minX - eps;
+              else if (minD === dRight) resX = maxX + eps;
+              else if (minD === dBottom) resZ = minZ - eps;
+              else resZ = maxZ + eps;
+            }
 
             pushed = true;
           }
@@ -478,8 +502,11 @@ export class InputController {
 
     const curY = Math.max(0, this.position.y - 1.7);
 
-    let posX = clampX(this.position.x);
-    let posZ = clampZ(this.position.z);
+    const origX = this.position.x;
+    const origZ = this.position.z;
+
+    let posX = clampX(origX);
+    let posZ = clampZ(origZ);
 
     const initialDepen = this.depenetrate(posX, curY, posZ, radius, height);
     posX = initialDepen.x;
@@ -498,8 +525,8 @@ export class InputController {
       return;
     }
 
-    const maxStep = 0.1;
-    const numSteps = Math.min(48, Math.max(1, Math.ceil(dist / maxStep)));
+    const maxStep = 0.05;
+    const numSteps = Math.min(64, Math.max(1, Math.ceil(dist / maxStep)));
     const stepX = dx / numSteps;
     const stepZ = dz / numSteps;
 
@@ -533,7 +560,7 @@ export class InputController {
       }
     }
 
-    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height);
+    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, origX, origZ);
     this.position.x = clampX(finalDepen.x);
     this.position.z = clampZ(finalDepen.z);
   }

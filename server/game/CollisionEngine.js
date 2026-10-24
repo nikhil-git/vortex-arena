@@ -7,11 +7,11 @@ const { MapData } = require('./MapData');
 
 // Arena static obstacle boxes (legacy default for Sector-7 fallback)
 const ARENA_OBSTACLES = [
-  // Outer perimeter boundary walls
-  { min: [-40, 0, -41], max: [40, 8, -40] }, // North Wall
-  { min: [-40, 0, 40], max: [40, 8, 41] },   // South Wall
-  { min: [-41, 0, -40], max: [-40, 8, 40] }, // West Wall
-  { min: [40, 0, -40], max: [41, 8, 40] },   // East Wall
+  // Outer perimeter boundary walls (20m vertical height)
+  { min: [-40, 0, -41], max: [40, 20.0, -40], isBoundary: true }, // North Wall
+  { min: [-40, 0, 40], max: [40, 20.0, 41], isBoundary: true },   // South Wall
+  { min: [-41, 0, -40], max: [-40, 20.0, 40], isBoundary: true }, // West Wall
+  { min: [40, 0, -40], max: [41, 20.0, 40], isBoundary: true },   // East Wall
 
   // Central Compound Walls (Hollow courtyard with 4 entrance archways)
   { min: [-6, 0, -6], max: [-2, 3.5, -5] }, // North-West Pillar
@@ -147,7 +147,8 @@ class CollisionEngine {
   /**
    * Check whether a bounding cylinder/box at (x, y, z) intersects any static map obstacles.
    * Takes 3D vertical elevation (height) into account so players can jump over low barriers
-   * or walk under raised catwalks/archways.
+   * or walk under raised catwalks/archways, while impassable boundary walls (isBoundary)
+   * prevent jumping over perimeter fences/walls into the void.
    */
   static isColliding(x, y, z, radius = 0.4, height = 1.85, mapIdOrObstacles = null) {
     let obstacles = ARENA_OBSTACLES;
@@ -160,7 +161,8 @@ class CollisionEngine {
     for (let i = 0; i < obstacles.length; i++) {
       const box = obstacles[i];
       if (box && box.min && box.max) {
-        if (y + height > box.min[1] && y < box.max[1]) {
+        const isVertOverlap = box.isBoundary ? true : (y + height > box.min[1] && y < box.max[1]);
+        if (isVertOverlap) {
           if (x >= box.min[0] - radius && x <= box.max[0] + radius &&
               z >= box.min[2] - radius && z <= box.max[2] + radius) {
             return true;
@@ -174,8 +176,10 @@ class CollisionEngine {
   /**
    * Depenetrate character if intersecting or embedded inside an obstacle box.
    * Calculates minimum translation vector (MTV) to push the character out to free playable space.
+   * If prevX and prevZ are supplied, guarantees the character is pushed back towards
+   * the side they arrived from, completely preventing tunneling through thin walls.
    */
-  static depenetrate(x, y, z, radius = 0.4, height = 1.85, obstacles = ARENA_OBSTACLES, bounds = null) {
+  static depenetrate(x, y, z, radius = 0.4, height = 1.85, obstacles = ARENA_OBSTACLES, bounds = null, prevX = null, prevZ = null) {
     let resX = x;
     let resZ = z;
     const eps = 0.002;
@@ -184,7 +188,8 @@ class CollisionEngine {
       let pushed = false;
       for (let i = 0; i < obstacles.length; i++) {
         const box = obstacles[i];
-        if (box && box.min && box.max && (y + height > box.min[1]) && (y < box.max[1])) {
+        const isVert = box && box.min && box.max && (box.isBoundary ? true : ((y + height > box.min[1]) && (y < box.max[1])));
+        if (isVert) {
           const minX = box.min[0] - radius;
           const maxX = box.max[0] + radius;
           const minZ = box.min[2] - radius;
@@ -196,11 +201,29 @@ class CollisionEngine {
             const dBottom = resZ - minZ;
             const dTop = maxZ - resZ;
 
-            const minD = Math.min(dLeft, dRight, dBottom, dTop);
-            if (minD === dLeft) resX = minX - eps;
-            else if (minD === dRight) resX = maxX + eps;
-            else if (minD === dBottom) resZ = minZ - eps;
-            else resZ = maxZ + eps;
+            if (prevX !== null && prevZ !== null) {
+              if (prevX <= box.min[0] - radius) {
+                resX = minX - eps;
+              } else if (prevX >= box.max[0] + radius) {
+                resX = maxX + eps;
+              } else if (prevZ <= box.min[2] - radius) {
+                resZ = minZ - eps;
+              } else if (prevZ >= box.max[2] + radius) {
+                resZ = maxZ + eps;
+              } else {
+                const minD = Math.min(dLeft, dRight, dBottom, dTop);
+                if (minD === dLeft) resX = minX - eps;
+                else if (minD === dRight) resX = maxX + eps;
+                else if (minD === dBottom) resZ = minZ - eps;
+                else resZ = maxZ + eps;
+              }
+            } else {
+              const minD = Math.min(dLeft, dRight, dBottom, dTop);
+              if (minD === dLeft) resX = minX - eps;
+              else if (minD === dRight) resX = maxX + eps;
+              else if (minD === dBottom) resZ = minZ - eps;
+              else resZ = maxZ + eps;
+            }
 
             pushed = true;
           }
@@ -266,9 +289,9 @@ class CollisionEngine {
       return { x: posX, z: posZ, collided: false };
     }
 
-    // Substepping: max 0.1m step size to prevent tunneling through thin walls
-    const maxStep = 0.1;
-    const numSteps = Math.min(48, Math.max(1, Math.ceil(dist / maxStep)));
+    // Substepping: 0.05m max step size prevents tunneling through thin walls even at high velocities
+    const maxStep = 0.05;
+    const numSteps = Math.min(64, Math.max(1, Math.ceil(dist / maxStep)));
     const stepX = dx / numSteps;
     const stepZ = dz / numSteps;
 
@@ -307,8 +330,8 @@ class CollisionEngine {
       }
     }
 
-    // Final safety clamp & depenetration pass
-    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, obstacles, bounds);
+    // Final safety clamp & depenetration pass using curX, curZ reference
+    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, obstacles, bounds, curX, curZ);
 
     return {
       x: clampX(finalDepen.x),
