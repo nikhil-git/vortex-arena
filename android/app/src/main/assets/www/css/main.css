@@ -63,13 +63,44 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: none;
   z-index: 10;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .screen.active {
   display: flex;
+}
+
+/* 3D Gameplay canvas must NEVER scroll or trigger touch pan gestures */
+#screen-gameplay {
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+
+#screen-gameplay.active {
+  display: block !important;
+}
+
+/* Sleek Cyber Scrollbar for Scrollable Screens */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(10, 15, 24, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.35);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.7);
 }
 
 /* High-tech Buttons */
@@ -713,10 +744,16 @@ body {
 }
 
 
-/* 2. MAIN MENU SCREEN */
+/* 2. MAIN MENU SCREEN (DASHBOARD) */
 #screen-main-menu {
   flex-direction: column;
-  padding: 32px 48px;
+  padding: 24px 36px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
 }
 
 .menu-header {
@@ -724,7 +761,8 @@ body {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
 }
 
 .user-profile-badge {
@@ -735,6 +773,7 @@ body {
   padding: 10px 20px;
   border-radius: 30px;
   border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .avatar-circle {
@@ -748,26 +787,30 @@ body {
   font-weight: 900;
   font-size: 18px;
   color: #060b14;
+  flex-shrink: 0;
 }
 
 .menu-layout {
   display: grid;
-  grid-template-columns: 340px 1fr 340px;
-  gap: 32px;
-  flex: 1;
-  align-items: center;
+  grid-template-columns: 320px 1fr 340px;
+  gap: 28px;
+  align-items: start;
+  width: 100%;
+  padding-bottom: 40px;
 }
 
 .menu-nav {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .menu-nav .btn {
   justify-content: flex-start;
-  padding: 16px 24px;
-  font-size: 16px;
+  padding: 14px 20px;
+  font-size: 15px;
+  white-space: normal;
+  text-align: left;
 }
 
 .menu-center-hero {
@@ -777,12 +820,13 @@ body {
   justify-content: center;
   text-align: center;
   position: relative;
+  width: 100%;
 }
 
 .hero-match-card {
   background: linear-gradient(180deg, rgba(0, 240, 255, 0.08) 0%, rgba(10, 14, 22, 0.7) 100%);
   border: 1px solid var(--border-bright);
-  padding: 40px;
+  padding: 32px 28px;
   border-radius: 12px;
   width: 100%;
   max-width: 480px;
@@ -792,7 +836,8 @@ body {
 .stats-sidebar-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  width: 100%;
 }
 
 .stat-item {
@@ -848,7 +893,12 @@ body {
 /* 4. GAME LOBBY SCREEN */
 #screen-lobby {
   flex-direction: column;
-  padding: 32px 48px;
+  padding: 24px 36px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .lobby-header {
@@ -887,7 +937,12 @@ body {
 /* 6. FRIENDS SCREEN */
 #screen-friends {
   flex-direction: column;
-  padding: 32px 48px;
+  padding: 24px 36px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .friends-layout {
@@ -931,7 +986,12 @@ body {
 /* 7. SKINS SCREEN */
 #screen-skins {
   flex-direction: column;
-  padding: 32px 48px;
+  padding: 24px 36px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .skins-layout {
@@ -996,7 +1056,12 @@ body {
 /* 8. ACHIEVEMENTS SCREEN */
 #screen-achievements {
   flex-direction: column;
-  padding: 32px 48px;
+  padding: 24px 36px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .achievements-grid {
@@ -1042,7 +1107,12 @@ body {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding: 32px;
+  padding: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .results-modal {
@@ -1073,8 +1143,13 @@ body {
 /* 10. SETTINGS SCREEN */
 #screen-settings {
   flex-direction: column;
-  padding: 32px 48px;
+  padding: 24px 36px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   align-items: center;
+  box-sizing: border-box;
 }
 
 .settings-box {
@@ -1143,11 +1218,19 @@ body {
   justify-content: center;
   padding: 16px;
   animation: fadeIn 0.2s ease-out;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .modal-content {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 240, 255, 0.15);
   border: 1px solid rgba(0, 240, 255, 0.3);
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 }
 
 /* Single Player & AI Setup Mode Selectors */
@@ -1277,5 +1360,136 @@ body {
   display: flex;
   gap: 8px;
 }
+
+/* =========================================================================
+   RESPONSIVE LAYOUT & TOUCH SCROLLING (TABLET & MOBILE)
+   ========================================================================= */
+
+@media (max-width: 1160px) {
+  #screen-main-menu {
+    padding: 20px 24px 60px;
+  }
+  .menu-layout {
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+  }
+  .stats-sidebar-card {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  #screen-main-menu {
+    padding: 16px 16px 60px;
+  }
+  .menu-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .menu-header .user-profile-badge {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .menu-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .menu-center-hero {
+    order: -1; /* Hero card is shown first on mobile so players can jump in immediately */
+  }
+  .hero-match-card {
+    padding: 22px 18px;
+  }
+  .hero-match-card h2 {
+    font-size: 24px;
+  }
+  .menu-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .menu-nav .btn {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  .stats-sidebar-card {
+    grid-column: auto;
+  }
+
+  /* Other screens on mobile */
+  .slots-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+  .friends-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .skins-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .settings-box {
+    width: 100%;
+  }
+}
+
+/* Landscape Mobile (Android devices held horizontally: height <= 540px) */
+@media (max-height: 540px) {
+  #screen-main-menu,
+  #screen-lobby,
+  #screen-friends,
+  #screen-skins,
+  #screen-achievements,
+  #screen-settings,
+  #screen-results {
+    padding: 12px 18px 50px !important;
+  }
+  .menu-header {
+    margin-bottom: 12px !important;
+  }
+  .menu-header h1 {
+    font-size: 20px !important;
+  }
+  .menu-layout {
+    grid-template-columns: 260px 1fr !important;
+    gap: 14px !important;
+    align-items: start !important;
+  }
+  .menu-nav {
+    gap: 7px !important;
+  }
+  .menu-nav .btn {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+  .hero-match-card {
+    padding: 16px 14px !important;
+  }
+  .hero-match-card h2 {
+    font-size: 19px !important;
+    margin-bottom: 6px !important;
+  }
+  .hero-match-card p {
+    font-size: 12px !important;
+    margin-bottom: 12px !important;
+    line-height: 1.35 !important;
+  }
+  .hero-match-card .btn {
+    padding: 8px 16px !important;
+    font-size: 12.5px !important;
+  }
+  .stats-sidebar-card {
+    grid-column: 1 / -1 !important;
+    margin-top: 6px !important;
+  }
+  .stat-item {
+    padding: 6px 0 !important;
+  }
+}
+
 
 

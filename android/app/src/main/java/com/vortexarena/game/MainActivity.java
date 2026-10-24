@@ -131,6 +131,10 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        mWebView.setVerticalScrollBarEnabled(true);
+        mWebView.setHorizontalScrollBarEnabled(false);
+        mWebView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        mWebView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
 
         mWebView.addJavascriptInterface(new WebAppInterface(this), "Android");
 

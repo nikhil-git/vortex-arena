@@ -89,6 +89,11 @@ export class InputController {
     const joystickBase = document.getElementById('joystick-base');
 
     window.addEventListener('touchstart', (e) => {
+      // Only capture touch joystick and look controls when actively in 3D gameplay
+      if (window.app && window.app.currentScreen !== 'gameplay') {
+        return;
+      }
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
 
@@ -121,6 +126,11 @@ export class InputController {
     }, { passive: false });
 
     window.addEventListener('touchmove', (e) => {
+      // Only capture touch joystick and look controls when actively in 3D gameplay
+      if (window.app && window.app.currentScreen !== 'gameplay') {
+        return;
+      }
+
       let isGameTouch = false;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
@@ -165,6 +175,10 @@ export class InputController {
     }, { passive: false });
 
     const handleTouchEnd = (e) => {
+      if (window.app && window.app.currentScreen !== 'gameplay') {
+        return;
+      }
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (touch.identifier === this.touchMoveId) {

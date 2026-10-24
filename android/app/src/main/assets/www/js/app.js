@@ -125,6 +125,7 @@ class App {
     if (target) {
       target.classList.add('active');
       this.currentScreen = screenId;
+      target.scrollTop = 0;
     }
 
     if (screenId === 'skins') {

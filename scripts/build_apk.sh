@@ -63,6 +63,7 @@ fi
 echo "=== [1.5/6] Synchronizing Latest Web Game Assets to Android Bundle ==="
 mkdir -p "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three"
 cp -r "$PROJECT_DIR/public/"* "$PROJECT_DIR/android/app/src/main/assets/www/"
+rm -f "$PROJECT_DIR/android/app/src/main/assets/www/"*.apk
 if [ -f "$PROJECT_DIR/node_modules/three/build/three.module.js" ]; then
     cp "$PROJECT_DIR/node_modules/three/build/three.module.js" "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three/three.module.js"
 fi

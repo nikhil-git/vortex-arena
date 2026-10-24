@@ -16,6 +16,7 @@ python3 "$PROJECT_DIR/scripts/generate_icons.py"
 echo "=== [2/4] Synchronizing Web Game Assets to iOS Bundle ==="
 mkdir -p "$PROJECT_DIR/ios/VortexArena/www/vendor/three"
 cp -r "$PROJECT_DIR/public/"* "$PROJECT_DIR/ios/VortexArena/www/"
+rm -f "$PROJECT_DIR/ios/VortexArena/www/"*.apk
 cp "$PROJECT_DIR/node_modules/three/build/three.module.js" "$PROJECT_DIR/ios/VortexArena/www/vendor/three/three.module.js"
 
 echo "=== [3/4] Generating Xcode Project (VortexArena.xcodeproj) ==="
