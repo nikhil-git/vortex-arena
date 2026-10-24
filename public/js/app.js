@@ -186,6 +186,35 @@ class App {
     }
   }
 
+  async playAsGuest(targetMode = 'online') {
+    try {
+      if (!this.currentUser) {
+        const res = await window.apiClient.playAsGuest();
+        this.setCurrentUser(res.user);
+        this.showToast(`🎮 Guest session ready: ${res.user.username}`);
+      }
+
+      this.navigateTo('main-menu');
+
+      if (targetMode === 'vs_ai') {
+        this.openSinglePlayerModal(false);
+      } else if (targetMode === 'practice') {
+        this.openSinglePlayerModal(true);
+      }
+    } catch (err) {
+      console.error('Guest play failed:', err);
+      this.showToast('Unable to launch guest session: ' + err.message, 'danger');
+    }
+  }
+
+  scrollToAuth(tab = 'login') {
+    this.setAuthTab(tab);
+    const card = document.getElementById('landing-auth-card');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
   handleLogout() {
     window.apiClient.setToken(null);
     window.netClient.disconnect();

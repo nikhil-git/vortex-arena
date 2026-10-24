@@ -48,6 +48,12 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 // Support reverse proxies (Render, Koyeb, Railway, Fly.io, Cloudflare)
 app.set('trust proxy', 1);
 
+// Global SEO & Search Indexing response headers
+app.use((req, res, next) => {
+  res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -103,6 +109,7 @@ app.get('/download-ios', (req, res) => sendMobileConfig(req, res, true));
 // Auth Routes
 app.post('/api/auth/register', (req, res) => authController.register(req, res));
 app.post('/api/auth/login', (req, res) => authController.login(req, res));
+app.post('/api/auth/guest', (req, res) => authController.guest(req, res));
 app.get('/api/auth/me', authMiddleware, (req, res) => authController.me(req, res));
 
 // Stats & Progression

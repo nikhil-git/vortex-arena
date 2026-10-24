@@ -74,6 +74,14 @@ class ApiClient {
     return data;
   }
 
+  async playAsGuest() {
+    const data = await this.request('/api/auth/guest', {
+      method: 'POST'
+    });
+    this.setToken(data.token);
+    return data;
+  }
+
   async getMe() {
     return this.request('/api/auth/me');
   }
