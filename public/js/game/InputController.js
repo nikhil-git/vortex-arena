@@ -276,6 +276,25 @@ export class InputController {
 
     document.addEventListener('pointerlockchange', () => {
       this.isLocked = (document.pointerLockElement === this.domElement);
+      if (!this.isLocked) {
+        this.keys.forward = false;
+        this.keys.backward = false;
+        this.keys.left = false;
+        this.keys.right = false;
+        this.keys.sprint = false;
+      }
+    });
+
+    // Window blur: reset all movement states when window loses focus
+    window.addEventListener('blur', () => {
+      this.keys.forward = false;
+      this.keys.backward = false;
+      this.keys.left = false;
+      this.keys.right = false;
+      this.keys.jump = false;
+      this.keys.sprint = false;
+      this.velocity.x = 0;
+      this.velocity.z = 0;
     });
 
     // Mouse Movement
@@ -319,10 +338,22 @@ export class InputController {
       if (!this.isLocked) return;
 
       switch (e.code) {
-        case 'KeyW': this.keys.forward = true; break;
-        case 'KeyS': this.keys.backward = true; break;
-        case 'KeyA': this.keys.left = true; break;
-        case 'KeyD': this.keys.right = true; break;
+        case 'KeyW':
+        case 'ArrowUp':
+          this.keys.forward = true;
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          this.keys.backward = true;
+          break;
+        case 'KeyA':
+        case 'ArrowLeft':
+          this.keys.left = true;
+          break;
+        case 'KeyD':
+        case 'ArrowRight':
+          this.keys.right = true;
+          break;
         case 'Space':
           if (this.isGrounded) {
             this.velocity.y = 6.8;
@@ -359,10 +390,22 @@ export class InputController {
     // Keyboard Keyup
     window.addEventListener('keyup', (e) => {
       switch (e.code) {
-        case 'KeyW': this.keys.forward = false; break;
-        case 'KeyS': this.keys.backward = false; break;
-        case 'KeyA': this.keys.left = false; break;
-        case 'KeyD': this.keys.right = false; break;
+        case 'KeyW':
+        case 'ArrowUp':
+          this.keys.forward = false;
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          this.keys.backward = false;
+          break;
+        case 'KeyA':
+        case 'ArrowLeft':
+          this.keys.left = false;
+          break;
+        case 'KeyD':
+        case 'ArrowRight':
+          this.keys.right = false;
+          break;
         case 'ShiftLeft':
         case 'ShiftRight':
           this.keys.sprint = false;
@@ -508,9 +551,11 @@ export class InputController {
     let posX = clampX(origX);
     let posZ = clampZ(origZ);
 
-    const initialDepen = this.depenetrate(posX, curY, posZ, radius, height);
-    posX = initialDepen.x;
-    posZ = initialDepen.z;
+    if (this.isColliding(posX, curY, posZ, radius, height)) {
+      const initialDepen = this.depenetrate(posX, curY, posZ, radius, height);
+      posX = initialDepen.x;
+      posZ = initialDepen.z;
+    }
 
     const clampedTargetX = clampX(targetX);
     const clampedTargetZ = clampZ(targetZ);
@@ -560,9 +605,13 @@ export class InputController {
       }
     }
 
-    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, origX, origZ);
-    this.position.x = clampX(finalDepen.x);
-    this.position.z = clampZ(finalDepen.z);
+    if (this.isColliding(posX, curY, posZ, radius, height)) {
+      const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, origX, origZ);
+      posX = finalDepen.x;
+      posZ = finalDepen.z;
+    }
+    this.position.x = clampX(posX);
+    this.position.z = clampZ(posZ);
   }
 
   checkCollision(x, z) {
@@ -606,6 +655,10 @@ export class InputController {
     } else {
       this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, 0, delta * 12);
       this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, 0, delta * 12);
+      if (Math.hypot(this.velocity.x, this.velocity.z) < 0.01) {
+        this.velocity.x = 0;
+        this.velocity.z = 0;
+      }
     }
 
     // Gravity

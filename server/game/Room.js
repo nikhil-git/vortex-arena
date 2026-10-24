@@ -479,7 +479,8 @@ class Room {
         ammo: [player.activeWeaponState.ammoInMag, player.activeWeaponState.reserveAmmo],
         kills: player.matchKills,
         deaths: player.matchDeaths,
-        score: player.matchScore
+        score: player.matchScore,
+        ackSeq: player.lastAckSeq || 0
       });
     }
 
@@ -496,6 +497,11 @@ class Room {
   handlePlayerInput(userId, input) {
     const player = this.players.get(userId);
     if (!player || !player.isAlive || (this.state !== 'active' && this.state !== 'countdown')) return;
+
+    // Track authoritative input sequence acknowledgement
+    if (input.seq !== undefined && Number.isFinite(input.seq)) {
+      player.lastAckSeq = input.seq;
+    }
 
     // Discard stale in-flight input packets sent right before respawn
     const timeSinceRespawn = Date.now() - (player.respawnTimestamp || 0);

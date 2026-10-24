@@ -80,8 +80,10 @@ export class GameEngine {
     this.weaponView = new WeaponViewModel(this.camera);
     this.loadMap('house');
 
-    // Network input sync rate limiter (30Hz)
+    // Network input sync rate limiter (30Hz) and client-side prediction sequence tracking
     this.lastNetSync = 0;
+    this.inputSeq = 0;
+    this.inputHistory = [];
 
     window.addEventListener('resize', () => this.onResize());
     this.animate = this.animate.bind(this);
@@ -328,6 +330,7 @@ export class GameEngine {
   }
 
   setLocalSpawn(x, y, z, yaw = 0) {
+    this.inputHistory = [];
     if (this.input) {
       this.input.setPosition(x, y, z, yaw, 0);
     } else {
@@ -444,7 +447,7 @@ export class GameEngine {
 
   animate(now) {
     requestAnimationFrame(this.animate);
-    const delta = Math.min(0.1, (now - this.lastFrameTime) / 1000);
+    const delta = Math.max(0.001, Math.min(0.1, (now - this.lastFrameTime) / 1000 || 0.016));
     this.lastFrameTime = now;
 
     // Track FPS
@@ -490,14 +493,26 @@ export class GameEngine {
       entry.model.update(delta, entry.model.group.position.distanceTo(entry.targetPos) > 0.05, 1.0);
     }
 
-    // 6. Network sync player input to server at 30Hz (only while alive to avoid stale post-mortem packets)
+    // 6. Network sync player input to server at 30Hz with sequence tracking
     if (!this.isDead && now - this.lastNetSync >= 33 && window.netClient && window.netClient.isConnected) {
       this.lastNetSync = now;
       const footY = Math.max(0, this.camera.position.y - 1.7);
+      const seq = ++this.inputSeq;
+      this.inputHistory.push({
+        seq,
+        x: this.camera.position.x,
+        y: footY,
+        z: this.camera.position.z,
+        time: now
+      });
+      if (this.inputHistory.length > 120) {
+        this.inputHistory.shift();
+      }
       window.netClient.sendInput(
         { x: this.camera.position.x, y: footY, z: this.camera.position.z },
         { yaw: this.input.yaw, pitch: this.input.pitch },
-        { x: this.input.velocity.x, y: this.input.velocity.y, z: this.input.velocity.z }
+        { x: this.input.velocity.x, y: this.input.velocity.y, z: this.input.velocity.z },
+        seq
       );
     }
 

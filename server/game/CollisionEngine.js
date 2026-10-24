@@ -270,13 +270,15 @@ class CollisionEngine {
     const clampX = (x) => Math.max(bMinX, Math.min(bMaxX, x));
     const clampZ = (z) => Math.max(bMinZ, Math.min(bMaxZ, z));
 
-    // Initial boundary clamp and depenetration of starting position
+    // Initial boundary clamp and depenetration of starting position if penetrating
     let posX = clampX(curX);
     let posZ = clampZ(curZ);
 
-    const initialDepen = this.depenetrate(posX, curY, posZ, radius, height, obstacles, bounds);
-    posX = initialDepen.x;
-    posZ = initialDepen.z;
+    if (this.isColliding(posX, curY, posZ, radius, height, obstacles)) {
+      const initialDepen = this.depenetrate(posX, curY, posZ, radius, height, obstacles, bounds);
+      posX = initialDepen.x;
+      posZ = initialDepen.z;
+    }
 
     const clampedTargetX = clampX(targetX);
     const clampedTargetZ = clampZ(targetZ);
@@ -330,12 +332,16 @@ class CollisionEngine {
       }
     }
 
-    // Final safety clamp & depenetration pass using curX, curZ reference
-    const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, obstacles, bounds, curX, curZ);
+    // Final safety clamp & depenetration pass if colliding
+    if (this.isColliding(posX, curY, posZ, radius, height, obstacles)) {
+      const finalDepen = this.depenetrate(clampX(posX), curY, clampZ(posZ), radius, height, obstacles, bounds, curX, curZ);
+      posX = finalDepen.x;
+      posZ = finalDepen.z;
+    }
 
     return {
-      x: clampX(finalDepen.x),
-      z: clampZ(finalDepen.z),
+      x: clampX(posX),
+      z: clampZ(posZ),
       collided: hasCollided
     };
   }

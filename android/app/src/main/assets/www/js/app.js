@@ -1146,16 +1146,36 @@ class App {
           if (kEl && kEl.textContent !== String(localSnap.kills)) kEl.textContent = localSnap.kills;
           if (dEl && dEl.textContent !== String(localSnap.deaths)) dEl.textContent = localSnap.deaths;
 
-          // Server authoritative position reconciliation if client drifts or desyncs
+          // Server authoritative position reconciliation with sequence-matched prediction
           const snapPos = localSnap.pos ? { x: localSnap.pos[0], y: localSnap.pos[1], z: localSnap.pos[2] } : localSnap.position;
           if (snapPos && this.gameEngine && this.gameEngine.input && localSnap.alive && !this.gameEngine.isDead) {
             const inputPos = this.gameEngine.input.position;
-            const distSq = (inputPos.x - snapPos.x) ** 2 + (inputPos.z - snapPos.z) ** 2;
-            if (distSq > 0.49) { // Significant drift > 0.7m (e.g. wall clipping or collision rejection): snap to server position
-              this.gameEngine.input.setPosition(snapPos.x, (snapPos.y || 0) + 1.7, snapPos.z);
-            } else if (distSq > 0.04) { // Minor prediction drift (0.2m - 0.7m): smoothly blend towards authoritative coordinates
-              inputPos.x = THREE.MathUtils.lerp(inputPos.x, snapPos.x, 0.25);
-              inputPos.z = THREE.MathUtils.lerp(inputPos.z, snapPos.z, 0.25);
+            const ackSeq = localSnap.ackSeq;
+
+            if (ackSeq && this.gameEngine.inputHistory && this.gameEngine.inputHistory.length > 0) {
+              const histIdx = this.gameEngine.inputHistory.findIndex(h => h.seq === ackSeq);
+              if (histIdx !== -1) {
+                const hist = this.gameEngine.inputHistory[histIdx];
+                const errX = snapPos.x - hist.x;
+                const errZ = snapPos.z - hist.z;
+                const errSq = errX * errX + errZ * errZ;
+
+                if (errSq > 2.25) { // Severe desync > 1.5m (wall penetration rejection / boundary enforcement / server teleport)
+                  this.gameEngine.input.setPosition(snapPos.x, (snapPos.y || 0) + 1.7, snapPos.z);
+                  this.gameEngine.inputHistory = [];
+                } else if (errSq > 0.04) { // Moderate drift (0.2m - 1.5m), smoothly bleed off discrepancy
+                  inputPos.x += errX * 0.25;
+                  inputPos.z += errZ * 0.25;
+                }
+                // Prune history entries up to this ackSeq
+                this.gameEngine.inputHistory.splice(0, histIdx + 1);
+              }
+            } else {
+              // Fallback if sequence is missing (e.g. initial spawn or teleportation)
+              const distSq = (inputPos.x - snapPos.x) ** 2 + (inputPos.z - snapPos.z) ** 2;
+              if (distSq > 16.0) { // Large teleportation / spawn alignment only (> 4m)
+                this.gameEngine.input.setPosition(snapPos.x, (snapPos.y || 0) + 1.7, snapPos.z);
+              }
             }
           }
 

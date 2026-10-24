@@ -16,6 +16,7 @@ class Player {
     this.position = { x: 0, y: 0, z: 0 };
     this.rotation = { yaw: 0, pitch: 0 };
     this.velocity = { x: 0, y: 0, z: 0 };
+    this.lastAckSeq = 0;
 
     // Health & Vitals
     this.maxHealth = 100;
@@ -201,6 +202,7 @@ class Player {
     };
     this.rotation = { yaw: spawnPoint.yaw || 0, pitch: 0 };
     this.velocity = { x: 0, y: 0, z: 0 };
+    this.lastAckSeq = 0;
 
     // Refill active magazine and reset reload timers
     for (const [wepId, data] of Object.entries(WEAPONS)) {

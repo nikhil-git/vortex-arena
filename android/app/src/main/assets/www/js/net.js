@@ -126,8 +126,8 @@ class NetClient {
     return this.send('leave_room');
   }
 
-  sendInput(position, rotation, velocity) {
-    return this.send('player_input', { position, rotation, velocity });
+  sendInput(position, rotation, velocity, seq = 0) {
+    return this.send('player_input', { position, rotation, velocity, seq });
   }
 
   sendShoot(origin, dir) {
