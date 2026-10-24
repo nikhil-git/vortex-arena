@@ -380,6 +380,43 @@ class SoundEngine {
     this.cleanupNodes([osc, gain], 700);
   }
 
+  playCountdownBeep(isFinal = false) {
+    this.ensureContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    if (isFinal) {
+      // Energetic dual harmonic chime for "GO!"
+      const freqs = [880, 1320];
+      freqs.forEach((f, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, now + idx * 0.05);
+        gain.gain.setValueAtTime(0.6, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.35);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.35);
+        this.cleanupNodes([osc, gain], 500);
+      });
+    } else {
+      // Crisp tactical countdown blip (5, 4, 3, 2, 1)
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(750, now);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+      osc.start(now);
+      osc.stop(now + 0.12);
+      this.cleanupNodes([osc, gain], 200);
+    }
+  }
+
   createNoiseBuffer(duration = 0.2) {
     const bufferSize = this.ctx.sampleRate * duration;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);

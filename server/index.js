@@ -316,9 +316,9 @@ wss.on('connection', (ws, req) => {
 
         roomManager.playerToRoom.set(player.id, room.code);
 
-        // Populate bots and start single player match immediately
+        // Populate bots and start single player match with tactical 5-second countdown
         room.initBots(room.botCount, room.aiDifficulty);
-        room.startMatch();
+        room.startMatch({ countdown: 5 });
         return;
       }
 
@@ -374,8 +374,8 @@ wss.on('connection', (ws, req) => {
       if (action === 'start_match') {
         const roomCode = roomManager.playerToRoom.get(authenticatedUser.id);
         const room = roomManager.getRoom(roomCode);
-        if (room && room.hostUserId === authenticatedUser.id && room.state === 'lobby') {
-          room.startCountdown();
+        if (room && room.hostUserId === authenticatedUser.id && (room.state === 'lobby' || room.state === 'waiting')) {
+          room.startMatch({ countdown: 5 });
         }
         return;
       }

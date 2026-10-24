@@ -43,6 +43,7 @@ class Room {
     this.matchDuration = options.matchDuration || config.MATCH_DURATION_SECONDS;
     this.timeRemaining = this.matchDuration;
     this.countdownTime = 5; // 5-second match start countdown
+    this.countdownTimer = null;
 
     this.tickInterval = null;
     this.timerInterval = null;
@@ -134,8 +135,27 @@ class Room {
       room: this.serializeInfo(),
       localPlayerId: player.id,
       state: this.state,
+      countdownSeconds: this.state === 'countdown' ? Math.max(0, this.countdownTime) : 0,
       timeRemaining: this.timeRemaining
     });
+
+    // If joining a match in progress (or countdown), immediately dispatch match_started
+    if (this.state === 'active' || this.state === 'countdown') {
+      player.send('match_started', {
+        state: this.state,
+        countdownSeconds: this.state === 'countdown' ? Math.max(0, this.countdownTime) : 0,
+        timeRemaining: this.timeRemaining,
+        scoreLimit: this.scoreLimit,
+        gameMode: this.gameMode,
+        mapId: this.mapId,
+        map: MapData.getMap(this.mapId),
+        isAiMatch: this.isAiMatch,
+        aiDifficulty: this.aiDifficulty,
+        isPractice: this.isPractice,
+        botCount: this.botCount,
+        players: Array.from(this.players.values()).map(p => p.serialize())
+      });
+    }
 
     // Notify all players in room
     this.broadcast('player_joined', {
@@ -148,7 +168,7 @@ class Room {
 
     // Auto-start if min players reached in public match
     if (!this.isPrivate && this.state === 'lobby' && this.playerCount >= this.minPlayersToAutoStart) {
-      this.startCountdown();
+      this.startMatch({ countdown: 5 });
     }
 
     return { success: true, player };
@@ -277,27 +297,16 @@ class Room {
     return { success: true, mapId: this.mapId };
   }
 
-  startCountdown() {
-    if (this.state !== 'lobby') return;
-    this.state = 'countdown';
-    this.countdownTime = 5;
-
-    this.broadcast('match_countdown_started', { countdownSeconds: this.countdownTime });
-
-    const countdownTimer = setInterval(() => {
-      this.countdownTime--;
-      this.broadcast('match_countdown_tick', { countdownSeconds: this.countdownTime });
-
-      if (this.countdownTime <= 0) {
-        clearInterval(countdownTimer);
-        this.startMatch();
-      }
-    }, 1000);
+  startCountdown(seconds = 5) {
+    this.startMatch({ countdown: seconds });
   }
 
-  startMatch() {
-    this.state = 'active';
-    this.timeRemaining = this.matchDuration;
+  startMatch(options = {}) {
+    const countdownSecs = (typeof options === 'number')
+      ? options
+      : ((options && options.countdown !== undefined)
+          ? (options.countdown === true ? 5 : Number(options.countdown))
+          : 0);
 
     // Position all players at safe tactical spawn points ready for match combat
     for (const player of this.players.values()) {
@@ -306,43 +315,115 @@ class Room {
       friendsService.updateUserStatus(player.id, true, 'in_match', this.code);
     }
 
-    this.broadcast('match_started', {
+    // Start server tick loop (30 Hz) so player positions, rotations, and movement synchronize in real-time
+    if (!this.tickInterval) {
+      const tickMs = Math.round(1000 / config.TICK_RATE);
+      this.tickInterval = setInterval(() => this.tick(), tickMs);
+    }
+
+    if (countdownSecs > 0) {
+      this.state = 'countdown';
+      this.countdownTime = countdownSecs;
+
+      this.broadcast('match_started', {
+        state: 'countdown',
+        countdownSeconds: this.countdownTime,
+        timeRemaining: this.matchDuration,
+        scoreLimit: this.scoreLimit,
+        gameMode: this.gameMode,
+        mapId: this.mapId,
+        map: MapData.getMap(this.mapId),
+        isAiMatch: this.isAiMatch,
+        aiDifficulty: this.aiDifficulty,
+        isPractice: this.isPractice,
+        botCount: this.botCount,
+        players: Array.from(this.players.values()).map(p => p.serialize())
+      });
+
+      this.broadcast('match_countdown_started', {
+        countdownSeconds: this.countdownTime,
+        state: this.state
+      });
+
+      if (this.countdownTimer) {
+        clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+      }
+
+      this.countdownTimer = setInterval(() => {
+        this.countdownTime--;
+        this.broadcast('match_countdown_tick', {
+          countdownSeconds: this.countdownTime,
+          state: this.state
+        });
+
+        if (this.countdownTime <= 0) {
+          clearInterval(this.countdownTimer);
+          this.countdownTimer = null;
+          this.activateMatch();
+        }
+      }, 1000);
+    } else {
+      this.activateMatch(true);
+    }
+  }
+
+  activateMatch(broadcastStart = false) {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+
+    this.state = 'active';
+    this.countdownTime = 0;
+    this.timeRemaining = this.matchDuration;
+
+    if (broadcastStart) {
+      this.broadcast('match_started', {
+        state: 'active',
+        countdownSeconds: 0,
+        timeRemaining: this.timeRemaining,
+        scoreLimit: this.scoreLimit,
+        gameMode: this.gameMode,
+        mapId: this.mapId,
+        map: MapData.getMap(this.mapId),
+        isAiMatch: this.isAiMatch,
+        aiDifficulty: this.aiDifficulty,
+        isPractice: this.isPractice,
+        botCount: this.botCount,
+        players: Array.from(this.players.values()).map(p => p.serialize())
+      });
+    }
+
+    this.broadcast('match_active', {
       timeRemaining: this.timeRemaining,
-      scoreLimit: this.scoreLimit,
-      gameMode: this.gameMode,
-      mapId: this.mapId,
-      map: MapData.getMap(this.mapId),
-      isAiMatch: this.isAiMatch,
-      aiDifficulty: this.aiDifficulty,
-      isPractice: this.isPractice,
-      botCount: this.botCount,
-      players: Array.from(this.players.values()).map(p => p.serialize())
+      state: 'active'
     });
 
-    // Start server tick loop (30 Hz)
-    const tickMs = Math.round(1000 / config.TICK_RATE);
-    this.tickInterval = setInterval(() => this.tick(), tickMs);
-
     // Start match duration countdown timer
-    this.timerInterval = setInterval(() => {
-      this.timeRemaining--;
-      if (this.timeRemaining <= 0) {
-        this.endMatch('time_limit');
-      }
-    }, 1000);
+    if (!this.timerInterval) {
+      this.timerInterval = setInterval(() => {
+        this.timeRemaining--;
+        if (this.timeRemaining <= 0) {
+          this.endMatch('time_limit');
+        }
+      }, 1000);
+    }
   }
 
   tick() {
-    if (this.state !== 'active') return;
+    if (this.state !== 'active' && this.state !== 'countdown') return;
 
     const now = Date.now();
     const delta = Math.min(0.1, (now - this.lastTickTime) / 1000);
     this.lastTickTime = now;
 
-    // 1. Update Autonomous AI Bots
-    for (const player of this.players.values()) {
-      if (player.isBot && player.isAlive) {
-        player.update(delta, this);
+    // 1. Update Autonomous AI Bots ONLY when match is active (hold fire during countdown)
+    if (this.state === 'active') {
+      for (const player of this.players.values()) {
+        if (player.isBot && player.isAlive) {
+          player.update(delta, this);
+        }
       }
     }
 
@@ -350,7 +431,7 @@ class Room {
 
     // Process respawns and reload completions
     for (const player of this.players.values()) {
-      if (!player.isAlive && player.respawnAt > 0 && now >= player.respawnAt) {
+      if (this.state === 'active' && !player.isAlive && player.respawnAt > 0 && now >= player.respawnAt) {
         const respawnProtection = this.isPractice ? 0 : (config.RESPAWN_PROTECTION_SECONDS || 3.0);
         const spawn = this.getSafeSpawnPoint(player);
         player.respawn(spawn, respawnProtection);
@@ -402,17 +483,19 @@ class Room {
       });
     }
 
-    // Broadcast world state tick to all clients
+    // Broadcast world state tick to all clients (includes countdownSeconds and matchState)
     this.broadcast('state_tick', {
       timestamp: now,
       players: playerSnapshots,
-      timeRemaining: this.timeRemaining
+      timeRemaining: this.timeRemaining,
+      state: this.state,
+      countdownSeconds: this.state === 'countdown' ? Math.max(0, this.countdownTime) : 0
     });
   }
 
   handlePlayerInput(userId, input) {
     const player = this.players.get(userId);
-    if (!player || !player.isAlive || this.state !== 'active') return;
+    if (!player || !player.isAlive || (this.state !== 'active' && this.state !== 'countdown')) return;
 
     // Discard stale in-flight input packets sent right before respawn
     const timeSinceRespawn = Date.now() - (player.respawnTimestamp || 0);
@@ -824,6 +907,7 @@ class Room {
   }
 
   destroy() {
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
     if (this.tickInterval) clearInterval(this.tickInterval);
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.players.clear();

@@ -46,6 +46,12 @@ class App {
     this.recentMilestoneReward = null;
     this.currentScreen = 'auth';
 
+    // Match lifecycle & countdown state
+    this.matchState = 'lobby'; // 'lobby', 'initializing', 'countdown', 'active', 'finished'
+    this.countdownInterval = null;
+    this.countdownFadeTimer = null;
+    this.countdownSecondsRemaining = 0;
+
     this.init();
   }
 
@@ -127,6 +133,10 @@ class App {
       this.loadAchievements();
     } else if (screenId === 'friends') {
       this.loadFriendsRoster();
+    }
+
+    if (screenId !== 'gameplay') {
+      this.hideCountdownDisplay();
     }
   }
 
@@ -669,6 +679,12 @@ class App {
 
       // Wire callbacks
       this.gameEngine.onShootCallback = (origin, dir) => {
+        // Block shooting while in the countdown phase or initializing
+        if (this.matchState === 'countdown' || this.matchState === 'initializing') {
+          if (window.soundEngine) window.soundEngine.playClick(window.soundEngine.ctx ? window.soundEngine.ctx.currentTime : 0, 420, 0.03);
+          return;
+        }
+
         // Block shooting while in the middle of a reload animation
         if (this.gameEngine && this.gameEngine.weaponView && this.gameEngine.weaponView.isReloading) {
           return;
@@ -744,7 +760,18 @@ class App {
       this.triggerRespawnProtection(matchData.invulnerableSeconds || 3.0);
     }
 
-    if (window.soundEngine) window.soundEngine.playMatchStart();
+    // Check match start countdown (5 -> 4 -> 3 -> 2 -> 1 -> GO!)
+    const countdownSecs = (matchData && matchData.countdownSeconds !== undefined)
+      ? matchData.countdownSeconds
+      : ((matchData && matchData.state === 'countdown') ? 5 : 0);
+
+    if (countdownSecs > 0) {
+      this.startCountdownDisplay(countdownSecs);
+    } else {
+      this.matchState = 'active';
+      this.hideCountdownDisplay();
+      if (window.soundEngine) window.soundEngine.playMatchStart();
+    }
   }
 
   switchActiveWeapon(weaponId) {
@@ -820,6 +847,137 @@ class App {
         this.showToast('⚔️ Shield Expired — Combat Engaged!');
       }
     }, 100);
+  }
+
+  startCountdownDisplay(seconds = 5) {
+    this.matchState = 'countdown';
+    this.countdownSecondsRemaining = Math.max(1, Math.round(seconds));
+
+    const overlay = document.getElementById('match-countdown-overlay');
+    const badgeText = document.getElementById('match-countdown-badge-text');
+    const subtitle = document.getElementById('match-countdown-subtitle');
+    const numEl = document.getElementById('match-countdown-number');
+    const card = overlay ? overlay.querySelector('.match-countdown-card') : null;
+
+    if (!overlay || !numEl) return;
+
+    if (card) card.classList.remove('active-go');
+    overlay.classList.remove('fade-out');
+    overlay.style.display = 'flex';
+
+    if (badgeText) badgeText.textContent = 'TACTICAL DEPLOYMENT';
+    if (subtitle) subtitle.textContent = 'GET READY!';
+
+    numEl.textContent = String(this.countdownSecondsRemaining);
+    numEl.className = 'match-countdown-number pop';
+
+    if (window.soundEngine) {
+      window.soundEngine.playCountdownBeep(false);
+    }
+
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
+    this.countdownInterval = setInterval(() => {
+      if (this.matchState !== 'countdown') {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+        return;
+      }
+
+      this.countdownSecondsRemaining--;
+      if (this.countdownSecondsRemaining > 0) {
+        numEl.textContent = String(this.countdownSecondsRemaining);
+        numEl.classList.remove('pop');
+        void numEl.offsetWidth; // Force CSS DOM reflow to trigger pop animation
+        numEl.classList.add('pop');
+        if (window.soundEngine) window.soundEngine.playCountdownBeep(false);
+      } else {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+        this.triggerGoDisplay();
+      }
+    }, 1000);
+  }
+
+  syncCountdownTick(seconds) {
+    if (this.matchState !== 'countdown') return;
+    const numEl = document.getElementById('match-countdown-number');
+    const rounded = Math.round(seconds);
+    if (rounded <= 0) {
+      this.triggerGoDisplay();
+      return;
+    }
+
+    if (this.countdownSecondsRemaining !== rounded) {
+      this.countdownSecondsRemaining = rounded;
+      if (numEl) {
+        numEl.textContent = String(rounded);
+        numEl.classList.remove('pop');
+        void numEl.offsetWidth;
+        numEl.classList.add('pop');
+      }
+      if (window.soundEngine) window.soundEngine.playCountdownBeep(false);
+    }
+  }
+
+  triggerGoDisplay() {
+    if (this.matchState === 'active') return;
+    this.matchState = 'active';
+
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
+    const overlay = document.getElementById('match-countdown-overlay');
+    const badgeText = document.getElementById('match-countdown-badge-text');
+    const subtitle = document.getElementById('match-countdown-subtitle');
+    const numEl = document.getElementById('match-countdown-number');
+    const card = overlay ? overlay.querySelector('.match-countdown-card') : null;
+
+    if (!overlay || !numEl) return;
+
+    if (card) card.classList.add('active-go');
+    if (badgeText) badgeText.textContent = 'COMBAT ACTIVE';
+    if (subtitle) subtitle.textContent = 'ALL WEAPONS FREE';
+
+    numEl.textContent = 'GO!';
+    numEl.className = 'match-countdown-number go pop';
+
+    if (window.soundEngine) {
+      window.soundEngine.playCountdownBeep(true);
+    }
+
+    // Smoothly fade out the countdown overlay after 1.2s
+    if (this.countdownFadeTimer) clearTimeout(this.countdownFadeTimer);
+    this.countdownFadeTimer = setTimeout(() => {
+      overlay.classList.add('fade-out');
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('fade-out');
+        if (numEl) numEl.classList.remove('go', 'pop');
+        if (card) card.classList.remove('active-go');
+      }, 400);
+    }, 1200);
+  }
+
+  hideCountdownDisplay() {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+    if (this.countdownFadeTimer) {
+      clearTimeout(this.countdownFadeTimer);
+      this.countdownFadeTimer = null;
+    }
+    const overlay = document.getElementById('match-countdown-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.classList.remove('fade-out');
+    }
   }
 
   updateHUDAmmo() {
@@ -932,6 +1090,21 @@ class App {
       const statusEl = document.getElementById('lobby-status-msg');
       if (statusEl) statusEl.textContent = `Match starting in ${data.countdownSeconds}s!`;
       this.showToast(`Match starting in ${data.countdownSeconds}s!`);
+      if (this.matchState === 'countdown') {
+        this.syncCountdownTick(data.countdownSeconds);
+      }
+    });
+
+    net.on('match_countdown_tick', (data) => {
+      const statusEl = document.getElementById('lobby-status-msg');
+      if (statusEl) statusEl.textContent = `Match starting in ${data.countdownSeconds}s!`;
+      if (this.matchState === 'countdown') {
+        this.syncCountdownTick(data.countdownSeconds);
+      }
+    });
+
+    net.on('match_active', (data) => {
+      this.triggerGoDisplay();
     });
 
     net.on('match_started', (data) => {
@@ -942,6 +1115,17 @@ class App {
       this.lastPlayersSnapshot = data.players;
       if (this.gameEngine) {
         this.gameEngine.syncRemotePlayers(data.players);
+      }
+
+      // Synchronize match countdown state for late joiners or live sync
+      if (data.state === 'countdown' && data.countdownSeconds !== undefined) {
+        if (this.matchState !== 'countdown' && this.currentScreen === 'gameplay') {
+          this.startCountdownDisplay(data.countdownSeconds);
+        } else if (this.matchState === 'countdown') {
+          this.syncCountdownTick(data.countdownSeconds);
+        }
+      } else if (data.state === 'active' && this.matchState === 'countdown') {
+        this.triggerGoDisplay();
       }
 
       // Update match timer display
@@ -1210,6 +1394,8 @@ class App {
   }
 
   handleMatchEnded(data) {
+    this.matchState = 'finished';
+    this.hideCountdownDisplay();
     this.navigateTo('results');
 
     const titleEl = document.getElementById('results-title');
