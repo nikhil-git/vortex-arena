@@ -192,6 +192,7 @@ class Player {
     this.health = this.maxHealth;
     this.shield = this.maxShield;
     this.isAlive = true;
+    this.respawnTimestamp = Date.now();
     this.invulnerableUntil = Date.now() + Math.max(0, protectionSeconds * 1000);
     this.position = {
       x: spawnPoint.x,

@@ -206,7 +206,9 @@ export class PlayerModel {
       if (this.deathProgress < 1.0) {
         this.deathProgress += delta * 2.5;
         this.group.rotation.x = Math.min(Math.PI / 2, this.deathProgress * (Math.PI / 2));
-        this.group.position.y = Math.max(0.15, 1.0 - this.deathProgress * 0.85);
+        this.group.position.y = Math.max(0.18, 1.0 - this.deathProgress * 0.82);
+      } else {
+        this.group.position.y = 0.18;
       }
       return;
     }
@@ -236,13 +238,19 @@ export class PlayerModel {
   setInvulnerable(isInv) {
     this.isInvulnerable = Boolean(isInv);
     if (this.shieldMesh) {
-      this.shieldMesh.visible = this.isInvulnerable;
+      this.shieldMesh.visible = this.isInvulnerable && this.isAlive;
     }
   }
 
   setDead() {
     this.isAlive = false;
     this.deathProgress = 0;
+    if (this.nameplateSprite) {
+      this.nameplateSprite.visible = false;
+    }
+    if (this.shieldMesh) {
+      this.shieldMesh.visible = false;
+    }
   }
 
   setAlive() {
@@ -250,5 +258,8 @@ export class PlayerModel {
     this.deathProgress = 0;
     this.group.rotation.x = 0;
     this.group.position.y = 0;
+    if (this.nameplateSprite) {
+      this.nameplateSprite.visible = true;
+    }
   }
 }

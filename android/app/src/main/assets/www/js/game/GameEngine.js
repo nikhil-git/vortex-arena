@@ -46,6 +46,7 @@ export class GameEngine {
 
     this.remotePlayers = new Map(); // userId -> { model, targetPos, targetRot, lastSeen }
     this.localPlayerId = null;
+    this.isDead = false;
 
     // Performance tracking
     this.lastFrameTime = performance.now();
@@ -314,6 +315,13 @@ export class GameEngine {
 
   setLocalPlayer(id, equippedSkins = {}) {
     this.localPlayerId = id;
+    // Guarantee local player never has an orphan 3D model in remotePlayers
+    for (const [pid, entry] of this.remotePlayers.entries()) {
+      if (String(pid) === String(id)) {
+        this.scene.remove(entry.model.group);
+        this.remotePlayers.delete(pid);
+      }
+    }
     if (equippedSkins.weaponSkin) {
       this.weaponView.setSkin(equippedSkins.weaponSkin);
     }
@@ -336,7 +344,12 @@ export class GameEngine {
       activeIds.add(pid);
 
       if (String(pid) === String(this.localPlayerId)) {
-        // Local player stats update handled by HUD
+        // If an orphan model exists for local player, remove it immediately
+        if (this.remotePlayers.has(pid)) {
+          const orphan = this.remotePlayers.get(pid);
+          this.scene.remove(orphan.model.group);
+          this.remotePlayers.delete(pid);
+        }
         continue;
       }
 
@@ -462,7 +475,14 @@ export class GameEngine {
 
     // 5. Interpolate Remote Players
     for (const entry of this.remotePlayers.values()) {
-      entry.model.group.position.lerp(entry.targetPos, delta * 15);
+      if (entry.model.isAlive) {
+        entry.model.group.position.lerp(entry.targetPos, delta * 15);
+      } else {
+        // When eliminated, interpolate X and Z to death coordinates and maintain stable elevation
+        entry.model.group.position.x = THREE.MathUtils.lerp(entry.model.group.position.x, entry.targetPos.x, delta * 15);
+        entry.model.group.position.z = THREE.MathUtils.lerp(entry.model.group.position.z, entry.targetPos.z, delta * 15);
+        entry.model.group.position.y = 0.18;
+      }
       entry.model.group.rotation.y = THREE.MathUtils.lerp(entry.model.group.rotation.y, entry.targetRotY, delta * 15);
       if (entry.model.headGroup) {
         entry.model.headGroup.rotation.x = THREE.MathUtils.lerp(entry.model.headGroup.rotation.x, entry.targetRotX, delta * 15);
@@ -470,8 +490,8 @@ export class GameEngine {
       entry.model.update(delta, entry.model.group.position.distanceTo(entry.targetPos) > 0.05, 1.0);
     }
 
-    // 6. Network sync player input to server at 30Hz (sync ground/foot position)
-    if (now - this.lastNetSync >= 33 && window.netClient && window.netClient.isConnected) {
+    // 6. Network sync player input to server at 30Hz (only while alive to avoid stale post-mortem packets)
+    if (!this.isDead && now - this.lastNetSync >= 33 && window.netClient && window.netClient.isConnected) {
       this.lastNetSync = now;
       const footY = Math.max(0, this.camera.position.y - 1.7);
       window.netClient.sendInput(

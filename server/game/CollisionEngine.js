@@ -178,7 +178,7 @@ class CollisionEngine {
   static depenetrate(x, y, z, radius = 0.4, height = 1.85, obstacles = ARENA_OBSTACLES, bounds = null) {
     let resX = x;
     let resZ = z;
-    const eps = 0.02;
+    const eps = 0.002;
 
     for (let iter = 0; iter < 4; iter++) {
       let pushed = false;

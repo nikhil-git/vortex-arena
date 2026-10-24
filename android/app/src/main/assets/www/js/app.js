@@ -955,7 +955,7 @@ class App {
 
       // Update local HUD kills & deaths display live
       if (data.players && this.currentUser) {
-        const localSnap = data.players.find(p => p.id === this.currentUser.id);
+        const localSnap = data.players.find(p => String(p.id) === String(this.currentUser.id));
         if (localSnap) {
           const kEl = document.getElementById('hud-kills-count');
           const dEl = document.getElementById('hud-deaths-count');
@@ -964,14 +964,11 @@ class App {
 
           // Server authoritative position reconciliation if client drifts or desyncs
           const snapPos = localSnap.pos ? { x: localSnap.pos[0], y: localSnap.pos[1], z: localSnap.pos[2] } : localSnap.position;
-          if (snapPos && this.gameEngine && this.gameEngine.input && localSnap.alive) {
+          if (snapPos && this.gameEngine && this.gameEngine.input && localSnap.alive && !this.gameEngine.isDead) {
             const inputPos = this.gameEngine.input.position;
             const distSq = (inputPos.x - snapPos.x) ** 2 + (inputPos.z - snapPos.z) ** 2;
             if (distSq > 9.0) { // Drift > 3.0m
-              inputPos.x = snapPos.x;
-              inputPos.y = (snapPos.y || 0) + 1.7; // Ensure eye height
-              inputPos.z = snapPos.z;
-              this.gameEngine.camera.position.copy(inputPos);
+              this.gameEngine.input.setPosition(snapPos.x, (snapPos.y || 0) + 1.7, snapPos.z);
             }
           }
 
@@ -1034,8 +1031,17 @@ class App {
     net.on('player_eliminated', (data) => {
       this.addKillfeedItem(data.killerUsername, data.victimUsername, data.weaponName, data.isHeadshot);
 
-      if (data.victimId === this.currentUser.id) {
-        // Local player died: show respawn modal countdown
+      if (String(data.victimId) === String(this.currentUser.id)) {
+        // Local player died: suspend network inputs and show respawn modal countdown
+        if (this.gameEngine) {
+          this.gameEngine.isDead = true;
+        }
+
+        if (this.respawnModalInterval) {
+          clearInterval(this.respawnModalInterval);
+          this.respawnModalInterval = null;
+        }
+
         const modal = document.getElementById('respawn-modal');
         const countEl = document.getElementById('respawn-countdown-timer');
         const killerEl = document.getElementById('respawn-killer-text');
@@ -1045,11 +1051,12 @@ class App {
         let remaining = data.respawnCountdown || 3;
         if (countEl) countEl.textContent = remaining;
 
-        const interval = setInterval(() => {
+        this.respawnModalInterval = setInterval(() => {
           remaining--;
           if (countEl) countEl.textContent = remaining;
           if (remaining <= 0) {
-            clearInterval(interval);
+            clearInterval(this.respawnModalInterval);
+            this.respawnModalInterval = null;
             if (modal) modal.classList.remove('active');
           }
         }, 1000);
@@ -1057,7 +1064,16 @@ class App {
     });
 
     net.on('player_respawned', (data) => {
-      if (data.userId === this.currentUser.id) {
+      if (String(data.userId) === String(this.currentUser.id)) {
+        if (this.gameEngine) {
+          this.gameEngine.isDead = false;
+        }
+
+        if (this.respawnModalInterval) {
+          clearInterval(this.respawnModalInterval);
+          this.respawnModalInterval = null;
+        }
+
         this.updateHUDVitals(data.health, data.shield);
 
         // Immediately close respawn modal if still open

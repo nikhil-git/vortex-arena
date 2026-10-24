@@ -414,6 +414,15 @@ class Room {
     const player = this.players.get(userId);
     if (!player || !player.isAlive || this.state !== 'active') return;
 
+    // Discard stale in-flight input packets sent right before respawn
+    const timeSinceRespawn = Date.now() - (player.respawnTimestamp || 0);
+    if (timeSinceRespawn < 400 && input.position) {
+      const distFromSpawn = Math.hypot(input.position.x - player.position.x, input.position.z - player.position.z);
+      if (distFromSpawn > 3.0) {
+        return; // Drop stale pre-death position packet
+      }
+    }
+
     // Update position with authoritative wall collision & boundary resolution
     if (input.position) {
       const curX = typeof player.position.x === 'number' ? player.position.x : 0;
