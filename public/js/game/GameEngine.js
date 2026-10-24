@@ -24,7 +24,7 @@ export class GameEngine {
     this.scene.background = new THREE.Color(0x8ab4f8); // Bright sky blue
     this.scene.fog = new THREE.Fog(0x8ab4f8, 65, 250); // Soft distant atmospheric haze
 
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.15, 260);
     this.scene.add(this.camera); // Crucial: enables first-person weapon viewmodel rendering
 
     this.renderer = new THREE.WebGLRenderer({
@@ -109,6 +109,8 @@ export class GameEngine {
     this.sunLight.shadow.camera.right = 50;
     this.sunLight.shadow.camera.top = 50;
     this.sunLight.shadow.camera.bottom = -50;
+    this.sunLight.shadow.bias = -0.0005;
+    this.sunLight.shadow.normalBias = 0.04;
     this.scene.add(this.sunLight);
 
     // 4. Fill Light from opposite quadrant (removes pitch-black shadows)
@@ -333,7 +335,7 @@ export class GameEngine {
       const pid = snap.id;
       activeIds.add(pid);
 
-      if (pid === this.localPlayerId) {
+      if (String(pid) === String(this.localPlayerId)) {
         // Local player stats update handled by HUD
         continue;
       }

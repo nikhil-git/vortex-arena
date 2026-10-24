@@ -105,9 +105,27 @@ export class MapBuilder {
   static buildHouseMap(root) {
     // Shared Materials
     const grassMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.8 });
-    const woodFloorMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.5 });
-    const tileFloorMat = new THREE.MeshStandardMaterial({ color: 0xb0bec5, roughness: 0.3 });
-    const drivewayMat = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.7 });
+    const woodFloorMat = new THREE.MeshStandardMaterial({
+      color: 0x8d6e63,
+      roughness: 0.5,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
+    });
+    const tileFloorMat = new THREE.MeshStandardMaterial({
+      color: 0xb0bec5,
+      roughness: 0.3,
+      polygonOffset: true,
+      polygonOffsetFactor: -2.0,
+      polygonOffsetUnits: -4.0
+    });
+    const drivewayMat = new THREE.MeshStandardMaterial({
+      color: 0x78909c,
+      roughness: 0.7,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
+    });
     const extWallMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.6 });
     const intWallMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.5 });
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.7 });
@@ -129,34 +147,34 @@ export class MapBuilder {
     // Front Driveway & concrete walkway
     const driveway = new THREE.Mesh(new THREE.PlaneGeometry(12, 16), drivewayMat);
     driveway.rotation.x = -Math.PI / 2;
-    driveway.position.set(-20, 0.02, 20);
+    driveway.position.set(-20, 0.03, 20);
     driveway.receiveShadow = true;
     root.add(driveway);
 
     const path = new THREE.Mesh(new THREE.PlaneGeometry(4, 14), drivewayMat);
     path.rotation.x = -Math.PI / 2;
-    path.position.set(0, 0.02, 21);
+    path.position.set(0, 0.035, 21);
     path.receiveShadow = true;
     root.add(path);
 
     // Backyard stone patio
     const patio = new THREE.Mesh(new THREE.PlaneGeometry(28, 12), drivewayMat);
     patio.rotation.x = -Math.PI / 2;
-    patio.position.set(0, 0.02, -19);
+    patio.position.set(0, 0.03, -19);
     patio.receiveShadow = true;
     root.add(patio);
 
     // Interior House Hardwood & Kitchen Floor (28m x 26m, z=[-13, 13], x=[-14, 14])
     const woodFloor = new THREE.Mesh(new THREE.PlaneGeometry(28, 26), woodFloorMat);
     woodFloor.rotation.x = -Math.PI / 2;
-    woodFloor.position.set(0, 0.03, 0.5);
+    woodFloor.position.set(0, 0.04, 0.5);
     woodFloor.receiveShadow = true;
     root.add(woodFloor);
 
     // Kitchen tile zone
     const kitchenTile = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 12), tileFloorMat);
     kitchenTile.rotation.x = -Math.PI / 2;
-    kitchenTile.position.set(-6.75, 0.04, 6.5);
+    kitchenTile.position.set(-6.75, 0.05, 6.5);
     kitchenTile.receiveShadow = true;
     root.add(kitchenTile);
 
@@ -255,8 +273,27 @@ export class MapBuilder {
     const barnRedMat = new THREE.MeshStandardMaterial({ color: 0xb71c1c, roughness: 0.65 });
     const barnTrimMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.7 });
-    const wheatMat = new THREE.MeshStandardMaterial({ color: 0xe0b94d, roughness: 0.8 });
-    const cropGreenMat = new THREE.MeshStandardMaterial({ color: 0x558b2f, roughness: 0.85 });
+    const wheatMat = new THREE.MeshStandardMaterial({
+      color: 0xe0b94d,
+      roughness: 0.8,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
+    });
+    const cropGreenMat = new THREE.MeshStandardMaterial({
+      color: 0x558b2f,
+      roughness: 0.85,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
+    });
+    const dirtRoadMat = new THREE.MeshStandardMaterial({
+      color: 0xa1887f,
+      roughness: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.5,
+      polygonOffsetUnits: -3.0
+    });
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.8 });
     const hayMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.9 });
     const metalSiloMat = new THREE.MeshStandardMaterial({ color: 0x90a4ae, metalness: 0.7, roughness: 0.3 });
@@ -273,20 +310,20 @@ export class MapBuilder {
     // Wheat Field & Green Crop Patches
     const wheatField = new THREE.Mesh(new THREE.PlaneGeometry(28, 26), wheatMat);
     wheatField.rotation.x = -Math.PI / 2;
-    wheatField.position.set(22, 0.02, -22);
+    wheatField.position.set(22, 0.03, -22);
     wheatField.receiveShadow = true;
     root.add(wheatField);
 
     const cornField = new THREE.Mesh(new THREE.PlaneGeometry(28, 24), cropGreenMat);
     cornField.rotation.x = -Math.PI / 2;
-    cornField.position.set(22, 0.02, 22);
+    cornField.position.set(22, 0.03, 22);
     cornField.receiveShadow = true;
     root.add(cornField);
 
     // Dirt central tractor road
-    const dirtRoad = new THREE.Mesh(new THREE.PlaneGeometry(10, 78), new THREE.MeshStandardMaterial({ color: 0xa1887f, roughness: 0.95 }));
+    const dirtRoad = new THREE.Mesh(new THREE.PlaneGeometry(10, 78), dirtRoadMat);
     dirtRoad.rotation.x = -Math.PI / 2;
-    dirtRoad.position.set(0, 0.015, 0);
+    dirtRoad.position.set(0, 0.04, 0);
     dirtRoad.receiveShadow = true;
     root.add(dirtRoad);
 
@@ -377,7 +414,13 @@ export class MapBuilder {
   // =========================================================================
   static buildForestMap(root) {
     const forestFloorMat = new THREE.MeshStandardMaterial({ color: 0x2e4726, roughness: 0.9 });
-    const dirtTrailMat = new THREE.MeshStandardMaterial({ color: 0x6d573d, roughness: 0.95 });
+    const dirtTrailMat = new THREE.MeshStandardMaterial({
+      color: 0x6d573d,
+      roughness: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: -2.0,
+      polygonOffsetUnits: -4.0
+    });
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4e342e, roughness: 0.9 });
     const pineMat1 = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.8 });
     const pineMat2 = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.85 });
@@ -397,13 +440,13 @@ export class MapBuilder {
     // Cross-crossing natural dirt hiking trails
     const trailEW = new THREE.Mesh(new THREE.PlaneGeometry(76, 5), dirtTrailMat);
     trailEW.rotation.x = -Math.PI / 2;
-    trailEW.position.set(0, 0.015, 0);
+    trailEW.position.set(0, 0.03, 0);
     trailEW.receiveShadow = true;
     root.add(trailEW);
 
     const trailNS = new THREE.Mesh(new THREE.PlaneGeometry(5, 76), dirtTrailMat);
     trailNS.rotation.x = -Math.PI / 2;
-    trailNS.position.set(0, 0.018, 0);
+    trailNS.position.set(0, 0.045, 0);
     trailNS.receiveShadow = true;
     root.add(trailNS);
 
@@ -497,7 +540,11 @@ export class MapBuilder {
       roughness: 0.1,
       metalness: 0.1,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.85,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
     });
     const bedrockMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
 
@@ -593,14 +640,24 @@ export class MapBuilder {
     });
     const hullWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4 });
     const hullBlueMat = new THREE.MeshStandardMaterial({ color: 0x0d47a1, roughness: 0.5 });
-    const deckWoodMat = new THREE.MeshStandardMaterial({ color: 0xa1887f, roughness: 0.6 });
+    const deckWoodMat = new THREE.MeshStandardMaterial({
+      color: 0xa1887f,
+      roughness: 0.6,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
+    });
     const poolTileMat = new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.2 });
     const poolWaterMat = new THREE.MeshStandardMaterial({
       color: 0x4dd0e1,
       roughness: 0.05,
       metalness: 0.2,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.8,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -2.0
     });
     const funnelRedMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.4 });
     const railingSteelMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, metalness: 0.85, roughness: 0.2 });
@@ -623,7 +680,7 @@ export class MapBuilder {
     // Main Sun Deck (Teak wood flooring)
     const sunDeck = new THREE.Mesh(new THREE.PlaneGeometry(36, 76), deckWoodMat);
     sunDeck.rotation.x = -Math.PI / 2;
-    sunDeck.position.set(0, 0.02, 0);
+    sunDeck.position.set(0, 0.03, 0);
     sunDeck.receiveShadow = true;
     root.add(sunDeck);
 
@@ -702,7 +759,7 @@ export class MapBuilder {
 
     // Grid Overlay
     const grid = new THREE.GridHelper(80, 40, 0x00ffff, 0x8298b3);
-    grid.position.y = 0.01;
+    grid.position.y = 0.02;
     root.add(grid);
 
     // 2. Perimeter Walls (8m tall)

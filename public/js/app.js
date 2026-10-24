@@ -44,6 +44,7 @@ class App {
     this.lastMatchConfig = null;
     this.currentMatchInfo = null;
     this.recentMilestoneReward = null;
+    this.currentScreen = 'auth';
 
     this.init();
   }
@@ -661,6 +662,9 @@ class App {
 
     if (!this.gameEngine) {
       const container = document.getElementById('game-viewport');
+      if (container) {
+        container.innerHTML = '';
+      }
       this.gameEngine = new GameEngine(container);
 
       // Wire callbacks
@@ -1322,6 +1326,7 @@ class App {
 
     const animateTurntable = () => {
       requestAnimationFrame(animateTurntable);
+      if (this.currentScreen !== 'skins') return;
       if (this.turntableModel && !isDragging) {
         this.turntableModel.group.rotation.y += 0.008; // Auto rotate
       }

@@ -389,6 +389,7 @@ export class InputController {
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.y = this.yaw;
     this.camera.rotation.x = this.pitch;
+    this.camera.rotation.z = 0;
   }
 
   setBounds(bounds) {
@@ -424,7 +425,7 @@ export class InputController {
   depenetrate(x, y, z, radius = 0.4, height = 1.85) {
     let resX = x;
     let resZ = z;
-    const eps = 0.02;
+    const eps = 0.002;
 
     for (let iter = 0; iter < 4; iter++) {
       let pushed = false;

@@ -139,7 +139,8 @@ export class PlayerModel {
       color: 0x00f0ff,
       transparent: true,
       opacity: 0.35,
-      wireframe: true
+      wireframe: true,
+      depthWrite: false
     });
     this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
     this.shieldMesh.position.set(0, 0.9, 0); // Enclose torso and head
