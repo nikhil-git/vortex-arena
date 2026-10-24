@@ -60,6 +60,13 @@ if [ ! -f "$KEYSTORE" ]; then
     "$JAVA_HOME/bin/keytool" -genkey -v -keystore "$KEYSTORE" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 fi
 
+echo "=== [1.5/6] Synchronizing Latest Web Game Assets to Android Bundle ==="
+mkdir -p "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three"
+cp -r "$PROJECT_DIR/public/"* "$PROJECT_DIR/android/app/src/main/assets/www/"
+if [ -f "$PROJECT_DIR/node_modules/three/build/three.module.js" ]; then
+    cp "$PROJECT_DIR/node_modules/three/build/three.module.js" "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three/three.module.js"
+fi
+
 echo "=== [2/6] Compiling Android XML Resources ==="
 "$AAPT2" compile --dir "$PROJECT_DIR/android/app/src/main/res" -o "$BUILD_DIR/compiled_res/res.zip"
 
@@ -108,10 +115,14 @@ echo "=== [6/6] Zipaligning & Signing Final APK ==="
 echo "=== Verifying APK Signature ==="
 "$APKSIGNER" verify -v "$OUTPUT_APK"
 
+# Copy to public/ directory for direct static serving
+cp "$OUTPUT_APK" "$PROJECT_DIR/public/VortexArena.apk"
+
 rm -rf "$BUILD_DIR"
 
 echo "=========================================================="
 echo " SUCCESS! Vortex Arena Mobile APK Built:"
-echo " $OUTPUT_APK"
-ls -lh "$OUTPUT_APK"
+echo " Root:   $OUTPUT_APK"
+echo " Public: $PROJECT_DIR/public/VortexArena.apk"
+ls -lh "$OUTPUT_APK" "$PROJECT_DIR/public/VortexArena.apk"
 echo "=========================================================="

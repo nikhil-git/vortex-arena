@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
     private static final String TAG = "VortexArena";
     private static final String PREFS_NAME = "VortexPrefs";
     private static final String PREF_SERVER_URL = "server_url";
-    private static final String DEFAULT_SERVER_URL = "http://192.168.1.3:3000";
+    private static final String DEFAULT_SERVER_URL = "https://vortex-arena-1nmx.onrender.com";
 
     private WebView mWebView;
     private FrameLayout mRootLayout;
@@ -262,7 +262,7 @@ public class MainActivity extends Activity {
         builder.setTitle("Configure Match Server");
 
         final EditText input = new EditText(this);
-        input.setHint("http://192.168.1.3:3000");
+        input.setHint("https://vortex-arena-1nmx.onrender.com");
         input.setText(mCurrentServerUrl);
         input.setSingleLine();
         input.setPadding(32, 24, 32, 24);
