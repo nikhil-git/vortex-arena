@@ -53,8 +53,12 @@
       "operatingSystem": "Web Browser, Windows, macOS, Linux, ChromeOS, Android, iOS",
       "inLanguage": "en-US",
       "author": {
-        "@type": "Organization",
-        "name": "Vortex Arena"
+        "@type": "Person",
+        "name": "Avyan Arora"
+      },
+      "creator": {
+        "@type": "Person",
+        "name": "Avyan Arora"
       },
       "offers": {
         "@type": "Offer",
@@ -82,6 +86,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Yes, Vortex Arena is 100% free to play directly in your web browser with no download, subscription, or pay-to-win mechanics required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who created Vortex Arena?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Vortex Arena was created by Avyan Arora, an indie game developer inspired by tactical shooters like Counter-Strike. He developed the game to bring fast-paced multiplayer shooting, intelligent AI opponents, and multiple 3D maps directly to web browsers and mobile devices."
           }
         },
         {
@@ -273,11 +285,106 @@
 
       <!-- SECTION 1: ABOUT VORTEX ARENA -->
       <section class="landing-section" id="about">
-        <div class="section-tag">About The Game</div>
+        <div class="section-tag">About Vortex Arena</div>
         <h2>Battle Opponents and Explore 3D Arenas Directly in Your Browser</h2>
         <p class="section-lead">
           Vortex Arena is a high-octane 3D multiplayer shooter engineered from the ground up for the modern web. Built using Three.js WebGL and low-latency authoritative WebSockets, the game brings full-featured first-person and third-person gun shooting mechanics directly to your browser tab with zero plugins, extensions, or downloads required.
         </p>
+
+        <!-- CREATOR SHOWCASE & PLAY YOUR WAY -->
+        <div class="creator-showcase-box">
+          <div class="creator-profile-header">
+            <div class="creator-avatar-wrap">
+              <div class="creator-avatar-badge">AA</div>
+              <div class="creator-meta">
+                <span class="creator-tag-pill">Developer Spotlight</span>
+                <h3 class="creator-heading">Meet the Creator – Avyan Arora</h3>
+                <span class="creator-role">Creator &amp; Lead Developer of Vortex Arena</span>
+              </div>
+            </div>
+            <div class="creator-inspiration-badge">
+              <span class="badge-icon">🎯</span>
+              <span>Inspired by Tactical Shooters like Counter-Strike</span>
+            </div>
+          </div>
+
+          <div class="creator-bio">
+            <p>
+              Meet <strong>Avyan Arora</strong>, the creator of Vortex Arena, an exciting multiplayer shooting game built for players who love fast-paced action!
+            </p>
+            <p>
+              Inspired by tactical shooters like <em>Counter-Strike</em>, Vortex Arena brings action-packed battles, multiple maps to explore, and the option to challenge AI opponents. Whether you want to test your skills against other players or practice against AI, there is always a new battle waiting for you.
+            </p>
+          </div>
+
+          <!-- PLAY YOUR WAY FEATURE GRID -->
+          <div class="play-your-way-section">
+            <div class="play-your-way-header">
+              <h3 class="play-your-way-title">⚡ Play Your Way</h3>
+              <p class="play-your-way-sub">Jump into the action however you prefer — across devices, maps, and competitive styles.</p>
+            </div>
+            
+            <div class="play-your-way-grid">
+              <div class="play-feature-card">
+                <div class="play-feature-icon">💻</div>
+                <div class="play-feature-content">
+                  <h4 class="play-feature-title">Play in your browser</h4>
+                  <p class="play-feature-desc">Jump into the action on your laptop or mobile browser with zero installation or setup.</p>
+                </div>
+              </div>
+
+              <div class="play-feature-card">
+                <div class="play-feature-icon">🗺️</div>
+                <div class="play-feature-content">
+                  <h4 class="play-feature-title">Multiple maps</h4>
+                  <p class="play-feature-desc">Explore different battle environments including Sector-7, House, Farm, Forest, BlockCraft, and Cruise Ship.</p>
+                </div>
+              </div>
+
+              <div class="play-feature-card">
+                <div class="play-feature-icon">🤖</div>
+                <div class="play-feature-content">
+                  <h4 class="play-feature-title">Battle AI opponents</h4>
+                  <p class="play-feature-desc">Play solo or sharpen your skills against intelligent bots across four adaptable difficulty tiers.</p>
+                </div>
+              </div>
+
+              <div class="play-feature-card">
+                <div class="play-feature-icon">🌐</div>
+                <div class="play-feature-content">
+                  <h4 class="play-feature-title">Fast-paced multiplayer</h4>
+                  <p class="play-feature-desc">Compete with friends and players worldwide in real-time, low-latency 12-player battles.</p>
+                </div>
+              </div>
+
+              <div class="play-feature-card play-feature-card-highlight">
+                <div class="play-feature-icon">📱</div>
+                <div class="play-feature-content">
+                  <h4 class="play-feature-title">Native Android APK</h4>
+                  <p class="play-feature-desc">Download our dedicated Android APK for smooth, fullscreen mobile gameplay anytime, anywhere.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PROMINENT CTA -->
+          <div class="creator-cta-banner">
+            <div class="creator-cta-text">
+              <strong>Ready to enter the arena?</strong> Jump straight into tactical combat now.
+            </div>
+            <div class="creator-cta-actions">
+              <button type="button" class="btn btn-primary btn-glow" style="padding: 12px 24px; font-size: 14px;" onclick="app.playAsGuest('online')">
+                🎮 Play Now (Instant Guest)
+              </button>
+              <button type="button" class="btn" style="padding: 12px 18px; font-size: 14px; background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); color: #fff;" onclick="app.scrollToAuth('login')">
+                Sign In
+              </button>
+              <a href="/download" class="btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; font-size: 14px; text-decoration: none; border-color: rgba(0, 240, 255, 0.4); color: var(--cyan-glow); background: rgba(0, 240, 255, 0.08);">
+                <span>🤖</span> Android App
+              </a>
+            </div>
+          </div>
+        </div>
 
         <div class="landing-grid-3">
           <div class="landing-card">
@@ -581,6 +688,13 @@
           </div>
 
           <div class="faq-item">
+            <h3>Who created Vortex Arena?</h3>
+            <p>
+              Vortex Arena was created by Avyan Arora, an indie game developer inspired by classic tactical shooters like Counter-Strike. He developed Vortex Arena to bring fast-paced multiplayer shooting, multiple immersive 3D maps, and intelligent AI bots directly to modern web browsers and mobile devices.
+            </p>
+          </div>
+
+          <div class="faq-item">
             <h3>Can I play directly in my browser without downloading?</h3>
             <p>
               Yes. Vortex Arena runs directly inside modern web browsers using HTML5, WebGL (Three.js), and WebSockets. You do not need to install plugins or software to play on PC, Mac, or mobile.
@@ -631,7 +745,7 @@
           <a href="/vortex-arena.mobileconfig">iOS WebClip</a>
         </div>
         <p style="margin-bottom: 6px;">
-          © 2026 Vortex Arena. Free 3D Multiplayer Browser Game. Built with WebGL, Three.js, and Authoritative WebSockets.
+          © 2026 Vortex Arena • Created by Avyan Arora. Free 3D Multiplayer Browser Game. Built with WebGL, Three.js, and Authoritative WebSockets.
         </p>
         <p style="font-size: 11px; color: var(--text-dark);">
           🟢 Server Status: Operational • Edge Hosted on Render • Canonical URL: https://vortex-arena-1nmx.onrender.com/
@@ -703,6 +817,9 @@
         </button>
         <button class="btn" onclick="app.openMobileDownloadModal()" style="border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04);">
           <span style="font-size: 18px;">📱</span> Mobile Apps (Android & iOS)
+        </button>
+        <button class="btn" onclick="app.openAboutCreatorModal()" style="border-color: rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.06); color: var(--cyan-glow); font-weight: 700;">
+          <span style="font-size: 18px;">⭐</span> About Creator (Avyan Arora)
         </button>
       </div>
 
@@ -1812,6 +1929,80 @@
 
       <div style="text-align: right;">
         <button class="btn" onclick="app.closeMobileDownloadModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- About Creator Modal -->
+  <div id="modal-about-creator" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) app.closeAboutCreatorModal()">
+    <div class="card modal-content" style="max-width: 620px; width: 92%; max-height: 90vh; overflow-y: auto; padding: 26px; box-sizing: border-box;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div class="creator-avatar-badge" style="width: 44px; height: 44px; font-size: 16px;">AA</div>
+          <div>
+            <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0; letter-spacing: 0.5px;">
+              Meet the Creator – Avyan Arora
+            </h2>
+            <div style="font-size: 11px; color: var(--cyan-glow); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Creator of Vortex Arena</div>
+          </div>
+        </div>
+        <button class="btn" style="padding: 4px 10px; font-size: 14px; min-width: 32px;" onclick="app.closeAboutCreatorModal()">✕</button>
+      </div>
+
+      <div style="font-size: 14px; line-height: 1.65; color: #cbd5e1; margin-bottom: 20px;">
+        <p style="margin-bottom: 12px;">
+          Meet <strong>Avyan Arora</strong>, the creator of Vortex Arena, an exciting multiplayer shooting game built for players who love fast-paced action!
+        </p>
+        <p style="margin-bottom: 0;">
+          Inspired by tactical shooters like <em>Counter-Strike</em>, Vortex Arena brings action-packed battles, multiple maps to explore, and the option to challenge AI opponents. Whether you want to test your skills against other players or practice against AI, there is always a new battle waiting for you.
+        </p>
+      </div>
+
+      <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-bottom: 20px;">
+        <h3 style="font-size: 14px; font-weight: 800; color: var(--cyan-glow); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <span>⚡</span> Play Your Way
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">💻</span>
+            <div>
+              <strong style="color: #fff; font-size: 13px; display: block;">Play in your browser</strong>
+              <span style="color: var(--text-muted); font-size: 12px;">Jump into the action on your laptop or mobile browser.</span>
+            </div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">🗺️</span>
+            <div>
+              <strong style="color: #fff; font-size: 13px; display: block;">Multiple maps</strong>
+              <span style="color: var(--text-muted); font-size: 12px;">Explore 6 distinct 3D battle environments.</span>
+            </div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">🤖</span>
+            <div>
+              <strong style="color: #fff; font-size: 13px; display: block;">Battle AI opponents</strong>
+              <span style="color: var(--text-muted); font-size: 12px;">Play solo or sharpen your skills against intelligent bots.</span>
+            </div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">🌐</span>
+            <div>
+              <strong style="color: #fff; font-size: 13px; display: block;">Fast-paced multiplayer</strong>
+              <span style="color: var(--text-muted); font-size: 12px;">Compete with friends and players worldwide in real-time.</span>
+            </div>
+          </div>
+          <div style="background: rgba(0,240,255,0.04); border: 1px solid rgba(0,240,255,0.25); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">📱</span>
+            <div>
+              <strong style="color: var(--cyan-glow); font-size: 13px; display: block;">Mobile & Android App</strong>
+              <span style="color: var(--text-muted); font-size: 12px;">Download the standalone Android APK or run fullscreen on iOS.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-primary" onclick="app.closeAboutCreatorModal()">Back to Game</button>
       </div>
     </div>
   </div>

@@ -281,6 +281,16 @@ class App {
     if (el) el.style.display = 'none';
   }
 
+  openAboutCreatorModal() {
+    const el = document.getElementById('modal-about-creator');
+    if (el) el.style.display = 'flex';
+  }
+
+  closeAboutCreatorModal() {
+    const el = document.getElementById('modal-about-creator');
+    if (el) el.style.display = 'none';
+  }
+
   // =========================================================================
   // MAP SELECTION & ENVIRONMENTS BROWSER
   // =========================================================================

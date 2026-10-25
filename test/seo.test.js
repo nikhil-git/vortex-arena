@@ -138,3 +138,41 @@ test('Backend Instant Guest Authentication: Frictionless Onboarding', () => {
     db.prepare('DELETE FROM stats WHERE user_id = ?').run(guestRes.user.id);
   } catch (e) {}
 });
+
+test('About Section & Creator Showcase: Avyan Arora and Play Your Way Features', () => {
+  const htmlPath = path.join(__dirname, '../public/index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  // Verify section tags & headings
+  assert.ok(html.includes('About Vortex Arena'), 'Section tag About Vortex Arena exists');
+  assert.match(html, /Meet the Creator\s*[–—-]\s*Avyan Arora/i, 'Meet the Creator – Avyan Arora heading exists');
+  assert.match(html, /Play Your Way/i, 'Play Your Way heading exists');
+
+  // Verify creator bio and inspiration
+  assert.ok(html.includes('Avyan Arora'), 'Creator name Avyan Arora present');
+  assert.ok(html.includes('Counter-Strike'), 'Inspiration from Counter-Strike mentioned');
+
+  // Verify Play Your Way features
+  assert.match(html, /Play in your browser/i, 'Play in your browser feature listed');
+  assert.match(html, /Multiple maps/i, 'Multiple maps feature listed');
+  assert.match(html, /Battle AI opponents/i, 'Battle AI opponents feature listed');
+  assert.match(html, /Fast-paced multiplayer/i, 'Fast-paced multiplayer feature listed');
+
+  // Verify Call-to-Action in Creator Showcase
+  const creatorBoxIndex = html.indexOf('class="creator-showcase-box"');
+  assert.ok(creatorBoxIndex !== -1, 'Creator showcase box exists');
+  const creatorBoxSubstring = html.slice(creatorBoxIndex, creatorBoxIndex + 4500);
+  assert.match(creatorBoxSubstring, /app\.playAsGuest\(['"]online['"]\)/, 'Play Now CTA present inside creator showcase');
+
+  // Verify In-Game Modal & Dashboard Button
+  assert.ok(html.includes('id="modal-about-creator"'), 'About Creator modal element exists');
+  assert.ok(html.includes('app.openAboutCreatorModal()'), 'Dashboard button triggers openAboutCreatorModal');
+
+  // Verify Schema.org Creator Structured Data
+  const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  const parsed = JSON.parse(jsonLdMatch[1].trim());
+  const videoGameSchema = parsed.find(s => s['@type'] === 'VideoGame');
+  assert.strictEqual(videoGameSchema.creator.name, 'Avyan Arora', 'Schema.org creator is Avyan Arora');
+  assert.strictEqual(videoGameSchema.author.name, 'Avyan Arora', 'Schema.org author is Avyan Arora');
+});
+
