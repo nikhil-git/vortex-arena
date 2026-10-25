@@ -176,3 +176,14 @@ test('About Section & Creator Showcase: Avyan Arora and Play Your Way Features',
   assert.strictEqual(videoGameSchema.author.name, 'Avyan Arora', 'Schema.org author is Avyan Arora');
 });
 
+test('iOS WebClip Option Removed from Website', () => {
+  const htmlPath = path.join(__dirname, '../public/index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  assert.strictEqual(html.includes('href="/download-ios"'), false, 'No /download-ios link in HTML');
+  assert.strictEqual(html.includes('href="/vortex-arena.mobileconfig"'), false, 'No /vortex-arena.mobileconfig link in HTML');
+  assert.strictEqual(html.includes('Download Apple WebClip'), false, 'No WebClip download button in HTML');
+  assert.strictEqual(html.includes('iOS WebClip'), false, 'No iOS WebClip text in navigation or footer');
+});
+
+

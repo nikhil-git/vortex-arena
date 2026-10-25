@@ -79,28 +79,8 @@ app.get('/VortexArena.apk', (req, res) => {
   res.download(apkPath, 'VortexArena.apk');
 });
 
-// iOS Profile & WebClip direct download routes with dynamic URL adaptation
-const sendMobileConfig = (req, res, asAttachment = false) => {
-  const profilePath = path.join(__dirname, '..', 'public', 'vortex-arena.mobileconfig');
-  try {
-    let content = fs.readFileSync(profilePath, 'utf8');
-    const host = req.get('host') || 'localhost:3000';
-    const proto = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-    const currentBaseUrl = `${proto}://${host}`;
-    content = content.replace(/http:\/\/192\.168\.1\.3:3000/g, currentBaseUrl);
-
-    res.setHeader('Content-Type', 'application/x-apple-aspen-config');
-    if (asAttachment) {
-      res.setHeader('Content-Disposition', 'attachment; filename="VortexArena.mobileconfig"');
-    }
-    res.send(content);
-  } catch (err) {
-    res.status(500).send('Error generating mobileconfig');
-  }
-};
-
-app.get('/vortex-arena.mobileconfig', (req, res) => sendMobileConfig(req, res, false));
-app.get('/download-ios', (req, res) => sendMobileConfig(req, res, true));
+// iOS WebClip profile routes disabled - redirect to homepage
+app.get(['/vortex-arena.mobileconfig', '/download-ios'], (req, res) => res.redirect(301, '/'));
 
 // -------------------------------------------------------------
 // REST API ROUTES
