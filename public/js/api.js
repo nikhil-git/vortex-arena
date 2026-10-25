@@ -82,6 +82,18 @@ class ApiClient {
     return data;
   }
 
+  async logout() {
+    try {
+      if (this.token) {
+        await this.request('/api/auth/logout', { method: 'POST' });
+      }
+    } catch (err) {
+      console.warn('[API] Logout request warning:', err);
+    } finally {
+      this.setToken(null);
+    }
+  }
+
   async getMe() {
     return this.request('/api/auth/me');
   }

@@ -68,6 +68,7 @@ class SqliteDatabase {
   }
 
   createSchema() {
+    this.pragma('foreign_keys = ON');
     this.exec(`
       -- Users table
       CREATE TABLE IF NOT EXISTS users (
@@ -79,6 +80,7 @@ class SqliteDatabase {
         is_online INTEGER DEFAULT 0,
         current_status TEXT DEFAULT 'offline',
         current_room_code TEXT DEFAULT NULL,
+        is_guest INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -191,6 +193,14 @@ class SqliteDatabase {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
+
+    // Safe migration: Add is_guest column if table existed without it
+    try {
+      this.rawDb.run('ALTER TABLE users ADD COLUMN is_guest INTEGER DEFAULT 0;');
+    } catch (e) {
+      // Column already present
+    }
+
     this.saveToDisk();
   }
 

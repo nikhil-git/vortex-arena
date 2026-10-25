@@ -13,6 +13,7 @@ const { authMiddleware, verifyWsToken } = require('./auth/authMiddleware');
 const friendsService = require('./services/friendsService');
 const skinService = require('./services/skinService');
 const statsService = require('./services/statsService');
+const guestCleanupService = require('./services/GuestCleanupService');
 
 // Game Engine
 const roomManager = require('./game/RoomManager');
@@ -24,6 +25,10 @@ async function startServer() {
   try {
     await db.init();
     seedDatabase();
+
+    // Clean up any orphaned guest accounts from prior runs/crashes
+    guestCleanupService.purgeOrphanedGuests();
+    guestCleanupService.startPeriodicSweep();
 
     server.listen(config.PORT, '0.0.0.0', () => {
       console.log(`=======================================================`);
@@ -90,6 +95,7 @@ app.get(['/vortex-arena.mobileconfig', '/download-ios'], (req, res) => res.redir
 app.post('/api/auth/register', (req, res) => authController.register(req, res));
 app.post('/api/auth/login', (req, res) => authController.login(req, res));
 app.post('/api/auth/guest', (req, res) => authController.guest(req, res));
+app.post('/api/auth/logout', authMiddleware, (req, res) => authController.logout(req, res));
 app.get('/api/auth/me', authMiddleware, (req, res) => authController.me(req, res));
 
 // Stats & Progression
@@ -224,6 +230,7 @@ wss.on('connection', (ws, req) => {
     const decoded = verifyWsToken(token);
     if (decoded) {
       authenticatedUser = decoded;
+      guestCleanupService.handleReconnect(decoded.id);
       roomManager.registerSocket(decoded.id, ws);
       friendsService.updateUserStatus(decoded.id, true, 'online');
     }
@@ -239,6 +246,7 @@ wss.on('connection', (ws, req) => {
         const decoded = verifyWsToken(data.token);
         if (decoded) {
           authenticatedUser = decoded;
+          guestCleanupService.handleReconnect(decoded.id);
           roomManager.registerSocket(decoded.id, ws);
           friendsService.updateUserStatus(decoded.id, true, 'online');
           ws.send(JSON.stringify({ type: 'authenticated', user: decoded }));
@@ -391,6 +399,9 @@ wss.on('connection', (ws, req) => {
       roomManager.leaveRoom(authenticatedUser.id);
       roomManager.unregisterSocket(authenticatedUser.id);
       friendsService.updateUserStatus(authenticatedUser.id, false, 'offline');
+      if (authenticatedUser.isGuest) {
+        guestCleanupService.handleDisconnect(authenticatedUser.id, true);
+      }
     }
   });
 });

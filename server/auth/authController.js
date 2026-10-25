@@ -4,6 +4,7 @@ const db = require('../database/db');
 const config = require('../config');
 const skinService = require('../services/skinService');
 const statsService = require('../services/statsService');
+const guestCleanupService = require('../services/GuestCleanupService');
 
 class AuthController {
   register(req, res) {
@@ -38,8 +39,8 @@ class AuthController {
       const passwordHash = bcrypt.hashSync(password, salt);
 
       const insertUser = db.prepare(`
-        INSERT INTO users (username, email, password_hash, is_online, current_status)
-        VALUES (?, ?, ?, 1, 'online')
+        INSERT INTO users (username, email, password_hash, is_online, current_status, is_guest)
+        VALUES (?, ?, ?, 1, 'online', 0)
       `);
 
       const result = insertUser.run(trimmedUsername, trimmedEmail, passwordHash);
@@ -52,7 +53,7 @@ class AuthController {
       skinService.assignDefaultSkins(userId);
 
       const token = jwt.sign(
-        { id: userId, username: trimmedUsername, email: trimmedEmail },
+        { id: userId, username: trimmedUsername, email: trimmedEmail, isGuest: false },
         config.JWT_SECRET,
         { expiresIn: '7d' }
       );
@@ -107,7 +108,7 @@ class AuthController {
       db.prepare('UPDATE users SET is_online = 1, current_status = \'online\', last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, email: user.email },
+        { id: user.id, username: user.username, email: user.email, isGuest: Boolean(user.is_guest) },
         config.JWT_SECRET,
         { expiresIn: '7d' }
       );
@@ -123,6 +124,7 @@ class AuthController {
           tag: `#${String(user.id).padStart(4, '0')}`,
           username: user.username,
           email: user.email,
+          isGuest: Boolean(user.is_guest),
           avatarUrl: user.avatar_url || '',
           equippedSkins,
           stats: userStats ? userStats.stats : null,
@@ -146,8 +148,8 @@ class AuthController {
       const passwordHash = bcrypt.hashSync(tempPass, salt);
 
       const insertUser = db.prepare(`
-        INSERT INTO users (username, email, password_hash, is_online, current_status)
-        VALUES (?, ?, ?, 1, 'online')
+        INSERT INTO users (username, email, password_hash, is_online, current_status, is_guest)
+        VALUES (?, ?, ?, 1, 'online', 1)
       `);
       const result = insertUser.run(guestUsername, guestEmail, passwordHash);
       const userId = result.lastInsertRowid;
@@ -215,6 +217,20 @@ class AuthController {
     } catch (err) {
       console.error('Get me error:', err);
       return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  logout(req, res) {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Unauthorized: missing user context' });
+      }
+
+      const result = guestCleanupService.handleLogout(req.user, req.rawToken);
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ error: 'Internal server error during logout' });
     }
   }
 }

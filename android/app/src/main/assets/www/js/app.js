@@ -227,12 +227,35 @@ class App {
     }
   }
 
-  handleLogout() {
-    window.apiClient.setToken(null);
-    window.netClient.disconnect();
+  async handleLogout() {
+    const wasGuest = Boolean(
+      this.currentUser &&
+      (this.currentUser.isGuest ||
+       (this.currentUser.username && this.currentUser.username.startsWith('Guest_')))
+    );
+
+    try {
+      if (window.apiClient) {
+        await window.apiClient.logout();
+      }
+    } catch (err) {
+      console.warn('[App] Logout error:', err);
+    }
+
+    if (window.netClient) {
+      window.netClient.disconnect();
+    }
+    if (window.apiClient) {
+      window.apiClient.setToken(null);
+    }
+
+    // Clean up browser session and guest-specific storage
+    localStorage.removeItem('vortex_token');
+    sessionStorage.clear();
+
     this.currentUser = null;
     this.navigateTo('auth');
-    this.showToast('Logged out');
+    this.showToast(wasGuest ? 'Guest session ended & data purged' : 'Logged out');
   }
 
   // =========================================================================
