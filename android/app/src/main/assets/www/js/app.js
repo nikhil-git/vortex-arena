@@ -87,33 +87,53 @@ class App {
     if (tagEl) tagEl.textContent = user.tag || `#${String(user.id).padStart(4, '0')}`;
     if (avatarEl) avatarEl.textContent = user.username.charAt(0).toUpperCase();
 
+    // Immediately display stats from user payload if available
+    if (user.stats) {
+      this.updateStatsDisplay(user.stats, user.progression);
+    }
+
     this.refreshUserStats();
   }
 
-  async refreshUserStats() {
-    try {
-      const data = await window.apiClient.getStats();
-      if (!data) return;
+  updateStatsDisplay(stats, progression) {
+    if (!stats) return;
 
-      const killsEl = document.getElementById('side-lifetime-kills');
-      const kdEl = document.getElementById('side-kd-ratio');
-      const matchesEl = document.getElementById('side-matches');
-      const winsEl = document.getElementById('side-wins');
+    const killsEl = document.getElementById('side-lifetime-kills');
+    const kdEl = document.getElementById('side-kd-ratio');
+    const matchesEl = document.getElementById('side-matches');
+    const winsEl = document.getElementById('side-wins');
 
-      if (killsEl) killsEl.textContent = data.stats.lifetimeKills;
-      if (kdEl) kdEl.textContent = data.stats.kdRatio;
-      if (matchesEl) matchesEl.textContent = data.stats.lifetimeMatches;
-      if (winsEl) winsEl.textContent = data.stats.lifetimeWins;
+    if (killsEl && stats.lifetimeKills !== undefined) killsEl.textContent = stats.lifetimeKills;
+    if (kdEl && stats.kdRatio !== undefined) kdEl.textContent = stats.kdRatio;
+    if (matchesEl && stats.lifetimeMatches !== undefined) matchesEl.textContent = stats.lifetimeMatches;
+    if (winsEl && stats.lifetimeWins !== undefined) winsEl.textContent = stats.lifetimeWins;
 
-      // Milestone progress
-      const nextM = data.progression.nextMilestone;
+    if (progression && progression.nextMilestone) {
+      const nextM = progression.nextMilestone;
       const textEl = document.getElementById('side-milestone-text');
       const barEl = document.getElementById('side-milestone-bar');
       const nameEl = document.getElementById('side-milestone-name');
 
-      if (textEl) textEl.textContent = nextM.progressText;
-      if (barEl) barEl.style.width = `${Math.round(nextM.progressRatio * 100)}%`;
-      if (nameEl) nameEl.textContent = nextM.name;
+      if (textEl && nextM.progressText) textEl.textContent = nextM.progressText;
+      if (barEl && nextM.progressRatio !== undefined) barEl.style.width = `${Math.round(nextM.progressRatio * 100)}%`;
+      if (nameEl && nextM.name) nameEl.textContent = nextM.name;
+    }
+  }
+
+  async refreshUserStats(targetUserId = null) {
+    try {
+      const data = await window.apiClient.getStats(targetUserId);
+      if (!data || !data.stats) return;
+
+      // If refreshing local player, update currentUser
+      if (!targetUserId || (this.currentUser && String(targetUserId) === String(this.currentUser.id))) {
+        if (this.currentUser) {
+          this.currentUser.stats = data.stats;
+          this.currentUser.progression = data.progression;
+        }
+      }
+
+      this.updateStatsDisplay(data.stats, data.progression);
     } catch (e) {
       console.warn('Could not refresh stats:', e);
     }
@@ -128,7 +148,9 @@ class App {
       target.scrollTop = 0;
     }
 
-    if (screenId === 'skins') {
+    if (screenId === 'main-menu') {
+      this.refreshUserStats();
+    } else if (screenId === 'skins') {
       this.loadSkinsCatalog();
     } else if (screenId === 'achievements') {
       this.loadAchievements();
@@ -1464,6 +1486,7 @@ class App {
       this.showHitmarker(data.isHeadshot);
       if (data.targetKilled) {
         this.showEliminationBanner(data.targetUsername, data.isHeadshot);
+        this.refreshUserStats();
       }
     });
 
@@ -1480,7 +1503,11 @@ class App {
     net.on('player_eliminated', (data) => {
       this.addKillfeedItem(data.killerUsername, data.victimUsername, data.weaponName, data.isHeadshot);
 
-      if (String(data.victimId) === String(this.currentUser.id)) {
+      if (this.currentUser && String(data.killerId) === String(this.currentUser.id)) {
+        this.refreshUserStats();
+      }
+
+      if (this.currentUser && String(data.victimId) === String(this.currentUser.id)) {
         // Local player died: suspend network inputs and show respawn modal countdown
         if (this.gameEngine) {
           this.gameEngine.isDead = true;
@@ -1614,6 +1641,18 @@ class App {
       this.showToast('⚡ Tactical Combat Resupply: Emergency ammo acquired!', 'info');
     });
 
+    net.on('stats_updated', (data) => {
+      if (data && data.lifetimeKills !== undefined) {
+        const killsEl = document.getElementById('side-lifetime-kills');
+        if (killsEl) killsEl.textContent = data.lifetimeKills;
+        if (this.currentUser) {
+          if (!this.currentUser.stats) this.currentUser.stats = {};
+          this.currentUser.stats.lifetimeKills = data.lifetimeKills;
+        }
+        this.refreshUserStats();
+      }
+    });
+
     net.on('milestone_unlocked', (data) => {
       this.recentMilestoneReward = data.reward;
       this.showToast(`🎖️ REWARD UNLOCKED: ${data.reward.name}! (Kills: ${data.totalLifetimeKills})`, 'reward');
@@ -1643,10 +1682,11 @@ class App {
     const sorted = [...players].sort((a, b) => b.score - a.score || b.kills - a.kills);
 
     sorted.forEach((p, idx) => {
+      const isSelf = this.currentUser && String(p.id) === String(this.currentUser.id);
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${idx + 1}</td>
-        <td style="font-weight: 700; color: ${p.id === this.currentUser.id ? 'var(--cyan-glow)' : '#fff'};">${p.username || 'Operative'}</td>
+        <td style="font-weight: 700; color: ${isSelf ? 'var(--cyan-glow)' : '#fff'};">${p.username || 'Operative'}</td>
         <td style="color: var(--emerald-green);">${p.kills}</td>
         <td style="color: var(--crimson-red);">${p.deaths}</td>
         <td style="font-weight: 800; color: #fff;">${p.score}</td>
@@ -1661,7 +1701,7 @@ class App {
     this.navigateTo('results');
 
     const titleEl = document.getElementById('results-title');
-    const isWinner = data.winner && data.winner.id === this.currentUser.id;
+    const isWinner = data.winner && this.currentUser && String(data.winner.id) === String(this.currentUser.id);
 
     if (titleEl) {
       if (data.isPractice) {
@@ -1678,10 +1718,11 @@ class App {
     if (tbody && data.leaderboard) {
       tbody.innerHTML = '';
       data.leaderboard.forEach(p => {
+        const isSelf = this.currentUser && String(p.userId) === String(this.currentUser.id);
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${p.rank}</td>
-          <td style="font-weight: 700; color: ${p.userId === this.currentUser.id ? 'var(--cyan-glow)' : '#fff'};">${p.username}</td>
+          <td style="font-weight: 700; color: ${isSelf ? 'var(--cyan-glow)' : '#fff'};">${p.username}</td>
           <td>${p.kills}</td>
           <td>${p.deaths}</td>
           <td>${p.damage}</td>
@@ -1689,7 +1730,7 @@ class App {
         `;
         tbody.appendChild(tr);
 
-        if (p.userId === this.currentUser.id) {
+        if (isSelf) {
           document.getElementById('res-kills').textContent = p.kills;
           document.getElementById('res-deaths').textContent = p.deaths;
           document.getElementById('res-kd').textContent = p.kd;

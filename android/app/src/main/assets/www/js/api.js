@@ -169,8 +169,9 @@ class ApiClient {
   }
 
   // Stats & Leaderboard
-  async getStats() {
-    return this.request('/api/stats');
+  async getStats(userId = null) {
+    const endpoint = userId ? `/api/stats?userId=${encodeURIComponent(userId)}` : '/api/stats';
+    return this.request(endpoint);
   }
 
   async getLeaderboard() {

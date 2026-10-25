@@ -671,6 +671,12 @@ class Room {
     if (!this.isPractice && !killer.isBot) {
       const progressResult = statsService.recordKills(killer.id, 1, isHeadshot, weaponConfig.damage);
 
+      // Real-time authoritative progression update to killer
+      killer.send('stats_updated', {
+        lifetimeKills: progressResult.totalLifetimeKills,
+        unlockedRewards: progressResult.unlockedRewards || []
+      });
+
       // If killer unlocked a milestone reward, notify killer and entire match!
       if (progressResult.unlockedRewards && progressResult.unlockedRewards.length > 0) {
         for (const reward of progressResult.unlockedRewards) {

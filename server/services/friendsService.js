@@ -313,6 +313,7 @@ class FriendsService {
    */
   updateUserStatus(userId, isOnline, status = 'online', roomCode = null) {
     if (!userId) return;
+    const codeStr = (roomCode && typeof roomCode === 'object') ? (roomCode.code || null) : (roomCode ? String(roomCode) : null);
     db.prepare(`
       UPDATE users
       SET is_online = ?,
@@ -320,7 +321,7 @@ class FriendsService {
           current_room_code = ?,
           last_seen = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(isOnline ? 1 : 0, isOnline ? status : 'offline', isOnline ? roomCode : null, userId);
+    `).run(isOnline ? 1 : 0, isOnline ? status : 'offline', isOnline ? codeStr : null, userId);
   }
 }
 

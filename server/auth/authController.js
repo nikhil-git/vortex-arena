@@ -38,16 +38,41 @@ class AuthController {
       const salt = bcrypt.genSaltSync(10);
       const passwordHash = bcrypt.hashSync(password, salt);
 
-      const insertUser = db.prepare(`
-        INSERT INTO users (username, email, password_hash, is_online, current_status, is_guest)
-        VALUES (?, ?, ?, 1, 'online', 0)
-      `);
+      // Check if registering user has an existing guest session to upgrade
+      let guestUserId = null;
+      const authHeader = req.headers && req.headers.authorization;
+      const candidateToken = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.split(' ')[1] : (req.body && req.body.guestToken);
+      if (candidateToken) {
+        try {
+          const decoded = jwt.verify(candidateToken, config.JWT_SECRET);
+          if (decoded && decoded.isGuest) {
+            const guestRecord = db.prepare('SELECT id, is_guest FROM users WHERE id = ?').get(decoded.id);
+            if (guestRecord && guestRecord.is_guest === 1) {
+              guestUserId = guestRecord.id;
+            }
+          }
+        } catch (e) {}
+      }
 
-      const result = insertUser.run(trimmedUsername, trimmedEmail, passwordHash);
-      const userId = result.lastInsertRowid;
-
-      // Initialize stats row
-      db.prepare('INSERT INTO stats (user_id) VALUES (?)').run(userId);
+      let userId;
+      if (guestUserId) {
+        // Upgrade existing guest account to registered, preserving unique user ID, lifetime kills, stats, and skins!
+        db.prepare(`
+          UPDATE users 
+          SET username = ?, email = ?, password_hash = ?, is_guest = 0, is_online = 1, current_status = 'online'
+          WHERE id = ?
+        `).run(trimmedUsername, trimmedEmail, passwordHash, guestUserId);
+        userId = guestUserId;
+        statsService.ensureStatsRow(userId);
+      } else {
+        const insertUser = db.prepare(`
+          INSERT INTO users (username, email, password_hash, is_online, current_status, is_guest)
+          VALUES (?, ?, ?, 1, 'online', 0)
+        `);
+        const result = insertUser.run(trimmedUsername, trimmedEmail, passwordHash);
+        userId = result.lastInsertRowid;
+        statsService.ensureStatsRow(userId);
+      }
 
       // Assign default free skins
       skinService.assignDefaultSkins(userId);
@@ -69,6 +94,7 @@ class AuthController {
           tag: `#${String(userId).padStart(4, '0')}`,
           username: trimmedUsername,
           email: trimmedEmail,
+          isGuest: false,
           avatarUrl: '',
           equippedSkins,
           stats: userStats ? userStats.stats : null,

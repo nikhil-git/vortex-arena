@@ -3,15 +3,65 @@ const { milestoneAchievements } = require('../database/seed');
 
 class StatsService {
   /**
+   * Helper to resolve any format of user identifier (number, numeric string, tag #0001, or username)
+   * to authoritative numeric user ID.
+   */
+  normalizeUserId(userId) {
+    if (userId === null || userId === undefined) return null;
+    if (typeof userId === 'number') {
+      return Number.isInteger(userId) ? userId : Math.floor(userId);
+    }
+    if (typeof userId === 'string') {
+      const trimmed = userId.trim();
+      if (!trimmed) return null;
+      if (trimmed.startsWith('#')) {
+        const parsed = parseInt(trimmed.slice(1), 10);
+        if (!isNaN(parsed)) return parsed;
+      }
+      if (/^\d+$/.test(trimmed)) {
+        const parsed = parseInt(trimmed, 10);
+        if (!isNaN(parsed)) return parsed;
+      }
+      // If a username was supplied, look up the user's ID
+      try {
+        const u = db.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').get(trimmed);
+        if (u) return u.id;
+      } catch (e) {}
+    }
+    return userId;
+  }
+
+  /**
+   * Ensure a stats record exists for this user in SQLite
+   */
+  ensureStatsRow(userId) {
+    const id = this.normalizeUserId(userId);
+    if (!id) return;
+    try {
+      db.prepare(`
+        INSERT INTO stats (user_id, lifetime_kills, lifetime_deaths, lifetime_headshots, lifetime_damage, lifetime_matches, lifetime_wins)
+        VALUES (?, 0, 0, 0, 0, 0, 0)
+        ON CONFLICT(user_id) DO NOTHING
+      `).run(id);
+    } catch (e) {
+      // Ignore if user does not exist in users table (foreign key constraint)
+    }
+  }
+
+  /**
    * Get user lifetime stats and computed progression milestones
    */
   getUserStats(userId) {
+    const id = this.normalizeUserId(userId);
+    if (!id) return null;
+    this.ensureStatsRow(id);
+
     const stats = db.prepare(`
       SELECT s.*, u.username, u.email, u.created_at as registered_at
       FROM stats s
       JOIN users u ON u.id = s.user_id
       WHERE s.user_id = ?
-    `).get(userId);
+    `).get(id);
 
     if (!stats) return null;
 
@@ -54,11 +104,12 @@ class StatsService {
     // Fetch unlocked achievements
     const achievements = db.prepare(`
       SELECT * FROM achievements WHERE user_id = ? ORDER BY unlocked_at DESC
-    `).all(userId);
+    `).all(id);
 
     return {
       stats: {
         userId: stats.user_id,
+        tag: `#${String(stats.user_id).padStart(4, '0')}`,
         username: stats.username,
         lifetimeKills: stats.lifetime_kills,
         lifetimeDeaths: stats.lifetime_deaths,
@@ -108,7 +159,9 @@ class StatsService {
    * Can ONLY be invoked by the authoritative game server upon match conclusion or kill confirmation.
    */
   recordKills(userId, killsToAdd, isHeadshot = false, damageDealt = 0) {
-    if (!userId || killsToAdd <= 0) return { newKills: 0, unlockedRewards: [] };
+    const id = this.normalizeUserId(userId);
+    if (!id || killsToAdd <= 0) return { totalLifetimeKills: 0, unlockedRewards: [] };
+    this.ensureStatsRow(id);
 
     const updateStats = db.prepare(`
       UPDATE stats
@@ -119,14 +172,14 @@ class StatsService {
       WHERE user_id = ?
     `);
 
-    updateStats.run(killsToAdd, isHeadshot ? 1 : 0, damageDealt, userId);
+    updateStats.run(killsToAdd, isHeadshot ? 1 : 0, damageDealt, id);
 
     // Get updated lifetime kills
-    const row = db.prepare('SELECT lifetime_kills FROM stats WHERE user_id = ?').get(userId);
+    const row = db.prepare('SELECT lifetime_kills FROM stats WHERE user_id = ?').get(id);
     const totalKills = row ? row.lifetime_kills : 0;
 
     // Check and grant milestone rewards
-    const unlockedRewards = this.evaluateMilestoneRewards(userId, totalKills);
+    const unlockedRewards = this.evaluateMilestoneRewards(id, totalKills);
 
     return {
       totalLifetimeKills: totalKills,
@@ -135,25 +188,32 @@ class StatsService {
   }
 
   recordDeath(userId) {
-    if (!userId) return;
-    db.prepare('UPDATE stats SET lifetime_deaths = lifetime_deaths + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(userId);
+    const id = this.normalizeUserId(userId);
+    if (!id) return;
+    this.ensureStatsRow(id);
+    db.prepare('UPDATE stats SET lifetime_deaths = lifetime_deaths + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(id);
   }
 
   recordMatchFinished(userId, won = false) {
-    if (!userId) return;
+    const id = this.normalizeUserId(userId);
+    if (!id) return;
+    this.ensureStatsRow(id);
     db.prepare(`
       UPDATE stats
       SET lifetime_matches = lifetime_matches + 1,
           lifetime_wins = lifetime_wins + ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE user_id = ?
-    `).run(won ? 1 : 0, userId);
+    `).run(won ? 1 : 0, id);
   }
 
   /**
    * Checks milestones and unlocks corresponding skins and achievements in SQLite
    */
   evaluateMilestoneRewards(userId, lifetimeKills) {
+    const id = this.normalizeUserId(userId);
+    if (!id) return [];
+
     const newlyUnlocked = [];
 
     // Milestone rule mappings
@@ -182,7 +242,7 @@ class StatsService {
     for (const rule of rewardRules) {
       if (lifetimeKills >= rule.kills) {
         // Check achievement
-        const achResult = unlockAchStmt.run(userId, rule.achKey, rule.achName, rule.achDesc);
+        const achResult = unlockAchStmt.run(id, rule.achKey, rule.achName, rule.achDesc);
         if (achResult.changes > 0) {
           newlyUnlocked.push({
             type: 'achievement',
@@ -195,7 +255,7 @@ class StatsService {
 
         // Check skins
         for (const skinId of rule.skins) {
-          const skinResult = unlockSkinStmt.run(userId, skinId);
+          const skinResult = unlockSkinStmt.run(id, skinId);
           if (skinResult.changes > 0) {
             const skinInfo = db.prepare('SELECT name, type, rarity, description FROM skins WHERE skin_id = ?').get(skinId);
             newlyUnlocked.push({

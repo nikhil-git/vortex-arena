@@ -1,23 +1,50 @@
 const db = require('../database/db');
 
+function normalizeId(userId) {
+  if (userId === null || userId === undefined) return null;
+  if (typeof userId === 'number') return Number.isInteger(userId) ? userId : Math.floor(userId);
+  if (typeof userId === 'string') {
+    const trimmed = userId.trim();
+    if (trimmed.startsWith('#')) {
+      const p = parseInt(trimmed.slice(1), 10);
+      if (!isNaN(p)) return p;
+    }
+    if (/^\d+$/.test(trimmed)) {
+      const p = parseInt(trimmed, 10);
+      if (!isNaN(p)) return p;
+    }
+    try {
+      const u = db.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').get(trimmed);
+      if (u) return u.id;
+    } catch (e) {}
+  }
+  return userId;
+}
+
 class SkinService {
   /**
    * Assign default starter skins to a new user
    */
   assignDefaultSkins(userId) {
+    const id = normalizeId(userId);
+    if (!id) return;
+
     const insertDefault = db.prepare(`
       INSERT OR IGNORE INTO user_skins (user_id, skin_id, is_equipped)
       VALUES (?, ?, 1)
     `);
 
-    insertDefault.run(userId, 'char_default');
-    insertDefault.run(userId, 'wep_default');
+    insertDefault.run(id, 'char_default');
+    insertDefault.run(id, 'wep_default');
   }
 
   /**
    * Get all skins catalog with the user's unlock and equipped status
    */
   getUserSkins(userId) {
+    const id = normalizeId(userId);
+    if (!id) return [];
+
     const allSkins = db.prepare(`
       SELECT 
         s.*,
@@ -27,10 +54,10 @@ class SkinService {
       FROM skins s
       LEFT JOIN user_skins us ON s.skin_id = us.skin_id AND us.user_id = ?
       ORDER BY s.type ASC, s.required_kills ASC, s.name ASC
-    `).all(userId);
+    `).all(id);
 
     // Get user's current lifetime kills for context
-    const statsRow = db.prepare('SELECT lifetime_kills FROM stats WHERE user_id = ?').get(userId);
+    const statsRow = db.prepare('SELECT lifetime_kills FROM stats WHERE user_id = ?').get(id);
     const currentKills = statsRow ? statsRow.lifetime_kills : 0;
 
     return allSkins.map(skin => ({
@@ -46,12 +73,20 @@ class SkinService {
    * Get currently equipped character and weapon skin for a user
    */
   getEquippedSkins(userId) {
+    const id = normalizeId(userId);
+    if (!id) {
+      return {
+        characterSkin: db.prepare('SELECT * FROM skins WHERE skin_id = ?').get('char_default'),
+        weaponSkin: db.prepare('SELECT * FROM skins WHERE skin_id = ?').get('wep_default')
+      };
+    }
+
     const equipped = db.prepare(`
       SELECT s.*
       FROM user_skins us
       JOIN skins s ON us.skin_id = s.skin_id
       WHERE us.user_id = ? AND us.is_equipped = 1
-    `).all(userId);
+    `).all(id);
 
     let characterSkin = equipped.find(s => s.type === 'character');
     let weaponSkin = equipped.find(s => s.type === 'weapon');

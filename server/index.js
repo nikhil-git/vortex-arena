@@ -213,7 +213,15 @@ app.get('/api/auth/me', authMiddleware, (req, res) => authController.me(req, res
 
 // Stats & Progression
 app.get('/api/stats', authMiddleware, (req, res) => {
-  const data = statsService.getUserStats(req.user.id);
+  const targetId = req.query.userId || req.user.id;
+  const data = statsService.getUserStats(targetId);
+  if (!data) return res.status(404).json({ error: 'User stats not found' });
+  res.json(data);
+});
+
+app.get('/api/stats/:userId', (req, res) => {
+  const data = statsService.getUserStats(req.params.userId);
+  if (!data) return res.status(404).json({ error: 'User stats not found' });
   res.json(data);
 });
 
