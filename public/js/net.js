@@ -9,9 +9,11 @@ class NetClient {
     this.isConnected = false;
     this.reconnectTimer = null;
     this.token = null;
+    this.manualDisconnect = false;
   }
 
   connect(token) {
+    this.manualDisconnect = false;
     this.token = token || localStorage.getItem('vortex_token');
     if (!this.token) {
       console.warn('Cannot connect WebSocket without auth token');
@@ -36,6 +38,10 @@ class NetClient {
 
     this.ws.onopen = () => {
       this.isConnected = true;
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
       console.log('[Net] Connected to game server');
       this.emit('connected');
     };
@@ -53,6 +59,15 @@ class NetClient {
       this.isConnected = false;
       console.log('[Net] Disconnected from game server');
       this.emit('disconnected');
+
+      // Auto-reconnect if unexpectedly disconnected and user has valid auth token
+      if (!this.manualDisconnect && this.token) {
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = setTimeout(() => {
+          console.log('[Net] Attempting auto-reconnect...');
+          this.connect(this.token);
+        }, 2000);
+      }
     };
 
     this.ws.onerror = (err) => {
@@ -61,12 +76,65 @@ class NetClient {
   }
 
   disconnect() {
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.manualDisconnect = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
     this.isConnected = false;
+  }
+
+  /**
+   * Ensures the WebSocket is open and connected before sending actions.
+   * Resolves immediately if already connected, or attempts connection with timeout.
+   */
+  async ensureConnected(timeoutMs = 5000) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.isConnected = true;
+      return true;
+    }
+
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    if (!token) {
+      console.warn('[Net] Cannot ensure connection: Missing auth token');
+      return false;
+    }
+
+    this.connect(token);
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.isConnected = true;
+      return true;
+    }
+
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        resolve(Boolean(this.ws && this.ws.readyState === WebSocket.OPEN));
+      }, timeoutMs);
+
+      const onOpen = () => {
+        clearTimeout(timer);
+        this.isConnected = true;
+        resolve(true);
+      };
+      const onError = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+
+      if (this.ws) {
+        this.ws.addEventListener('open', onOpen, { once: true });
+        this.ws.addEventListener('error', onError, { once: true });
+        this.ws.addEventListener('close', onError, { once: true });
+      } else {
+        clearTimeout(timer);
+        resolve(false);
+      }
+    });
   }
 
   on(type, callback) {
@@ -98,15 +166,19 @@ class NetClient {
   }
 
   // Convenience Matchmaking & Game Actions
-  findMatch(gameMode = 'ffa', mapId = null) {
+  async findMatch(gameMode = 'ffa', mapId = null) {
+    await this.ensureConnected();
     return this.send('find_match', { gameMode, mapId });
   }
 
-  createAiMatch(options = {}) {
+  async createAiMatch(options = {}) {
+    await this.ensureConnected();
     return this.send('create_ai_match', options);
   }
 
-  createRoom(roomName, isPrivate = false, gameMode = 'ffa', mapId = 'house') {
+  async createRoom(roomName, isPrivate = false, gameMode = 'ffa', mapId = 'house') {
+    const ok = await this.ensureConnected();
+    if (!ok) return false;
     return this.send('create_room', { roomName, isPrivate, gameMode, mapId });
   }
 
@@ -114,7 +186,9 @@ class NetClient {
     return this.send('set_map', { mapId });
   }
 
-  joinRoom(roomCode) {
+  async joinRoom(roomCode) {
+    const ok = await this.ensureConnected();
+    if (!ok) return false;
     return this.send('join_room', { roomCode });
   }
 

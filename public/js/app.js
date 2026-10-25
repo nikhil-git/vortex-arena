@@ -285,13 +285,149 @@ class App {
   }
 
   openCreateRoomModal() {
+    const modal = document.getElementById('modal-create-room');
+    if (!modal) {
+      this.openMapSelectModal('browse');
+      return;
+    }
+
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+
+    const mapId = this.selectedMapId || 'house';
+    const username = this.currentUser ? this.currentUser.username : 'Operative';
+    const defaultName = `${username}'s Arena`;
+
+    const nameInput = document.getElementById('custom-room-name-input');
+    if (nameInput) nameInput.value = defaultName;
+
+    const mapSelect = document.getElementById('custom-room-map-select');
+    if (mapSelect) mapSelect.value = mapId;
+
+    this.customRoomConfig = {
+      mode: 'ffa',
+      isPrivate: true,
+      mapId: mapId
+    };
+
+    this.setCustomRoomMode('ffa');
+    this.setCustomRoomPrivacy(true);
+
+    modal.style.display = 'flex';
+  }
+
+  closeCreateRoomModal() {
+    const modal = document.getElementById('modal-create-room');
+    if (modal) modal.style.display = 'none';
+  }
+
+  browseMapsFromHostModal() {
+    this.closeCreateRoomModal();
     this.openMapSelectModal('browse');
   }
 
+  onCustomRoomMapChange(mapId) {
+    this.selectMap(mapId);
+    if (this.customRoomConfig) this.customRoomConfig.mapId = mapId;
+  }
+
+  setCustomRoomMode(mode) {
+    if (!this.customRoomConfig) this.customRoomConfig = {};
+    this.customRoomConfig.mode = mode;
+    const ffaBtn = document.getElementById('custom-mode-ffa');
+    const tdmBtn = document.getElementById('custom-mode-tdm');
+    if (ffaBtn) ffaBtn.classList.toggle('active', mode === 'ffa');
+    if (tdmBtn) tdmBtn.classList.toggle('active', mode === 'tdm');
+  }
+
+  setCustomRoomPrivacy(isPrivate) {
+    if (!this.customRoomConfig) this.customRoomConfig = {};
+    this.customRoomConfig.isPrivate = Boolean(isPrivate);
+    const privBtn = document.getElementById('custom-privacy-private');
+    const pubBtn = document.getElementById('custom-privacy-public');
+    if (privBtn) privBtn.classList.toggle('active', Boolean(isPrivate));
+    if (pubBtn) pubBtn.classList.toggle('active', !isPrivate);
+  }
+
+  async confirmHostCustomMatch() {
+    const nameMap = {
+      house: 'Suburban Estate',
+      farm: 'Golden Valley Farm',
+      forest: 'Whispering Pines',
+      minecraft: 'BlockCraft Realm',
+      cruise: 'S.S. Oceanic',
+      sector7: 'Sector-7 Compound'
+    };
+
+    const nameInput = document.getElementById('custom-room-name-input');
+    const mapSelect = document.getElementById('custom-room-map-select');
+
+    const mapId = (mapSelect && mapSelect.value) || this.selectedMapId || 'house';
+    const mapName = nameMap[mapId] || 'Suburban Estate';
+    const username = this.currentUser ? this.currentUser.username : 'Operative';
+    const roomName = (nameInput && nameInput.value.trim()) || `${username}'s ${mapName}`;
+    const mode = (this.customRoomConfig && this.customRoomConfig.mode) || 'ffa';
+    const isPrivate = this.customRoomConfig ? Boolean(this.customRoomConfig.isPrivate) : true;
+
+    this.showToast(`🛡️ Creating custom arena on ${mapName}...`);
+
+    const confirmBtn = document.getElementById('btn-confirm-create-room');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '⏳ Creating Arena...';
+    }
+
+    try {
+      const ok = await window.netClient.createRoom(roomName, isPrivate, mode, mapId);
+      if (!ok) {
+        this.showToast('Unable to connect to game server. Please try again.', 'danger');
+      }
+    } catch (e) {
+      console.error('[App] createRoom error:', e);
+      this.showToast('Error creating custom room: ' + e.message, 'danger');
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '🚀 Launch Custom Lobby';
+      }
+    }
+  }
+
   openJoinCodeModal() {
-    const code = prompt('Enter 6-character Room Code:');
-    if (!code) return;
-    window.netClient.joinRoom(code.toUpperCase().trim());
+    const modal = document.getElementById('modal-join-room');
+    if (!modal) {
+      const code = prompt('Enter 6-character Room Code:');
+      if (code) window.netClient.joinRoom(code.toUpperCase().trim());
+      return;
+    }
+    const input = document.getElementById('join-room-code-input');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 50);
+    }
+    modal.style.display = 'flex';
+  }
+
+  closeJoinCodeModal() {
+    const modal = document.getElementById('modal-join-room');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async confirmJoinRoomByCode() {
+    const input = document.getElementById('join-room-code-input');
+    const code = input ? input.value.trim().toUpperCase() : '';
+    if (!code || code.length < 4) {
+      this.showToast('Please enter a valid room code (e.g. ABC123)', 'danger');
+      return;
+    }
+    this.showToast(`Joining room ${code}...`);
+    await window.netClient.joinRoom(code);
   }
 
   openMobileDownloadModal() {
@@ -370,12 +506,15 @@ class App {
     const labelEl = document.getElementById('map-modal-selected-name');
     if (labelEl) labelEl.textContent = nameMap[mapId] || 'Suburban Estate';
 
-    if (this.mapModalContext === 'lobby' && this.currentRoom && this.currentUser && this.currentRoom.hostUserId === this.currentUser.id) {
+    if (this.mapModalContext === 'lobby' && this.currentRoom && this.currentUser && String(this.currentRoom.hostUserId) === String(this.currentUser.id)) {
       window.netClient.setMap(mapId);
     }
 
     const spMapSelect = document.getElementById('sp-map-select');
     if (spMapSelect) spMapSelect.value = mapId;
+
+    const customMapSelect = document.getElementById('custom-room-map-select');
+    if (customMapSelect) customMapSelect.value = mapId;
   }
 
   confirmMapChoice(mapId) {
@@ -396,8 +535,7 @@ class App {
     this.openSinglePlayerModal(false);
   }
 
-  launchHostOnSelectedMap() {
-    this.closeMapSelectModal();
+  async launchHostOnSelectedMap() {
     const mapId = this.selectedMapId || 'house';
     const nameMap = {
       house: 'Suburban Estate',
@@ -407,11 +545,32 @@ class App {
       cruise: 'S.S. Oceanic',
       sector7: 'Sector-7 Compound'
     };
-    const defaultName = `${this.currentUser ? this.currentUser.username : 'Operative'}'s ${nameMap[mapId] || 'Arena'}`;
-    const roomName = prompt('Enter Custom Arena Name:', defaultName);
-    if (!roomName) return;
-    const isPrivate = confirm('Make this room Private? (Requires Room Code or Invite to join)');
-    window.netClient.createRoom(roomName, isPrivate, 'ffa', mapId);
+    const mapName = nameMap[mapId] || 'Suburban Estate';
+    const username = this.currentUser ? this.currentUser.username : 'Operative';
+    const defaultName = `${username}'s ${mapName}`;
+
+    this.showToast(`🛡️ Creating custom arena on ${mapName}...`);
+
+    const hostBtn = document.getElementById('btn-host-match-modal');
+    if (hostBtn) {
+      hostBtn.disabled = true;
+      hostBtn.textContent = '⏳ Creating...';
+    }
+
+    try {
+      const ok = await window.netClient.createRoom(defaultName, true, 'ffa', mapId);
+      if (!ok) {
+        this.showToast('Unable to connect to game server. Please try again.', 'danger');
+      }
+    } catch (err) {
+      console.error('[App] launchHostOnSelectedMap error:', err);
+      this.showToast('Error creating custom match: ' + err.message, 'danger');
+    } finally {
+      if (hostBtn) {
+        hostBtn.disabled = false;
+        hostBtn.textContent = '🛡️ Host Match';
+      }
+    }
   }
 
   updateLobbyMapDisplay(mapId, mapName) {
@@ -438,8 +597,9 @@ class App {
     if (nameEl) nameEl.textContent = mapName || nameMap[mapId] || 'Suburban Estate';
 
     const changeMapBtn = document.getElementById('btn-lobby-change-map');
-    if (changeMapBtn && this.currentRoom && this.currentUser) {
-      changeMapBtn.style.display = (this.currentRoom.hostUserId === this.currentUser.id) ? 'inline-flex' : 'none';
+    if (changeMapBtn) {
+      const isHost = Boolean(this.currentRoom && this.currentUser && String(this.currentRoom.hostUserId) === String(this.currentUser.id));
+      changeMapBtn.style.display = isHost ? 'inline-flex' : 'none';
     }
   }
 
@@ -630,10 +790,16 @@ class App {
     const capEl = document.getElementById('lobby-capacity-pill');
     if (capEl) capEl.textContent = `${players.length} / 12 PLAYERS`;
 
-    // Start button enabled only if host
+    // Host controls enabled only if current user is the authoritative host
+    const isHost = Boolean(this.currentRoom && this.currentUser && String(this.currentRoom.hostUserId) === String(this.currentUser.id));
     const startBtn = document.getElementById('btn-start-match');
-    if (startBtn && this.currentRoom) {
-      startBtn.style.display = (this.currentRoom.hostUserId === this.currentUser.id) ? 'inline-flex' : 'none';
+    if (startBtn) {
+      startBtn.style.display = isHost ? 'inline-flex' : 'none';
+    }
+
+    const changeMapBtn = document.getElementById('btn-lobby-change-map');
+    if (changeMapBtn) {
+      changeMapBtn.style.display = isHost ? 'inline-flex' : 'none';
     }
   }
 
@@ -1089,6 +1255,11 @@ class App {
       if (this.matchmakingTimer) clearInterval(this.matchmakingTimer);
       this.currentRoom = data.room;
 
+      // Close all modals so user enters lobby smoothly
+      this.closeMapSelectModal();
+      this.closeCreateRoomModal();
+      this.closeJoinCodeModal();
+
       const titleEl = document.getElementById('lobby-title');
       const codeEl = document.getElementById('lobby-room-code');
       if (titleEl) titleEl.textContent = data.room.name;
@@ -1100,6 +1271,14 @@ class App {
       }
 
       this.navigateTo('lobby');
+    });
+
+    net.on('join_error', (data) => {
+      this.showToast(data.message || 'Unable to join custom match', 'danger');
+    });
+
+    net.on('map_error', (data) => {
+      this.showToast(data.message || 'Unable to change map', 'danger');
     });
 
     net.on('lobby_updated', (data) => {

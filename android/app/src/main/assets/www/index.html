@@ -1535,6 +1535,128 @@
   </div>
 
   <!-- =========================================================================
+       MODAL: CREATE / HOST CUSTOM MATCH
+       ========================================================================= -->
+  <div id="modal-create-room" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) app.closeCreateRoomModal()">
+    <div class="card modal-content" style="max-width: 620px; width: 94%; max-height: 92vh; overflow-y: auto; padding: 26px; box-sizing: border-box;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 900; color: var(--cyan-glow); letter-spacing: 1.5px; text-transform: uppercase; margin: 0;">
+            🛡️ Host Custom Match
+          </h2>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            Create an arena, choose map and combat rules, and invite friends or operatives.
+          </div>
+        </div>
+        <button class="btn" style="padding: 4px 10px; font-size: 14px; min-width: 32px;" onclick="app.closeCreateRoomModal()">✕</button>
+      </div>
+
+      <!-- Arena Name Input -->
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 8px;">
+          Custom Arena Name
+        </label>
+        <input type="text" id="custom-room-name-input" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 14px; font-weight: 700;" maxlength="36" placeholder="Operative's Arena">
+      </div>
+
+      <!-- Map Selection & Quick Browse -->
+      <div class="form-group" style="margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow);">
+            Battleground Map
+          </label>
+          <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px; border-color: rgba(255, 183, 0, 0.5); color: var(--amber-gold);" onclick="app.browseMapsFromHostModal()">
+            🗺️ Preview 6 Maps →
+          </button>
+        </div>
+        <select id="custom-room-map-select" class="form-input" style="width: 100%; font-size: 14px; font-weight: 600;" onchange="app.onCustomRoomMapChange(this.value)">
+          <option value="house" selected>🏡 Suburban Estate (Normal House CQB)</option>
+          <option value="farm">🚜 Golden Valley Farm (Barn & Fields)</option>
+          <option value="forest">🌲 Whispering Pines (Forest & Woodland)</option>
+          <option value="minecraft">🧱 BlockCraft Voxel Realm (Sandbox)</option>
+          <option value="cruise">🚢 S.S. Oceanic (Luxury Cruise Ship)</option>
+          <option value="sector7">🏢 Sector-7 Compound (Tactical Urban)</option>
+        </select>
+      </div>
+
+      <!-- Game Mode Selection (FFA vs TDM) -->
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 8px;">
+          Game Mode
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+          <button type="button" id="custom-mode-ffa" class="btn btn-mode-pill active" onclick="app.setCustomRoomMode('ffa')">
+            <div style="font-weight: 800; font-size: 13px;">Free-For-All (FFA)</div>
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Solo Deathmatch (Every operative for themselves)</div>
+          </button>
+          <button type="button" id="custom-mode-tdm" class="btn btn-mode-pill" onclick="app.setCustomRoomMode('tdm')">
+            <div style="font-weight: 800; font-size: 13px;">Team Deathmatch (TDM)</div>
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Squad Battle (Red Team vs Blue Team)</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Room Privacy Selection -->
+      <div class="form-group" style="margin-bottom: 22px;">
+        <label style="display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 8px;">
+          Room Privacy & Access
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+          <button type="button" id="custom-privacy-private" class="btn btn-mode-pill active" onclick="app.setCustomRoomPrivacy(true)">
+            <div style="font-weight: 800; font-size: 13px;">🔒 Private (Room Code)</div>
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Requires 6-character code or squad invite</div>
+          </button>
+          <button type="button" id="custom-privacy-public" class="btn btn-mode-pill" onclick="app.setCustomRoomPrivacy(false)">
+            <div style="font-weight: 800; font-size: 13px;">🌐 Public (Open Match)</div>
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Open to matchmaking and random players</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 18px;">
+        <button type="button" class="btn" onclick="app.closeCreateRoomModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-create-room" style="padding: 12px 28px; font-size: 15px; font-weight: 800;" onclick="app.confirmHostCustomMatch()">
+          🚀 Launch Custom Lobby
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: JOIN BY ROOM CODE
+       ========================================================================= -->
+  <div id="modal-join-room" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) app.closeJoinCodeModal()">
+    <div class="card modal-content" style="max-width: 440px; width: 92%; padding: 26px; box-sizing: border-box;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+        <div>
+          <h2 style="font-size: 19px; font-weight: 900; color: var(--cyan-glow); letter-spacing: 1.5px; text-transform: uppercase; margin: 0;">
+            🔑 Join by Room Code
+          </h2>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            Enter the 6-character match code from the host.
+          </div>
+        </div>
+        <button class="btn" style="padding: 4px 10px; font-size: 14px; min-width: 32px;" onclick="app.closeJoinCodeModal()">✕</button>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px; text-align: center;">
+        <label style="display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--cyan-glow); margin-bottom: 10px;">
+          Match Room Code
+        </label>
+        <input type="text" id="join-room-code-input" class="form-input" style="width: 100%; box-sizing: border-box; text-align: center; font-size: 24px; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; padding: 12px; color: var(--cyan-glow); background: rgba(0, 240, 255, 0.05); border-color: rgba(0, 240, 255, 0.4);" maxlength="6" placeholder="ABC123" onkeydown="if(event.key==='Enter') app.confirmJoinRoomByCode()">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
+        <button type="button" class="btn" onclick="app.closeJoinCodeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px; font-weight: 800;" onclick="app.confirmJoinRoomByCode()">
+          Enter Lobby →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        MODAL: MAP SELECTION & ENVIRONMENTS BROWSER
        ========================================================================= -->
   <div id="modal-map-selection" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) app.closeMapSelectModal()">
@@ -1861,7 +1983,7 @@
           <button class="btn" style="border-color: rgba(0, 240, 255, 0.5); color: var(--cyan-glow);" onclick="app.launchAiOnSelectedMap()">
             🤖 Play vs AI
           </button>
-          <button class="btn btn-primary" onclick="app.launchHostOnSelectedMap()">
+          <button class="btn btn-primary" id="btn-host-match-modal" onclick="app.launchHostOnSelectedMap()">
             🛡️ Host Match
           </button>
           <button class="btn" onclick="app.closeMapSelectModal()">
