@@ -384,9 +384,15 @@ class App {
     }
 
     try {
-      const ok = await window.netClient.createRoom(roomName, isPrivate, mode, mapId);
-      if (!ok) {
-        this.showToast('Unable to connect to game server. Please try again.', 'danger');
+      const res = await window.netClient.createRoom(roomName, isPrivate, mode, mapId);
+      if (res && res.success) {
+        this.closeCreateRoomModal();
+        this.closeMapSelectModal();
+        this.navigateTo('lobby');
+        this.showToast(`🛡️ Custom arena ready on ${mapName}!`);
+      } else {
+        const errMsg = (res && res.error) || 'Unable to create match arena';
+        this.showToast(errMsg, 'danger');
       }
     } catch (e) {
       console.error('[App] createRoom error:', e);
@@ -427,7 +433,13 @@ class App {
       return;
     }
     this.showToast(`Joining room ${code}...`);
-    await window.netClient.joinRoom(code);
+    const res = await window.netClient.joinRoom(code);
+    if (res && res.success) {
+      this.closeJoinCodeModal();
+      this.navigateTo('lobby');
+    } else {
+      this.showToast((res && res.error) || 'Failed to join room', 'danger');
+    }
   }
 
   openMobileDownloadModal() {
@@ -558,9 +570,15 @@ class App {
     }
 
     try {
-      const ok = await window.netClient.createRoom(defaultName, true, 'ffa', mapId);
-      if (!ok) {
-        this.showToast('Unable to connect to game server. Please try again.', 'danger');
+      const res = await window.netClient.createRoom(defaultName, true, 'ffa', mapId);
+      if (res && res.success) {
+        this.closeMapSelectModal();
+        this.closeCreateRoomModal();
+        this.navigateTo('lobby');
+        this.showToast(`🛡️ Custom arena ready on ${mapName}!`);
+      } else {
+        const errMsg = (res && res.error) || 'Unable to create match arena';
+        this.showToast(errMsg, 'danger');
       }
     } catch (err) {
       console.error('[App] launchHostOnSelectedMap error:', err);
@@ -1275,6 +1293,17 @@ class App {
 
     net.on('join_error', (data) => {
       this.showToast(data.message || 'Unable to join custom match', 'danger');
+    });
+
+    net.on('error', (data) => {
+      if (data && data.message === 'Authentication required') {
+        const token = window.apiClient ? window.apiClient.token : localStorage.getItem('vortex_token');
+        if (token) {
+          window.netClient.send('auth', { token });
+        }
+      } else if (data && data.message) {
+        this.showToast(data.message, 'danger');
+      }
     });
 
     net.on('map_error', (data) => {

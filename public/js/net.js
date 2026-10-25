@@ -43,6 +43,9 @@ class NetClient {
         this.reconnectTimer = null;
       }
       console.log('[Net] Connected to game server');
+      if (this.token) {
+        this.send('auth', { token: this.token });
+      }
       this.emit('connected');
     };
 
@@ -57,6 +60,7 @@ class NetClient {
 
     this.ws.onclose = () => {
       this.isConnected = false;
+      this.ws = null;
       console.log('[Net] Disconnected from game server');
       this.emit('disconnected');
 
@@ -92,7 +96,7 @@ class NetClient {
    * Ensures the WebSocket is open and connected before sending actions.
    * Resolves immediately if already connected, or attempts connection with timeout.
    */
-  async ensureConnected(timeoutMs = 5000) {
+  async ensureConnected(timeoutMs = 6000) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.isConnected = true;
       return true;
@@ -104,7 +108,9 @@ class NetClient {
       return false;
     }
 
-    this.connect(token);
+    if (!this.ws || (this.ws.readyState !== WebSocket.OPEN && this.ws.readyState !== WebSocket.CONNECTING)) {
+      this.connect(token);
+    }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.isConnected = true;
@@ -112,18 +118,28 @@ class NetClient {
     }
 
     return new Promise((resolve) => {
+      let settled = false;
       const timer = setTimeout(() => {
-        resolve(Boolean(this.ws && this.ws.readyState === WebSocket.OPEN));
+        if (!settled) {
+          settled = true;
+          resolve(Boolean(this.ws && this.ws.readyState === WebSocket.OPEN));
+        }
       }, timeoutMs);
 
       const onOpen = () => {
-        clearTimeout(timer);
-        this.isConnected = true;
-        resolve(true);
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          this.isConnected = true;
+          resolve(true);
+        }
       };
       const onError = () => {
-        clearTimeout(timer);
-        resolve(false);
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(false);
+        }
       };
 
       if (this.ws) {
@@ -131,6 +147,7 @@ class NetClient {
         this.ws.addEventListener('error', onError, { once: true });
         this.ws.addEventListener('close', onError, { once: true });
       } else {
+        settled = true;
         clearTimeout(timer);
         resolve(false);
       }
@@ -176,20 +193,130 @@ class NetClient {
     return this.send('create_ai_match', options);
   }
 
-  async createRoom(roomName, isPrivate = false, gameMode = 'ffa', mapId = 'house') {
+  async createRoom(roomName, isPrivate = false, gameMode = 'ffa', mapId = 'house', timeoutMs = 8000) {
     const ok = await this.ensureConnected();
-    if (!ok) return false;
-    return this.send('create_room', { roomName, isPrivate, gameMode, mapId });
+    if (!ok) {
+      return { success: false, error: 'Unable to connect to game server. Please check your connection.' };
+    }
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ success: false, error: 'Match room creation timed out. Please try again.' });
+        }
+      }, timeoutMs);
+
+      const onRoomJoined = (data) => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ success: true, room: data.room, data });
+        }
+      };
+
+      const onJoinError = (data) => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ success: false, error: data.message || 'Room creation rejected' });
+        }
+      };
+
+      const onError = (data) => {
+        if (!resolved && data && data.message) {
+          resolved = true;
+          cleanup();
+          resolve({ success: false, error: data.message });
+        }
+      };
+
+      const unsubJoined = this.on('room_joined', onRoomJoined);
+      const unsubError = this.on('join_error', onJoinError);
+      const unsubServerError = this.on('error', onError);
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (unsubJoined) unsubJoined();
+        if (unsubError) unsubError();
+        if (unsubServerError) unsubServerError();
+      };
+
+      const sent = this.send('create_room', { roomName, isPrivate, gameMode, mapId });
+      if (!sent) {
+        resolved = true;
+        cleanup();
+        resolve({ success: false, error: 'Failed to send room creation request' });
+      }
+    });
   }
 
   setMap(mapId) {
     return this.send('set_map', { mapId });
   }
 
-  async joinRoom(roomCode) {
+  async joinRoom(roomCode, timeoutMs = 8000) {
     const ok = await this.ensureConnected();
-    if (!ok) return false;
-    return this.send('join_room', { roomCode });
+    if (!ok) {
+      return { success: false, error: 'Unable to connect to game server. Please check your connection.' };
+    }
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ success: false, error: 'Join room timed out. Please try again.' });
+        }
+      }, timeoutMs);
+
+      const onRoomJoined = (data) => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ success: true, room: data.room, data });
+        }
+      };
+
+      const onJoinError = (data) => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve({ success: false, error: data.message || 'Match room not found or code expired' });
+        }
+      };
+
+      const onError = (data) => {
+        if (!resolved && data && data.message) {
+          resolved = true;
+          cleanup();
+          resolve({ success: false, error: data.message });
+        }
+      };
+
+      const unsubJoined = this.on('room_joined', onRoomJoined);
+      const unsubError = this.on('join_error', onJoinError);
+      const unsubServerError = this.on('error', onError);
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (unsubJoined) unsubJoined();
+        if (unsubError) unsubError();
+        if (unsubServerError) unsubServerError();
+      };
+
+      const sent = this.send('join_room', { roomCode });
+      if (!sent) {
+        resolved = true;
+        cleanup();
+        resolve({ success: false, error: 'Failed to send room join request' });
+      }
+    });
   }
 
   startMatch() {
