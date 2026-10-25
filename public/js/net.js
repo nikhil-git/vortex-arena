@@ -7,6 +7,8 @@ class NetClient {
     this.ws = null;
     this.listeners = new Map();
     this.isConnected = false;
+    this.isAuthenticated = false;
+    this.authenticatedUser = null;
     this.reconnectTimer = null;
     this.token = null;
     this.manualDisconnect = false;
@@ -14,13 +16,24 @@ class NetClient {
 
   connect(token) {
     this.manualDisconnect = false;
-    this.token = token || localStorage.getItem('vortex_token');
+    const activeToken = token || localStorage.getItem('vortex_token');
+
+    // If already connected, update token and re-authenticate socket immediately
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (activeToken) {
+        this.token = activeToken;
+        this.send('auth', { token: activeToken });
+      }
+      return;
+    }
+
+    this.token = activeToken;
     if (!this.token) {
       console.warn('Cannot connect WebSocket without auth token');
       return;
     }
 
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
       return;
     }
 
@@ -52,6 +65,12 @@ class NetClient {
     this.ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+        if (msg.type === 'authenticated') {
+          this.isAuthenticated = true;
+          this.authenticatedUser = msg.user;
+        } else if (msg.type === 'auth_error') {
+          this.isAuthenticated = false;
+        }
         this.emit(msg.type, msg);
       } catch (e) {
         console.error('[Net] Error parsing server message:', e);
@@ -60,6 +79,8 @@ class NetClient {
 
     this.ws.onclose = () => {
       this.isConnected = false;
+      this.isAuthenticated = false;
+      this.authenticatedUser = null;
       this.ws = null;
       console.log('[Net] Disconnected from game server');
       this.emit('disconnected');
@@ -90,6 +111,8 @@ class NetClient {
       this.ws = null;
     }
     this.isConnected = false;
+    this.isAuthenticated = false;
+    this.authenticatedUser = null;
   }
 
   /**
@@ -154,6 +177,61 @@ class NetClient {
     });
   }
 
+  /**
+   * Guarantees that the WebSocket connection is authenticated before initiating room actions.
+   */
+  async ensureAuthenticated(timeoutMs = 4000) {
+    const ok = await this.ensureConnected(timeoutMs);
+    if (!ok) return false;
+
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    if (!token) return false;
+
+    if (this.isAuthenticated) {
+      return true;
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          resolve(this.isAuthenticated);
+        }
+      }, timeoutMs);
+
+      const onAuth = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          cleanup();
+          this.isAuthenticated = true;
+          resolve(true);
+        }
+      };
+
+      const onAuthErr = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          cleanup();
+          resolve(false);
+        }
+      };
+
+      const unsubAuth = this.on('authenticated', onAuth);
+      const unsubErr = this.on('auth_error', onAuthErr);
+
+      const cleanup = () => {
+        if (unsubAuth) unsubAuth();
+        if (unsubErr) unsubErr();
+      };
+
+      this.send('auth', { token });
+    });
+  }
+
   on(type, callback) {
     if (!this.listeners.has(type)) {
       this.listeners.set(type, new Set());
@@ -184,13 +262,15 @@ class NetClient {
 
   // Convenience Matchmaking & Game Actions
   async findMatch(gameMode = 'ffa', mapId = null) {
-    await this.ensureConnected();
-    return this.send('find_match', { gameMode, mapId });
+    await this.ensureAuthenticated(3000);
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    return this.send('find_match', { gameMode, mapId, token });
   }
 
   async createAiMatch(options = {}) {
-    await this.ensureConnected();
-    return this.send('create_ai_match', options);
+    await this.ensureAuthenticated(3000);
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    return this.send('create_ai_match', { ...options, token });
   }
 
   async createRoom(roomName, isPrivate = false, gameMode = 'ffa', mapId = 'house', timeoutMs = 8000) {
@@ -199,8 +279,14 @@ class NetClient {
       return { success: false, error: 'Unable to connect to game server. Please check your connection.' };
     }
 
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    if (token && !this.isAuthenticated) {
+      await this.ensureAuthenticated(2500);
+    }
+
     return new Promise((resolve) => {
       let resolved = false;
+      let authRetried = false;
 
       const timer = setTimeout(() => {
         if (!resolved) {
@@ -226,8 +312,17 @@ class NetClient {
         }
       };
 
-      const onError = (data) => {
+      const onError = async (data) => {
         if (!resolved && data && data.message) {
+          if (data.message === 'Authentication required' && !authRetried) {
+            authRetried = true;
+            const retryToken = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+            if (retryToken) {
+              this.send('auth', { token: retryToken });
+              this.send('create_room', { roomName, isPrivate, gameMode, mapId, token: retryToken });
+              return;
+            }
+          }
           resolved = true;
           cleanup();
           resolve({ success: false, error: data.message });
@@ -245,7 +340,7 @@ class NetClient {
         if (unsubServerError) unsubServerError();
       };
 
-      const sent = this.send('create_room', { roomName, isPrivate, gameMode, mapId });
+      const sent = this.send('create_room', { roomName, isPrivate, gameMode, mapId, token });
       if (!sent) {
         resolved = true;
         cleanup();
@@ -255,7 +350,8 @@ class NetClient {
   }
 
   setMap(mapId) {
-    return this.send('set_map', { mapId });
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    return this.send('set_map', { mapId, token });
   }
 
   async joinRoom(roomCode, timeoutMs = 8000) {
@@ -264,8 +360,14 @@ class NetClient {
       return { success: false, error: 'Unable to connect to game server. Please check your connection.' };
     }
 
+    const token = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+    if (token && !this.isAuthenticated) {
+      await this.ensureAuthenticated(2500);
+    }
+
     return new Promise((resolve) => {
       let resolved = false;
+      let authRetried = false;
 
       const timer = setTimeout(() => {
         if (!resolved) {
@@ -293,6 +395,15 @@ class NetClient {
 
       const onError = (data) => {
         if (!resolved && data && data.message) {
+          if (data.message === 'Authentication required' && !authRetried) {
+            authRetried = true;
+            const retryToken = this.token || (window.apiClient ? window.apiClient.token : null) || localStorage.getItem('vortex_token');
+            if (retryToken) {
+              this.send('auth', { token: retryToken });
+              this.send('join_room', { roomCode, token: retryToken });
+              return;
+            }
+          }
           resolved = true;
           cleanup();
           resolve({ success: false, error: data.message });
@@ -310,7 +421,7 @@ class NetClient {
         if (unsubServerError) unsubServerError();
       };
 
-      const sent = this.send('join_room', { roomCode });
+      const sent = this.send('join_room', { roomCode, token });
       if (!sent) {
         resolved = true;
         cleanup();

@@ -350,8 +350,16 @@ wss.on('connection', (ws, req) => {
   });
 
   // Extract token from URL query string if provided
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const token = url.searchParams.get('token');
+  let token = null;
+  try {
+    const host = req.headers.host || 'localhost';
+    const parsedUrl = new URL(req.url, `http://${host}`);
+    token = parsedUrl.searchParams.get('token');
+  } catch (urlErr) {
+    const match = req.url && req.url.match(/[?&]token=([^&]+)/);
+    if (match) token = decodeURIComponent(match[1]);
+  }
+
   if (token) {
     const decoded = verifyWsToken(token);
     if (decoded) {
@@ -359,6 +367,9 @@ wss.on('connection', (ws, req) => {
       guestCleanupService.handleReconnect(decoded.id);
       roomManager.registerSocket(decoded.id, ws);
       friendsService.updateUserStatus(decoded.id, true, 'online');
+      try {
+        ws.send(JSON.stringify({ type: 'authenticated', user: decoded }));
+      } catch (sendErr) {}
     }
   }
 
@@ -398,6 +409,20 @@ wss.on('connection', (ws, req) => {
           ws.send(JSON.stringify({ type: 'auth_error', message: 'Invalid token' }));
         }
         return;
+      }
+
+      // If socket is not yet authenticated but action payload contains a valid token, authenticate now
+      if (!authenticatedUser && data.token) {
+        const decoded = verifyWsToken(data.token);
+        if (decoded) {
+          authenticatedUser = decoded;
+          guestCleanupService.handleReconnect(decoded.id);
+          roomManager.registerSocket(decoded.id, ws);
+          friendsService.updateUserStatus(decoded.id, true, 'online');
+          try {
+            ws.send(JSON.stringify({ type: 'authenticated', user: decoded }));
+          } catch (sendErr) {}
+        }
       }
 
       if (!authenticatedUser) {

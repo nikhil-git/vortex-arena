@@ -9,6 +9,7 @@ class TokenRevocationService {
   constructor() {
     this.revokedTokens = new Map(); // token -> expMs
     this.revokedUsers = new Set(); // userId
+    this.userRevokedAt = new Map(); // userId -> revokedAtTimestampMs
     
     // Prune expired entries every 10 minutes
     this.pruneInterval = setInterval(() => this.prune(), 10 * 60 * 1000);
@@ -28,12 +29,26 @@ class TokenRevocationService {
   }
 
   /**
-   * Invalidate all tokens associated with a given user ID
+   * Invalidate all existing tokens issued for a given user ID prior to now
    */
   revokeUser(userId) {
     if (userId) {
-      this.revokedUsers.add(userId);
+      const numId = Number(userId);
+      this.revokedUsers.add(numId);
+      this.userRevokedAt.set(numId, Date.now());
     }
+  }
+
+  /**
+   * Un-revoke a user upon new successful login/registration so fresh tokens are accepted
+   */
+  unrevokeUser(userId) {
+    if (!userId) return;
+    const numId = Number(userId);
+    this.revokedUsers.delete(numId);
+    this.revokedUsers.delete(String(userId));
+    this.userRevokedAt.delete(numId);
+    this.userRevokedAt.delete(String(userId));
   }
 
   /**
@@ -43,8 +58,20 @@ class TokenRevocationService {
     if (token && this.revokedTokens.has(token)) {
       return true;
     }
-    if (decoded && decoded.id && this.revokedUsers.has(decoded.id)) {
-      return true;
+    if (decoded && decoded.id) {
+      const numId = Number(decoded.id);
+      const revokedAt = this.userRevokedAt.get(numId) || this.userRevokedAt.get(String(decoded.id));
+      if (revokedAt) {
+        // If JWT has iat (issued at in seconds), check if it was issued before revocation
+        if (decoded.iat && (decoded.iat * 1000) < (revokedAt - 1000)) {
+          return true;
+        }
+        // If issued after revocation, it is a newly authenticated session
+        return false;
+      }
+      if (this.revokedUsers.has(numId) || this.revokedUsers.has(String(decoded.id))) {
+        return true;
+      }
     }
     return false;
   }
@@ -67,6 +94,7 @@ class TokenRevocationService {
   clear() {
     this.revokedTokens.clear();
     this.revokedUsers.clear();
+    this.userRevokedAt.clear();
   }
 }
 

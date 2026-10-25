@@ -5,6 +5,7 @@ const config = require('../config');
 const skinService = require('../services/skinService');
 const statsService = require('../services/statsService');
 const guestCleanupService = require('../services/GuestCleanupService');
+const tokenRevocationService = require('./tokenRevocationService');
 
 class AuthController {
   register(req, res) {
@@ -77,6 +78,9 @@ class AuthController {
       // Assign default free skins
       skinService.assignDefaultSkins(userId);
 
+      // Un-revoke any previous revocation for this user id so new session is valid
+      tokenRevocationService.unrevokeUser(userId);
+
       const token = jwt.sign(
         { id: userId, username: trimmedUsername, email: trimmedEmail, isGuest: false },
         config.JWT_SECRET,
@@ -133,6 +137,9 @@ class AuthController {
       // Mark user online
       db.prepare('UPDATE users SET is_online = 1, current_status = \'online\', last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
 
+      // Un-revoke any previous revocation for this user id so newly issued session is active
+      tokenRevocationService.unrevokeUser(user.id);
+
       const token = jwt.sign(
         { id: user.id, username: user.username, email: user.email, isGuest: Boolean(user.is_guest) },
         config.JWT_SECRET,
@@ -185,6 +192,9 @@ class AuthController {
 
       // Assign default free skins
       skinService.assignDefaultSkins(userId);
+
+      // Un-revoke any previous revocation for this user id so new session is valid
+      tokenRevocationService.unrevokeUser(userId);
 
       const token = jwt.sign(
         { id: userId, username: guestUsername, email: guestEmail, isGuest: true },

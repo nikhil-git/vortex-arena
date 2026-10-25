@@ -406,7 +406,15 @@ class App {
     }
 
     try {
-      const res = await window.netClient.createRoom(roomName, isPrivate, mode, mapId);
+      let res = await window.netClient.createRoom(roomName, isPrivate, mode, mapId);
+      if (!res.success && res.error === 'Authentication required') {
+        const token = window.apiClient ? window.apiClient.token : localStorage.getItem('vortex_token');
+        if (token) {
+          await window.netClient.ensureAuthenticated(3000);
+          res = await window.netClient.createRoom(roomName, isPrivate, mode, mapId);
+        }
+      }
+
       if (res && res.success) {
         this.closeCreateRoomModal();
         this.closeMapSelectModal();

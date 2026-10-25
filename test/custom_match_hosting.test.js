@@ -269,3 +269,50 @@ test('Scenario 6: Frontend Integrity - In-Game Modals, No Blocking Prompts, and 
   assert.ok(appJs.includes("net.on('join_error'"), "app.js must listen for join_error");
   assert.ok(appJs.includes("net.on('map_error'"), "app.js must listen for map_error");
 });
+
+test('Scenario 7: Re-login Unrevocation & Custom Match Room Privacy (Public vs Private)', () => {
+  const tokenRevocationService = require('../server/auth/tokenRevocationService');
+  const { verifyWsToken } = require('../server/auth/authMiddleware');
+  const guestCleanupService = require('../server/services/GuestCleanupService');
+
+  // 1. Simulate user logging out (registered user)
+  guestCleanupService.handleLogout({ id: mockHost.id, username: mockHost.username, isGuest: false });
+  assert.ok(tokenRevocationService.isRevoked('old_token', { id: mockHost.id, iat: Math.floor(Date.now() / 1000) - 10 }), 'Old session must be revoked');
+
+  // 2. User logs back in
+  let newLoginToken = null;
+  authController.login({
+    body: { usernameOrEmail: 'CMHostUser', password: 'Password123!' }
+  }, {
+    status() { return this; },
+    json(data) { newLoginToken = data.token; return this; }
+  });
+
+  assert.ok(newLoginToken, 'User must successfully receive new login token');
+  const decoded = verifyWsToken(newLoginToken);
+  assert.ok(decoded, 'Newly issued token must be valid and NOT blocked by revocation');
+  assert.strictEqual(decoded.id, mockHost.id);
+
+  // 3. Test Room Privacy: Public (isPrivate: false) Custom Arena
+  const publicRoomCode = roomManager.generateRoomCode();
+  const publicRoom = roomManager.createRoom({
+    roomCode: publicRoomCode,
+    name: 'Public Battleground Arena',
+    isPrivate: false,
+    gameMode: 'ffa',
+    mapId: 'house',
+    hostUserId: mockHost.id,
+    minPlayers: 2
+  });
+
+  assert.strictEqual(publicRoom.isPrivate, false, 'Public room must have isPrivate: false');
+  assert.strictEqual(publicRoom.minPlayersToAutoStart, 2, 'Public room minimum players to auto-start is 2');
+  assert.strictEqual(publicRoom.mapId, 'house');
+
+  const addRes = publicRoom.addPlayer(mockHost);
+  assert.strictEqual(addRes.success, true, 'Host player added to public room');
+  assert.strictEqual(publicRoom.players.size, 1);
+
+  publicRoom.destroy();
+  roomManager.rooms.delete(publicRoomCode);
+});
