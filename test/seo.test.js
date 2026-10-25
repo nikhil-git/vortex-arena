@@ -186,4 +186,43 @@ test('iOS WebClip Option Removed from Website', () => {
   assert.strictEqual(html.includes('iOS WebClip'), false, 'No iOS WebClip text in navigation or footer');
 });
 
+test('Favicon & Brand Icon Metadata: SVG, PNG Multi-Sizes, ICO, and Apple Touch Icon', () => {
+  const htmlPath = path.join(__dirname, '../public/index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  // Verify link tags in HTML
+  assert.match(html, /<link\s+rel=["']icon["']\s+type=["']image\/svg\+xml["']\s+href=["']\/favicon\.svg\?v=2["']>/i, 'SVG favicon link tag exists');
+  assert.match(html, /<link\s+rel=["']icon["']\s+type=["']image\/png["']\s+sizes=["']48x48["']\s+href=["']\/icons\/favicon-48x48\.png\?v=2["']>/i, '48x48 favicon link tag exists');
+  assert.match(html, /<link\s+rel=["']icon["']\s+type=["']image\/png["']\s+sizes=["']32x32["']\s+href=["']\/icons\/favicon-32x32\.png\?v=2["']>/i, '32x32 favicon link tag exists');
+  assert.match(html, /<link\s+rel=["']icon["']\s+type=["']image\/png["']\s+sizes=["']16x16["']\s+href=["']\/icons\/favicon-16x16\.png\?v=2["']>/i, '16x16 favicon link tag exists');
+  assert.match(html, /<link\s+rel=["']shortcut icon["']\s+href=["']\/favicon\.ico\?v=2["']>/i, 'shortcut icon favicon.ico tag exists');
+  assert.match(html, /<link\s+rel=["']apple-touch-icon["']\s+sizes=["']180x180["']\s+href=["']\/icons\/apple-touch-icon\.png\?v=2["']>/i, 'apple-touch-icon tag exists');
+
+  // Verify asset files exist on disk
+  const publicDir = path.join(__dirname, '../public');
+  assert.ok(fs.existsSync(path.join(publicDir, 'favicon.ico')), 'public/favicon.ico exists');
+  assert.ok(fs.existsSync(path.join(publicDir, 'favicon.svg')), 'public/favicon.svg exists');
+  assert.ok(fs.existsSync(path.join(publicDir, 'icons/favicon-16x16.png')), 'favicon-16x16.png exists');
+  assert.ok(fs.existsSync(path.join(publicDir, 'icons/favicon-32x32.png')), 'favicon-32x32.png exists');
+  assert.ok(fs.existsSync(path.join(publicDir, 'icons/favicon-48x48.png')), 'favicon-48x48.png exists');
+  assert.ok(fs.existsSync(path.join(publicDir, 'icons/apple-touch-icon.png')), 'apple-touch-icon.png exists');
+
+  // Verify SVG content
+  const svgContent = fs.readFileSync(path.join(publicDir, 'favicon.svg'), 'utf8');
+  assert.ok(svgContent.includes('<svg'), 'favicon.svg contains valid SVG markup');
+  assert.ok(svgContent.includes('#00f0ff'), 'favicon.svg contains cyan reticle brand color');
+  assert.ok(svgContent.includes('#ff3366'), 'favicon.svg contains crimson target brand color');
+
+  // Verify ICO file size > 1KB (multi-resolution)
+  const icoStats = fs.statSync(path.join(publicDir, 'favicon.ico'));
+  assert.ok(icoStats.size > 1000, 'favicon.ico is valid multi-resolution icon file');
+
+  // Verify Web App Manifest references icons
+  const manifestPath = path.join(publicDir, 'manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.ok(Array.isArray(manifest.icons) && manifest.icons.length >= 3, 'manifest has multiple icon definitions');
+});
+
+
+
 
