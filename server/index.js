@@ -14,6 +14,8 @@ const friendsService = require('./services/friendsService');
 const skinService = require('./services/skinService');
 const statsService = require('./services/statsService');
 const guestCleanupService = require('./services/GuestCleanupService');
+const analyticsService = require('./services/analyticsService');
+const analyticsController = require('./controllers/analyticsController');
 
 // Game Engine
 const roomManager = require('./game/RoomManager');
@@ -30,12 +32,16 @@ async function startServer() {
     guestCleanupService.purgeOrphanedGuests();
     guestCleanupService.startPeriodicSweep();
 
+    // Initialize real-time analytics monitoring & snapshots
+    analyticsService.init({ roomManager, wss });
+
     server.listen(config.PORT, '0.0.0.0', () => {
       console.log(`=======================================================`);
       console.log(` Vortex Arena Multiplayer Server Running`);
       console.log(` Port: ${config.PORT}`);
       console.log(` Web Client: http://0.0.0.0:${config.PORT}`);
       console.log(` WebSocket: ws://0.0.0.0:${config.PORT}/ws`);
+      console.log(` Analytics: http://0.0.0.0:${config.PORT}/analytics`);
       console.log(` Database: ${config.DB_PATH}`);
       console.log(` Max Players Per Room: ${config.MAX_PLAYERS_PER_ROOM}`);
       console.log(`=======================================================`);
@@ -59,8 +65,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// HTTP Request Error Monitoring & Telemetry Middleware
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    if (res.statusCode >= 400 && 
+        !req.path.startsWith('/vendor/') && 
+        !req.path.endsWith('.ico') && 
+        !req.path.endsWith('.png') && 
+        !req.path.endsWith('.svg') &&
+        !req.path.endsWith('.map')) {
+      analyticsService.recordError({
+        errorType: res.statusCode >= 500 ? 'api_5xx' : 'api_4xx',
+        statusCode: res.statusCode,
+        path: req.originalUrl || req.url,
+        message: `HTTP ${res.statusCode} ${res.statusMessage || ''}`.trim(),
+        userAgent: req.headers['user-agent'] || ''
+      });
+    }
+  });
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Dedicated Analytics & Operations Dashboard routes
+app.get(['/analytics', '/admin/analytics'], (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'analytics', 'index.html'));
+});
 
 // Cloud container health check endpoint
 app.get('/health', (req, res) => {
@@ -70,19 +102,82 @@ app.get('/health', (req, res) => {
 // Serve three.js modules cleanly for browser import
 app.use('/vendor/three', express.static(path.join(__dirname, '..', 'node_modules', 'three', 'build')));
 
-// Direct APK download routes for mobile devices
-app.get('/download', (req, res) => {
-  const apkPath = path.join(__dirname, '..', 'VortexArena.apk');
-  res.download(apkPath, 'VortexArena.apk', (err) => {
-    if (err && !res.headersSent) {
+// Direct APK download routes with detailed telemetry & completion verification
+function handleApkDownload(req, res) {
+  const rootApk = path.join(__dirname, '..', 'VortexArena.apk');
+  const publicApk = path.join(__dirname, '..', 'public', 'VortexArena.apk');
+  const apkPath = fs.existsSync(rootApk) ? rootApk : (fs.existsSync(publicApk) ? publicApk : rootApk);
+
+  const visitorId = req.query.vid || null;
+  const sessionId = req.query.sid || null;
+  const source = req.query.src || 'direct_url';
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || (req.socket ? req.socket.remoteAddress : '');
+  const userAgent = req.headers['user-agent'] || '';
+  const startTime = Date.now();
+
+  if (!fs.existsSync(apkPath)) {
+    analyticsService.recordApkDownloadServed({
+      visitorId,
+      sessionId,
+      ip: clientIp,
+      version: '1.0.0',
+      source,
+      status: 'not_found',
+      errorMessage: 'VortexArena.apk not found on server disk',
+      userAgent
+    });
+    if (!res.headersSent) {
       res.status(404).send('VortexArena.apk not found. Please build it first.');
     }
+    return;
+  }
+
+  let stats = { size: 0 };
+  try {
+    stats = fs.statSync(apkPath);
+  } catch (e) {}
+
+  let completed = false;
+
+  res.on('finish', () => {
+    completed = true;
+    const durationMs = Date.now() - startTime;
+    analyticsService.recordApkDownloadServed({
+      visitorId,
+      sessionId,
+      ip: clientIp,
+      version: '1.0.0',
+      source,
+      status: 'served',
+      bytesSent: stats.size,
+      durationMs,
+      userAgent
+    });
   });
-});
-app.get('/VortexArena.apk', (req, res) => {
-  const apkPath = path.join(__dirname, '..', 'VortexArena.apk');
+
+  req.on('close', () => {
+    if (!completed && !res.writableEnded) {
+      const durationMs = Date.now() - startTime;
+      analyticsService.recordApkDownloadServed({
+        visitorId,
+        sessionId,
+        ip: clientIp,
+        version: '1.0.0',
+        source,
+        status: 'aborted',
+        bytesSent: res.socket ? (res.socket.bytesWritten || 0) : 0,
+        durationMs,
+        errorMessage: 'Client closed connection before transfer finished',
+        userAgent
+      });
+    }
+  });
+
   res.download(apkPath, 'VortexArena.apk');
-});
+}
+
+app.get('/download', handleApkDownload);
+app.get('/VortexArena.apk', handleApkDownload);
 
 // iOS WebClip profile routes disabled - redirect to homepage
 app.get(['/vortex-arena.mobileconfig', '/download-ios'], (req, res) => res.redirect(301, '/'));
@@ -90,6 +185,24 @@ app.get(['/vortex-arena.mobileconfig', '/download-ios'], (req, res) => res.redir
 // -------------------------------------------------------------
 // REST API ROUTES
 // -------------------------------------------------------------
+
+// Analytics & Telemetry Routes
+app.post('/api/analytics/auth', (req, res) => analyticsController.login(req, res));
+app.post('/api/analytics/track', (req, res) => analyticsController.track(req, res));
+app.post('/api/analytics/heartbeat', (req, res) => analyticsController.heartbeat(req, res));
+app.post('/api/analytics/download-click', (req, res) => analyticsController.recordDownloadClick(req, res));
+app.post('/api/analytics/error', (req, res) => analyticsController.reportError(req, res));
+app.post('/api/analytics/performance', (req, res) => analyticsController.reportPerformance(req, res));
+
+// Protected Analytics Dashboard Query APIs
+app.get('/api/analytics/overview', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getOverview(req, res)));
+app.get('/api/analytics/traffic', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getTraffic(req, res)));
+app.get('/api/analytics/downloads', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getDownloads(req, res)));
+app.get('/api/analytics/engagement', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getEngagement(req, res)));
+app.get('/api/analytics/performance', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getPerformance(req, res)));
+app.get('/api/analytics/errors', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getErrors(req, res)));
+app.get('/api/analytics/live', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.getLive(req, res)));
+app.get('/api/analytics/export/csv', (req, res) => analyticsController.adminMiddleware(req, res, () => analyticsController.exportCsv(req, res)));
 
 // Auth Routes
 app.post('/api/auth/register', (req, res) => authController.register(req, res));
@@ -223,6 +336,11 @@ wss.on('connection', (ws, req) => {
   let authenticatedUser = null;
   let player = null;
 
+  analyticsService.recordEvent({
+    category: 'multiplayer',
+    eventName: 'ws_connect'
+  });
+
   // Extract token from URL query string if provided
   const url = new URL(req.url, `http://${req.headers.host}`);
   const token = url.searchParams.get('token');
@@ -240,6 +358,24 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(messageRaw);
       const action = data.action;
+
+      // Real-time ping/pong round-trip latency measurement
+      if (action === 'ping') {
+        ws.send(JSON.stringify({
+          type: 'pong',
+          clientTime: data.clientTime,
+          serverTime: Date.now()
+        }));
+        return;
+      }
+
+      // Latency report from client
+      if (action === 'latency_report') {
+        if (typeof data.ping === 'number') {
+          analyticsService.recordLatencyPing(data.ping);
+        }
+        return;
+      }
 
       // Handle Authentication handshake if sent via message
       if (action === 'auth') {
@@ -395,6 +531,12 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
+    analyticsService.recordEvent({
+      category: 'multiplayer',
+      eventName: 'ws_disconnect',
+      userId: authenticatedUser ? authenticatedUser.id : null
+    });
+
     if (authenticatedUser) {
       roomManager.leaveRoom(authenticatedUser.id);
       roomManager.unregisterSocket(authenticatedUser.id);
@@ -403,6 +545,16 @@ wss.on('connection', (ws, req) => {
         guestCleanupService.handleDisconnect(authenticatedUser.id, true);
       }
     }
+  });
+
+  ws.on('error', (err) => {
+    analyticsService.recordError({
+      errorType: 'websocket',
+      statusCode: 500,
+      message: err.message || 'WebSocket client error',
+      stack: err.stack,
+      userId: authenticatedUser ? authenticatedUser.id : null
+    });
   });
 });
 

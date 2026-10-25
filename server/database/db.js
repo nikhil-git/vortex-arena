@@ -192,6 +192,111 @@ class SqliteDatabase {
         FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
+
+      -- =======================================================
+      -- ANALYTICS & TELEMETRY SYSTEM SCHEMA
+      -- =======================================================
+
+      -- Unique Website & Game Visitors
+      CREATE TABLE IF NOT EXISTS analytics_visitors (
+        visitor_id TEXT PRIMARY KEY,
+        first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        total_visits INTEGER DEFAULT 1,
+        total_play_time INTEGER DEFAULT 0,
+        user_id INTEGER DEFAULT NULL
+      );
+
+      -- Browsing & Gameplay Sessions
+      CREATE TABLE IF NOT EXISTS analytics_sessions (
+        session_id TEXT PRIMARY KEY,
+        visitor_id TEXT NOT NULL,
+        user_id INTEGER DEFAULT NULL,
+        user_type TEXT DEFAULT 'anonymous',
+        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_active_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        duration_seconds INTEGER DEFAULT 0,
+        device_category TEXT DEFAULT 'desktop',
+        browser TEXT DEFAULT 'Unknown',
+        os TEXT DEFAULT 'Unknown',
+        referrer TEXT DEFAULT '',
+        referrer_host TEXT DEFAULT 'direct',
+        landing_page TEXT DEFAULT '/',
+        exit_page TEXT DEFAULT '/',
+        page_views INTEGER DEFAULT 1,
+        game_launched INTEGER DEFAULT 0,
+        matches_played INTEGER DEFAULT 0
+      );
+
+      -- Granular Analytics & Interaction Events
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        visitor_id TEXT,
+        session_id TEXT,
+        user_id INTEGER DEFAULT NULL,
+        user_type TEXT DEFAULT 'anonymous',
+        category TEXT NOT NULL,
+        event_name TEXT NOT NULL,
+        event_data TEXT DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Android APK Download Tracking
+      CREATE TABLE IF NOT EXISTS analytics_apk_downloads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        visitor_id TEXT DEFAULT NULL,
+        session_id TEXT DEFAULT NULL,
+        ip_hash TEXT DEFAULT NULL,
+        version TEXT DEFAULT '1.0.0',
+        source TEXT DEFAULT 'direct',
+        status TEXT DEFAULT 'served',
+        bytes_sent INTEGER DEFAULT 0,
+        duration_ms INTEGER DEFAULT 0,
+        error_message TEXT DEFAULT NULL,
+        user_agent TEXT DEFAULT NULL,
+        device_category TEXT DEFAULT 'mobile',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Multiplayer & Server Performance Snapshots
+      CREATE TABLE IF NOT EXISTS analytics_performance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        active_players INTEGER DEFAULT 0,
+        active_rooms INTEGER DEFAULT 0,
+        active_matches INTEGER DEFAULT 0,
+        bot_count INTEGER DEFAULT 0,
+        ws_clients INTEGER DEFAULT 0,
+        ping_median_ms REAL DEFAULT 0,
+        ping_p95_ms REAL DEFAULT 0,
+        tick_rate REAL DEFAULT 30,
+        tick_duration_ms REAL DEFAULT 0,
+        memory_rss_mb REAL DEFAULT 0,
+        memory_heap_mb REAL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Reliability & Technical Error Logging
+      CREATE TABLE IF NOT EXISTS analytics_errors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        error_type TEXT NOT NULL,
+        status_code INTEGER DEFAULT 500,
+        message TEXT NOT NULL,
+        stack TEXT DEFAULT NULL,
+        path TEXT DEFAULT NULL,
+        visitor_id TEXT DEFAULT NULL,
+        user_id INTEGER DEFAULT NULL,
+        user_agent TEXT DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Analytics Performance Indexes
+      CREATE INDEX IF NOT EXISTS idx_analytics_sessions_started_at ON analytics_sessions(started_at);
+      CREATE INDEX IF NOT EXISTS idx_analytics_sessions_visitor_id ON analytics_sessions(visitor_id);
+      CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at);
+      CREATE INDEX IF NOT EXISTS idx_analytics_events_name ON analytics_events(event_name);
+      CREATE INDEX IF NOT EXISTS idx_analytics_apk_created_at ON analytics_apk_downloads(created_at);
+      CREATE INDEX IF NOT EXISTS idx_analytics_performance_created_at ON analytics_performance(created_at);
+      CREATE INDEX IF NOT EXISTS idx_analytics_errors_created_at ON analytics_errors(created_at);
     `);
 
     // Safe migration: Add is_guest column if table existed without it

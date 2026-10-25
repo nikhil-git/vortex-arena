@@ -4,6 +4,7 @@ const { CollisionEngine } = require('./CollisionEngine');
 const { MapData } = require('./MapData');
 const statsService = require('../services/statsService');
 const friendsService = require('../services/friendsService');
+const analyticsService = require('../services/analyticsService');
 const db = require('../database/db');
 const BotPlayer = require('./BotPlayer');
 
@@ -321,6 +322,19 @@ class Room {
       this.tickInterval = setInterval(() => this.tick(), tickMs);
     }
 
+    analyticsService.recordEvent({
+      category: 'game',
+      eventName: 'match_start',
+      data: {
+        roomCode: this.code,
+        gameMode: this.gameMode,
+        mapId: this.mapId,
+        playerCount: this.playerCount,
+        isAiMatch: this.isAiMatch,
+        isPractice: this.isPractice
+      }
+    });
+
     if (countdownSecs > 0) {
       this.state = 'countdown';
       this.countdownTime = countdownSecs;
@@ -492,6 +506,8 @@ class Room {
       state: this.state,
       countdownSeconds: this.state === 'countdown' ? Math.max(0, this.countdownTime) : 0
     });
+
+    analyticsService.recordTickDuration(Date.now() - now);
   }
 
   handlePlayerInput(userId, input) {
@@ -808,6 +824,20 @@ class Room {
           friendsService.updateUserStatus(p.id, true, 'in_lobby', this.code);
         }
       }
+
+      analyticsService.recordEvent({
+        category: 'game',
+        eventName: 'match_complete',
+        data: {
+          matchId,
+          roomCode: this.code,
+          gameMode: this.gameMode,
+          mapId: this.mapId,
+          playerCount: playersList.length,
+          winnerId: winner ? winner.id : null,
+          durationSeconds: this.matchDuration - this.timeRemaining
+        }
+      });
     } catch (err) {
       console.error('Failed to save match results:', err);
     }

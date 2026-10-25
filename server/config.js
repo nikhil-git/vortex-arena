@@ -11,6 +11,9 @@ module.exports = {
   RESPAWN_DELAY_SECONDS: 3,
   RESPAWN_PROTECTION_SECONDS: 3.0,
   
+  // Admin & Analytics Dashboard Access Key
+  ADMIN_KEY: process.env.ADMIN_KEY || 'vortex-admin-2026',
+
   // Starting weapons given to all players on spawn
   DEFAULT_WEAPONS: ['assault_rifle', 'pistol', 'shotgun', 'sniper_rifle']
 };

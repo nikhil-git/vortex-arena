@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vortex Arena – Operations & Analytics Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
+  <link rel="shortcut icon" href="/favicon.ico?v=2">
+  <link rel="stylesheet" href="/analytics/dashboard.css">
+</head>
+<body>
+
+  <!-- ========================================================================
+       TOPBAR NAVIGATION
+       ======================================================================== -->
+  <header class="topbar">
+    <div class="brand-section">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">Vortex <span>Arena</span></div>
+        <div class="brand-subtitle">Telemetry & Operations Center</div>
+      </div>
+    </div>
+
+    <div class="topbar-controls">
+      <!-- Live Server Indicator -->
+      <div class="pulse-badge" id="live-pulse-badge">
+        <div class="pulse-dot"></div>
+        <span id="live-pulse-text">System Live</span>
+      </div>
+
+      <!-- Date Range Selectors -->
+      <div class="date-selector-group" id="date-range-pills">
+        <button type="button" class="date-pill" data-period="24h">24H</button>
+        <button type="button" class="date-pill active" data-period="7d">7D</button>
+        <button type="button" class="date-pill" data-period="28d">28D</button>
+        <button type="button" class="date-pill" data-period="90d">90D</button>
+        <button type="button" class="date-pill" data-period="custom" id="custom-date-btn">Custom</button>
+      </div>
+
+      <!-- Auto Refresh Controls -->
+      <select id="auto-refresh-select" class="btn-ctrl" style="cursor: pointer; outline: none;">
+        <option value="10000">Auto (10s)</option>
+        <option value="30000" selected>Auto (30s)</option>
+        <option value="60000">Auto (1m)</option>
+        <option value="0">Manual</option>
+      </select>
+
+      <button type="button" id="refresh-now-btn" class="btn-ctrl" title="Refresh Now">
+        <span id="refresh-icon">🔄</span> Refresh
+      </button>
+
+      <!-- CSV Export Dropdown -->
+      <select id="export-csv-select" class="btn-ctrl" style="cursor: pointer; outline: none;">
+        <option value="" disabled selected>📥 Export CSV</option>
+        <option value="overview">Overview CSV</option>
+        <option value="traffic">Traffic CSV</option>
+        <option value="downloads">Downloads CSV</option>
+        <option value="performance">Multiplayer CSV</option>
+        <option value="errors">Errors CSV</option>
+      </select>
+
+      <!-- Security / Logout -->
+      <button type="button" id="admin-lock-btn" class="btn-ctrl" style="color: var(--cyan); border-color: rgba(0,240,255,0.3);" title="Lock Dashboard">
+        🔒 Admin
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       MAIN APP CONTAINER
+       ======================================================================== -->
+  <div class="app-container">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <ul class="nav-list">
+        <li class="nav-item active" data-section="overview">
+          <span class="nav-icon">📊</span>
+          <span>Overview</span>
+        </li>
+        <li class="nav-item" data-section="traffic">
+          <span class="nav-icon">🌐</span>
+          <span>Website Traffic</span>
+        </li>
+        <li class="nav-item" data-section="downloads">
+          <span class="nav-icon">🤖</span>
+          <span>APK Downloads</span>
+        </li>
+        <li class="nav-item" data-section="engagement">
+          <span class="nav-icon">🎮</span>
+          <span>Player Engagement</span>
+        </li>
+        <li class="nav-item" data-section="performance">
+          <span class="nav-icon">⚡</span>
+          <span>Multiplayer Perf</span>
+        </li>
+        <li class="nav-item" data-section="errors">
+          <span class="nav-icon">⚠️</span>
+          <span>Errors & Reliability</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div style="font-size: 11px; color: var(--text-dark); line-height: 1.4;">
+          <div>Vortex Arena v1.0.0</div>
+          <div id="last-updated-text">Updated: just now</div>
+        </div>
+        <a href="/" target="_blank" class="btn-ctrl" style="text-decoration: none; justify-content: center; font-size: 11px;">
+          🎮 Launch Game Tab
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- ====================================================================
+           1. OVERVIEW SECTION
+           ==================================================================== -->
+      <section id="section-overview" class="dashboard-section active">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><span>📊</span> Operations Overview</h1>
+            <p class="section-lead">Live pulse & high-level gaming performance metrics across web, mobile, and multiplayer servers.</p>
+          </div>
+        </div>
+
+        <!-- Live Pulse Strip -->
+        <div class="live-strip" id="overview-live-strip">
+          <div class="live-strip-item">
+            <span class="live-strip-icon">👥</span>
+            <div>
+              <div class="live-strip-val" id="live-combatants">0</div>
+              <div class="live-strip-label">Active Combatants</div>
+            </div>
+          </div>
+          <div class="live-strip-item">
+            <span class="live-strip-icon">🏟️</span>
+            <div>
+              <div class="live-strip-val" id="live-rooms">0</div>
+              <div class="live-strip-label">Active Matches</div>
+            </div>
+          </div>
+          <div class="live-strip-item">
+            <span class="live-strip-icon">🔌</span>
+            <div>
+              <div class="live-strip-val" id="live-sockets">0</div>
+              <div class="live-strip-label">Live WS Sockets</div>
+            </div>
+          </div>
+          <div class="live-strip-item">
+            <span class="live-strip-icon">⏱️</span>
+            <div>
+              <div class="live-strip-val" id="live-ping">0 ms</div>
+              <div class="live-strip-label">Median Ping</div>
+            </div>
+          </div>
+          <div class="live-strip-item">
+            <span class="live-strip-icon">⚙️</span>
+            <div>
+              <div class="live-strip-val" id="live-tick">30 Hz</div>
+              <div class="live-strip-label">Server Tick</div>
+            </div>
+          </div>
+          <div class="live-strip-item">
+            <span class="live-strip-icon">🛡️</span>
+            <div>
+              <div class="live-strip-val" id="live-uptime">0h 0m</div>
+              <div class="live-strip-label">Node Uptime</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Visits <span>🌐</span></div>
+            <div class="kpi-value" id="kpi-total-visits">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-total-visits-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Unique Visitors <span>👤</span></div>
+            <div class="kpi-value" id="kpi-unique-visitors">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-unique-visitors-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Game Launches <span>🎮</span></div>
+            <div class="kpi-value" id="kpi-game-launches">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-game-launches-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Web-to-Game Conv % <span>🎯</span></div>
+            <div class="kpi-value" id="kpi-conv-rate">0.0%</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-conv-rate-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">APK Downloads <span>🤖</span></div>
+            <div class="kpi-value" id="kpi-apk-downloads">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-apk-downloads-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Total Sessions <span>📱</span></div>
+            <div class="kpi-value" id="kpi-total-sessions">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-total-sessions-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Peak Combatants <span>⚔️</span></div>
+            <div class="kpi-value" id="kpi-active-combatants">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-up">LIVE</span>
+              <span style="color: var(--text-dark);">Human + AI Bots</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">System Errors <span>⚠️</span></div>
+            <div class="kpi-value" id="kpi-system-errors">0</div>
+            <div class="kpi-sub">
+              <span class="trend-pill trend-neutral" id="kpi-system-errors-trend">0%</span>
+              <span style="color: var(--text-dark);">vs prev period</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trend Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Activity Trend Over Time</div>
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-color" style="background: var(--cyan);"></div> Page Visits</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--green);"></div> Game Launches</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--amber);"></div> APK Downloads</div>
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="overview-chart-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           2. WEBSITE TRAFFIC SECTION
+           ==================================================================== -->
+      <section id="section-traffic" class="dashboard-section">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><span>🌐</span> Website Traffic Analytics</h1>
+            <p class="section-lead">Real visitors, sessions, device breakdowns, navigation flows, and conversion to game launch.</p>
+          </div>
+        </div>
+
+        <!-- Traffic Volume Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Sessions & Page Views Over Time</div>
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-color" style="background: var(--cyan);"></div> Sessions</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--purple);"></div> Page Views</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--green);"></div> Game Launches</div>
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="traffic-chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <div class="two-column-grid">
+          <!-- Top Pages / Screens Table -->
+          <div class="data-table-container">
+            <div class="table-header">
+              <div class="table-title">Top Pages & Navigation Paths</div>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Path / Screen</th>
+                  <th style="text-align: right;">Views</th>
+                </tr>
+              </thead>
+              <tbody id="top-pages-tbody">
+                <tr><td colspan="2" style="text-align: center; color: var(--text-dark);">Loading pages...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Traffic Sources / Referrers -->
+          <div class="data-table-container">
+            <div class="table-header">
+              <div class="table-title">Traffic Sources & Referrers</div>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Source Domain</th>
+                  <th style="text-align: right;">Sessions</th>
+                </tr>
+              </thead>
+              <tbody id="referrers-tbody">
+                <tr><td colspan="2" style="text-align: center; color: var(--text-dark);">Loading sources...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="three-column-grid">
+          <!-- Device Breakdown -->
+          <div class="data-table-container">
+            <div class="table-header"><div class="table-title">Device Breakdown</div></div>
+            <table class="data-table">
+              <thead><tr><th>Category</th><th style="text-align: right;">Count</th></tr></thead>
+              <tbody id="devices-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Browser Breakdown -->
+          <div class="data-table-container">
+            <div class="table-header"><div class="table-title">Browsers</div></div>
+            <table class="data-table">
+              <thead><tr><th>Browser</th><th style="text-align: right;">Count</th></tr></thead>
+              <tbody id="browsers-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- OS Breakdown -->
+          <div class="data-table-container">
+            <div class="table-header"><div class="table-title">Operating Systems</div></div>
+            <table class="data-table">
+              <thead><tr><th>OS</th><th style="text-align: right;">Count</th></tr></thead>
+              <tbody id="os-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           3. APK DOWNLOADS SECTION
+           ==================================================================== -->
+      <section id="section-downloads" class="dashboard-section">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><span>🤖</span> Android APK Download Analytics</h1>
+            <p class="section-lead">Direct package downloads, file delivery completion, placement conversions, and server integrity.</p>
+          </div>
+        </div>
+
+        <!-- Telemetry Notice -->
+        <div class="notice-box">
+          <strong>⚠️ Download Delivery vs Device Installation:</strong>
+          This report records actual HTTP download intent clicks, completed 100% byte transfers served from Render, and interrupted requests. Final device-level installation requires client-side package installation verification on Android devices.
+        </div>
+
+        <!-- Download KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Download Clicks (Intent)</div>
+            <div class="kpi-value" id="kpi-dl-clicks">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Served Successfully</div>
+            <div class="kpi-value" style="color: var(--green);" id="kpi-dl-served">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Unique Downloaders</div>
+            <div class="kpi-value" style="color: var(--cyan);" id="kpi-dl-unique">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Visitor Download Conv %</div>
+            <div class="kpi-value" id="kpi-dl-conv">0.0%</div>
+          </div>
+        </div>
+
+        <!-- Download Timeline Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">APK Download Requests Over Time</div>
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-color" style="background: var(--cyan);"></div> Clicks</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--green);"></div> Completed Downloads</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--red);"></div> Aborted / Errors</div>
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="downloads-chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <div class="two-column-grid">
+          <!-- Downloads by Placement Source -->
+          <div class="data-table-container">
+            <div class="table-header"><div class="table-title">Downloads by UI Placement</div></div>
+            <table class="data-table">
+              <thead><tr><th>Source Placement</th><th style="text-align: right;">Completed</th></tr></thead>
+              <tbody id="dl-sources-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Server File Integrity & Status -->
+          <div class="data-table-container">
+            <div class="table-header"><div class="table-title">Physical Server APK File Health</div></div>
+            <table class="data-table">
+              <tbody>
+                <tr><td>Package File</td><td id="file-name" style="font-weight: 700; color: #fff;">VortexArena.apk</td></tr>
+                <tr><td>Status</td><td><span class="badge badge-green" id="file-status">Available & Healthy</span></td></tr>
+                <tr><td>File Size</td><td id="file-size">0.00 MB</td></tr>
+                <tr><td>Last Modified</td><td id="file-modified">--</td></tr>
+                <tr><td>Target SDK</td><td>Android SDK 33 (API 21-33)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Downloads Audit Log -->
+        <div class="data-table-container">
+          <div class="table-header"><div class="table-title">Recent APK Download Events (Audit Log)</div></div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Version</th>
+                <th>Placement</th>
+                <th>Status</th>
+                <th>Bytes Transferred</th>
+                <th>Device</th>
+              </tr>
+            </thead>
+            <tbody id="recent-downloads-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           4. PLAYER ENGAGEMENT & RETENTION SECTION
+           ==================================================================== -->
+      <section id="section-engagement" class="dashboard-section">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><span>🎮</span> Player Engagement & Retention</h1>
+            <p class="section-lead">DAU, WAU, MAU, session longevity, match completion, and multi-week cohort retention.</p>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Average DAU</div>
+            <div class="kpi-value" id="kpi-eng-dau">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Rolling WAU (7-Day)</div>
+            <div class="kpi-value" id="kpi-eng-wau">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Rolling MAU (30-Day)</div>
+            <div class="kpi-value" id="kpi-eng-mau">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">DAU / MAU Stickiness</div>
+            <div class="kpi-value" style="color: var(--cyan);" id="kpi-eng-stickiness">0.0%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Avg Session Duration</div>
+            <div class="kpi-value" id="kpi-eng-avg-dur">0s</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Median Session Duration</div>
+            <div class="kpi-value" id="kpi-eng-med-dur">0s</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Matches Completed</div>
+            <div class="kpi-value" style="color: var(--green);" id="kpi-eng-matches-completed">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Match Abandonment %</div>
+            <div class="kpi-value" style="color: var(--amber);" id="kpi-eng-abandonment">0.0%</div>
+          </div>
+        </div>
+
+        <!-- DAU Timeline Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Daily Active Users (DAU) Trend</div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="dau-chart-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Retention Cohorts Table -->
+        <div class="data-table-container">
+          <div class="table-header">
+            <div class="table-title">Player Retention Cohorts (Weekly)</div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Cohort Week</th>
+                <th>Start Date</th>
+                <th>Cohort Users</th>
+                <th>Day 1 Retention</th>
+                <th>Day 7 Retention</th>
+                <th>Day 28 Retention</th>
+              </tr>
+            </thead>
+            <tbody id="cohorts-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Guest vs Authenticated Activity Split -->
+        <div class="data-table-container">
+          <div class="table-header">
+            <div class="table-title">Guest vs Authenticated User Activity Split</div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>User Type</th>
+                <th>Sessions</th>
+                <th>Game Launches</th>
+                <th>Matches Played</th>
+                <th>Avg Duration</th>
+              </tr>
+            </thead>
+            <tbody id="user-split-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           5. MULTIPLAYER PERFORMANCE SECTION
+           ==================================================================== -->
+      <section id="section-performance" class="dashboard-section">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><span>⚡</span> Multiplayer Game Performance</h1>
+            <p class="section-lead">Authoritative server health, tick rates, latency distributions (median, p95, p99), and sockets.</p>
+          </div>
+        </div>
+
+        <!-- Real-time Performance KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Peak Concurrent Players</div>
+            <div class="kpi-value" id="kpi-perf-peak">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Connected WebSockets</div>
+            <div class="kpi-value" style="color: var(--cyan);" id="kpi-perf-sockets">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Median Ping (RTT)</div>
+            <div class="kpi-value" style="color: var(--green);" id="kpi-perf-med-ping">0 ms</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">P95 Ping Latency</div>
+            <div class="kpi-value" style="color: var(--amber);" id="kpi-perf-p95-ping">0 ms</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Server Tick Rate</div>
+            <div class="kpi-value" id="kpi-perf-tick">30 Hz</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Avg Tick Duration</div>
+            <div class="kpi-value" id="kpi-perf-tick-dur">0 ms</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Server Memory (RSS)</div>
+            <div class="kpi-value" id="kpi-perf-memory">0 MB</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">WebSocket Connects</div>
+            <div class="kpi-value" id="kpi-perf-connects">0</div>
+          </div>
+        </div>
+
+        <!-- Latency & Concurrency Timeline Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Concurrent Players & Latency Snapshots</div>
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-color" style="background: var(--cyan);"></div> Active Players</div>
+              <div class="legend-item"><div class="legend-color" style="background: var(--amber);"></div> Median Ping (ms)</div>
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="performance-chart-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           6. ERRORS & RELIABILITY SECTION
+           ==================================================================== -->
+      <section id="section-errors" class="dashboard-section">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><span>⚠️</span> Technical Reliability & Errors</h1>
+            <p class="section-lead">Client JS errors, unhandled promise rejections, WebGL context loss, API 4xx/5xx, and stack traces.</p>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Total System Errors</div>
+            <div class="kpi-value" style="color: var(--red);" id="kpi-err-total">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Error Rate %</div>
+            <div class="kpi-value" id="kpi-err-rate">0.0%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">System Health Score</div>
+            <div class="kpi-value" style="color: var(--green);" id="kpi-err-health">100.0%</div>
+          </div>
+        </div>
+
+        <!-- Error Category Breakdown -->
+        <div class="data-table-container">
+          <div class="table-header">
+            <div class="table-title">Error Distribution by Category</div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Error Type</th>
+                <th style="text-align: right;">Occurrences</th>
+              </tr>
+            </thead>
+            <tbody id="error-types-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Recent Technical Errors Log -->
+        <div class="data-table-container">
+          <div class="table-header">
+            <div class="table-title">Live Error Log & Stack Traces</div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Path / Route</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="recent-errors-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================================
+       ADMIN AUTHENTICATION GATE MODAL
+       ======================================================================== -->
+  <div id="auth-modal" class="auth-modal-backdrop" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-icon">🔒</div>
+      <h2 class="auth-title">Operations Security Gate</h2>
+      <p class="auth-desc">Vortex Arena operations telemetry and technical analytics require authorized administrator access.</p>
+
+      <form id="auth-form" onsubmit="event.preventDefault();">
+        <input type="password" id="admin-key-input" class="auth-input" placeholder="Enter Admin Access Key..." autocomplete="current-password" autofocus required>
+        <button type="submit" id="auth-submit-btn" class="auth-btn">Authorize Dashboard Access</button>
+        <div id="auth-error-msg" class="auth-error">Invalid access key. Please verify credentials.</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       CUSTOM DATE RANGE MODAL
+       ======================================================================== -->
+  <div id="custom-date-modal" class="auth-modal-backdrop" style="display: none;">
+    <div class="auth-card" style="max-width: 380px;">
+      <h2 class="auth-title" style="margin-bottom: 14px;">Select Custom Date Range</h2>
+      <div style="margin-bottom: 12px; text-align: left;">
+        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Start Date</label>
+        <input type="date" id="custom-start-input" class="auth-input" style="margin-bottom: 0;">
+      </div>
+      <div style="margin-bottom: 20px; text-align: left;">
+        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">End Date</label>
+        <input type="date" id="custom-end-input" class="auth-input" style="margin-bottom: 0;">
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn-ctrl" style="flex: 1; justify-content: center; padding: 10px;" onclick="document.getElementById('custom-date-modal').style.display='none'">Cancel</button>
+        <button type="button" class="btn-primary-action" style="flex: 1; padding: 10px;" id="apply-custom-date-btn">Apply Range</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Controller Script -->
+  <script src="/analytics/dashboard.js"></script>
+</body>
+</html>
