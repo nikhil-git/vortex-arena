@@ -579,8 +579,25 @@ class Room {
       reserveAmmo: shooter.activeWeaponState.reserveAmmo
     });
 
-    const rayOrigin = shootData.origin || [shooter.position.x, shooter.position.y + 1.5, shooter.position.z];
-    const rayDir = shootData.dir || [0, 0, 1];
+    const rayOriginCandidate = (Array.isArray(shootData.origin) && shootData.origin.length === 3 && shootData.origin.every(Number.isFinite))
+      ? [shootData.origin[0], shootData.origin[1], shootData.origin[2]]
+      : [shooter.position.x, (shooter.position.y || 0) + 1.7, shooter.position.z];
+
+    const rayDirCandidate = (Array.isArray(shootData.dir) && shootData.dir.length === 3 && shootData.dir.every(Number.isFinite))
+      ? [shootData.dir[0], shootData.dir[1], shootData.dir[2]]
+      : [0, 0, -1];
+
+    // Normalize direction vector
+    const dLen = Math.hypot(rayDirCandidate[0], rayDirCandidate[1], rayDirCandidate[2]);
+    const rayDir = dLen > 0.0001
+      ? [rayDirCandidate[0] / dLen, rayDirCandidate[1] / dLen, rayDirCandidate[2] / dLen]
+      : [0, 0, -1];
+
+    // Distance sanity check: rayOrigin cannot be excessively far from shooter's server position (> 4.5m)
+    const distFromShooter = Math.hypot(rayOriginCandidate[0] - shooter.position.x, rayOriginCandidate[2] - shooter.position.z);
+    const rayOrigin = distFromShooter <= 4.5
+      ? rayOriginCandidate
+      : [shooter.position.x, (shooter.position.y || 0) + 1.7, shooter.position.z];
 
     // Broadcast muzzle flash and sound to other players in room
     this.broadcastExcept(userId, 'remote_player_fired', {
@@ -592,7 +609,7 @@ class Room {
 
     // Authoritative hit verification
     const targets = Array.from(this.players.values()).filter(p => {
-      if (p.id === shooter.id || !p.isAlive) return false;
+      if (String(p.id) === String(shooter.id) || !p.isAlive) return false;
       if (this.gameMode === 'tdm' && p.team === shooter.team) return false; // Friendly fire disabled
       return true;
     });

@@ -984,7 +984,9 @@ class App {
     this.gameEngine.setLocalPlayer(this.currentUser.id, this.currentUser.equippedSkins);
 
     // Deterministically initialize player transform to authoritative spawn point immediately
-    const localSnap = (matchData && matchData.players) ? matchData.players.find(p => p.id === this.currentUser.id) : null;
+    const localSnap = (matchData && matchData.players && this.currentUser)
+      ? matchData.players.find(p => String(p.id) === String(this.currentUser.id))
+      : null;
     if (localSnap && (localSnap.position || localSnap.pos)) {
       const spX = localSnap.position ? localSnap.position.x : localSnap.pos[0];
       const spY = localSnap.position ? (localSnap.position.y || 0) : (localSnap.pos[1] || 0);

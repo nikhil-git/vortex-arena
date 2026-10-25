@@ -86,6 +86,10 @@ export class GameEngine {
     this.inputHistory = [];
 
     window.addEventListener('resize', () => this.onResize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.onResize(), 150));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.onResize());
+    }
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }

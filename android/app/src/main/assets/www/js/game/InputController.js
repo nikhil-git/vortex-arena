@@ -163,7 +163,8 @@ export class InputController {
           this.lastTouchLookPos = { x: touch.clientX, y: touch.clientY };
 
           this.yaw -= dx * this.sensitivity * 1.5;
-          const yDelta = dy * this.sensitivity * 1.5 * (this.invertY ? 1 : -1);
+          const ySign = this.invertY ? -1 : 1;
+          const yDelta = dy * this.sensitivity * 1.5 * ySign;
           this.pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.pitch - yDelta));
           this.updateCameraRotation();
         }
@@ -199,18 +200,52 @@ export class InputController {
     // Direct Mobile Action Buttons with zero-latency touch listeners
     const fireBtn = document.getElementById('touch-btn-fire');
     if (fireBtn) {
+      let fireLookTouchId = null;
+      let lastFireTouchPos = { x: 0, y: 0 };
+
       const handleFireStart = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         this.isShooting = true;
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          fireLookTouchId = t.identifier;
+          lastFireTouchPos = { x: t.clientX, y: t.clientY };
+        }
         if (this.onShoot) this.onShoot();
       };
+
+      const handleFireMove = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        if (fireLookTouchId !== null && e.changedTouches) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.identifier === fireLookTouchId) {
+              const dx = t.clientX - lastFireTouchPos.x;
+              const dy = t.clientY - lastFireTouchPos.y;
+              lastFireTouchPos = { x: t.clientX, y: t.clientY };
+
+              this.yaw -= dx * this.sensitivity * 1.5;
+              const ySign = this.invertY ? -1 : 1;
+              const yDelta = dy * this.sensitivity * 1.5 * ySign;
+              this.pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.pitch - yDelta));
+              this.updateCameraRotation();
+              break;
+            }
+          }
+        }
+      };
+
       const handleFireEnd = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         this.isShooting = false;
+        fireLookTouchId = null;
       };
+
       fireBtn.addEventListener('touchstart', handleFireStart, { passive: false });
+      fireBtn.addEventListener('touchmove', handleFireMove, { passive: false });
       fireBtn.addEventListener('touchend', handleFireEnd, { passive: false });
       fireBtn.addEventListener('touchcancel', handleFireEnd, { passive: false });
       fireBtn.addEventListener('mousedown', (e) => {
@@ -319,7 +354,8 @@ export class InputController {
       const movementY = e.movementY || 0;
 
       this.yaw -= movementX * this.sensitivity;
-      const yDelta = movementY * this.sensitivity * (this.invertY ? 1 : -1);
+      const ySign = this.invertY ? -1 : 1;
+      const yDelta = movementY * this.sensitivity * ySign;
       this.pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.pitch - yDelta));
 
       this.updateCameraRotation();
@@ -702,12 +738,14 @@ export class InputController {
   }
 
   getForwardDirection() {
+    this.updateCameraRotation();
     const dir = new THREE.Vector3(0, 0, -1);
     dir.applyEuler(this.camera.rotation);
     return dir.normalize();
   }
 
   getShootOrigin() {
+    this.camera.position.copy(this.position);
     return this.camera.position.clone();
   }
 }

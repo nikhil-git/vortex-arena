@@ -194,6 +194,7 @@ class Player {
     this.shield = this.maxShield;
     this.isAlive = true;
     this.respawnTimestamp = Date.now();
+    this.lastInputTime = Date.now();
     this.invulnerableUntil = Date.now() + Math.max(0, protectionSeconds * 1000);
     this.position = {
       x: spawnPoint.x,
@@ -214,7 +215,7 @@ class Player {
   }
 
   send(type, payload) {
-    if (this.ws && this.ws.readyState === 1) { // OPEN
+    if (this.ws && (this.ws.readyState === undefined || this.ws.readyState === 1)) { // OPEN or mock
       this.ws.send(JSON.stringify({ type, ...payload }));
     }
   }

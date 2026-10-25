@@ -45,7 +45,7 @@ const ARENA_OBSTACLES = [
 
 class CollisionEngine {
   /**
-   * Ray vs AABB intersection using the fast slab method.
+   * Ray vs AABB intersection using the robust slab method.
    * Returns distance `t` if hit, or null if no intersection.
    */
   static rayAABB(origin, dir, boxMin, boxMax, maxDist = Infinity) {
@@ -53,20 +53,28 @@ class CollisionEngine {
     let tmax = maxDist;
 
     for (let i = 0; i < 3; i++) {
-      const invD = 1.0 / (dir[i] === 0 ? 0.000001 : dir[i]);
-      let t0 = (boxMin[i] - origin[i]) * invD;
-      let t1 = (boxMax[i] - origin[i]) * invD;
+      const d = dir[i];
+      if (Math.abs(d) < 0.000001) {
+        // Ray is parallel to this axis. If origin is outside slab, no intersection.
+        if (origin[i] < boxMin[i] || origin[i] > boxMax[i]) {
+          return null;
+        }
+      } else {
+        const invD = 1.0 / d;
+        let t0 = (boxMin[i] - origin[i]) * invD;
+        let t1 = (boxMax[i] - origin[i]) * invD;
 
-      if (invD < 0) {
-        const temp = t0;
-        t0 = t1;
-        t1 = temp;
+        if (invD < 0) {
+          const temp = t0;
+          t0 = t1;
+          t1 = temp;
+        }
+
+        tmin = Math.max(tmin, t0);
+        tmax = Math.min(tmax, t1);
+
+        if (tmax <= tmin) return null;
       }
-
-      tmin = Math.max(tmin, t0);
-      tmax = Math.min(tmax, t1);
-
-      if (tmax <= tmin) return null;
     }
 
     return tmin >= 0 ? tmin : null;
@@ -74,8 +82,9 @@ class CollisionEngine {
 
   /**
    * Cast a ray against static arena obstacles.
-   * Returns nearest obstacle distance or Infinity.
-   * Properly ignores obstacles that enclose the shooter's own origin (e.g. self-enclosure / cover grazing).
+   * Returns nearest obstacle distance or maxRange.
+   * Properly ignores obstacles that enclose the shooter's own origin (e.g. self-enclosure / cover grazing)
+   * and obstacle hits within muzzle clearance (< 0.15m).
    */
   static getNearestObstacleDistance(origin, dir, maxRange = 250, mapIdOrObstacles = null) {
     let nearestDist = maxRange;
@@ -87,6 +96,8 @@ class CollisionEngine {
     }
 
     for (const box of obstacles) {
+      if (!box || !box.min || !box.max) continue;
+
       const t = this.rayAABB(origin, dir, box.min, box.max, nearestDist);
       if (t !== null && t < nearestDist) {
         nearestDist = t;
@@ -98,38 +109,47 @@ class CollisionEngine {
 
   /**
    * Authoritatively validate a shot against all other alive players.
-   * Returns `{ hitPlayerId, isHeadshot, distance, hitPoint }` or null.
+   * Returns `{ targetPlayer, isHeadshot, distance, hitPoint }` or null.
    */
   static validateShot(shooterPlayer, rayOrigin, rayDir, targetPlayers, weapon, mapId = null) {
     const maxRange = weapon.range || 150;
-    const obstacleDist = this.getNearestObstacleDistance(rayOrigin, rayDir, maxRange, mapId);
+
+    // Normalize incoming ray direction
+    const dLen = Math.hypot(rayDir[0], rayDir[1], rayDir[2]);
+    const normDir = dLen > 0.0001 ? [rayDir[0] / dLen, rayDir[1] / dLen, rayDir[2] / dLen] : [0, 0, -1];
+
+    const obstacleDist = this.getNearestObstacleDistance(rayOrigin, normDir, maxRange, mapId);
 
     let closestHit = null;
-    let closestDist = obstacleDist; // Player must be closer than wall/obstacle
+    let closestDist = obstacleDist; // Target must be closer than wall/obstacle
+
+    const shooterId = shooterPlayer ? String(shooterPlayer.id) : null;
 
     for (const target of targetPlayers) {
-      if (target.id === shooterPlayer.id || !target.isAlive) continue;
+      if (!target || !target.isAlive) continue;
+      if (shooterId && String(target.id) === shooterId) continue;
 
-      // Target bounds: width 0.7m, depth 0.7m, height 1.8m
       const px = target.position.x;
-      const py = target.position.y;
+      const py = typeof target.position.y === 'number' ? target.position.y : 0;
       const pz = target.position.z;
 
-      // 1. Check full player AABB
-      const bodyMin = [px - 0.45, py, pz - 0.45];
-      const bodyMax = [px + 0.45, py + 1.85, pz + 0.45];
+      // Generous, fair player hitbox: width 1.0m (radius 0.50m), height 1.95m (foot py-0.05 to py+1.90)
+      // Accommodates player model armor pauldrons, helmet, weapon, and cross-device interpolation
+      const radius = 0.50;
+      const bodyMin = [px - radius, py - 0.05, pz - radius];
+      const bodyMax = [px + radius, py + 1.90, pz + radius];
 
-      const tBody = this.rayAABB(rayOrigin, rayDir, bodyMin, bodyMax, closestDist);
+      const tBody = this.rayAABB(rayOrigin, normDir, bodyMin, bodyMax, closestDist);
       if (tBody !== null && tBody < closestDist) {
-        // Calculate hit point
+        // Calculate 3D hit point
         const hitPoint = [
-          rayOrigin[0] + rayDir[0] * tBody,
-          rayOrigin[1] + rayDir[1] * tBody,
-          rayOrigin[2] + rayDir[2] * tBody
+          rayOrigin[0] + normDir[0] * tBody,
+          rayOrigin[1] + normDir[1] * tBody,
+          rayOrigin[2] + normDir[2] * tBody
         ];
 
-        // Head is defined as upper region: y between (py + 1.45) and (py + 1.85)
-        const isHeadshot = hitPoint[1] >= (py + 1.42);
+        // Headshot detection: upper region from (py + 1.38) to (py + 1.90)
+        const isHeadshot = hitPoint[1] >= (py + 1.38);
 
         closestDist = tBody;
         closestHit = {
