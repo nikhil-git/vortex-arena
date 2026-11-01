@@ -22,14 +22,12 @@ cp -r "$PROJECT_DIR/public/"* "$BUILD_DIR/"
 rm -f "$BUILD_DIR/"*.apk
 rm -f "$BUILD_DIR/"*.zip
 
-# Ensure vendor/three/three.module.js is bundled
+# Ensure vendor/three/ build files are bundled
 mkdir -p "$BUILD_DIR/vendor/three"
-if [ -f "$PROJECT_DIR/public/vendor/three/three.module.js" ]; then
-    cp "$PROJECT_DIR/public/vendor/three/three.module.js" "$BUILD_DIR/vendor/three/three.module.js"
-elif [ -f "$PROJECT_DIR/node_modules/three/build/three.module.js" ]; then
-    cp "$PROJECT_DIR/node_modules/three/build/three.module.js" "$BUILD_DIR/vendor/three/three.module.js"
-elif [ -f "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three/three.module.js" ]; then
-    cp "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three/three.module.js" "$BUILD_DIR/vendor/three/three.module.js"
+cp "$PROJECT_DIR/public/vendor/three/three.module.js" "$BUILD_DIR/vendor/three/"
+cp "$PROJECT_DIR/public/vendor/three/three.core.js" "$BUILD_DIR/vendor/three/"
+if [ -f "$PROJECT_DIR/public/vendor/three/three.tsl.js" ]; then
+    cp "$PROJECT_DIR/public/vendor/three/three.tsl.js" "$BUILD_DIR/vendor/three/"
 fi
 
 echo "=== [3/4] Configuring Relative Paths for Itch.io Iframe ==="
