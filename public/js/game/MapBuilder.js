@@ -1,4 +1,4 @@
-import * as THREE from '/vendor/three/three.module.js';
+import * as THREE from '../../vendor/three/three.module.js';
 
 /**
  * MapBuilder.js - Procedural 3D Map Environments for Vortex Arena

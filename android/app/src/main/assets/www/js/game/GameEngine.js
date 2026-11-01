@@ -1,4 +1,4 @@
-import * as THREE from '/vendor/three/three.module.js';
+import * as THREE from '../../vendor/three/three.module.js';
 import { Arena } from './Arena.js';
 import { MapBuilder } from './MapBuilder.js';
 import { MapData } from './MapData.js';

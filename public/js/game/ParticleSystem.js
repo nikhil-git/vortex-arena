@@ -1,4 +1,4 @@
-import * as THREE from '/vendor/three/three.module.js';
+import * as THREE from '../../vendor/three/three.module.js';
 
 /**
  * High-performance, zero-allocation Particle and FX system.

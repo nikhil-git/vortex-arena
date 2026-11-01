@@ -24,14 +24,15 @@ rm -f "$BUILD_DIR/"*.zip
 
 # Ensure vendor/three/three.module.js is bundled
 mkdir -p "$BUILD_DIR/vendor/three"
-if [ -f "$PROJECT_DIR/node_modules/three/build/three.module.js" ]; then
+if [ -f "$PROJECT_DIR/public/vendor/three/three.module.js" ]; then
+    cp "$PROJECT_DIR/public/vendor/three/three.module.js" "$BUILD_DIR/vendor/three/three.module.js"
+elif [ -f "$PROJECT_DIR/node_modules/three/build/three.module.js" ]; then
     cp "$PROJECT_DIR/node_modules/three/build/three.module.js" "$BUILD_DIR/vendor/three/three.module.js"
 elif [ -f "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three/three.module.js" ]; then
     cp "$PROJECT_DIR/android/app/src/main/assets/www/vendor/three/three.module.js" "$BUILD_DIR/vendor/three/three.module.js"
 fi
 
-echo "=== [3/4] Configuring Relative Paths & Import Map for Itch.io Iframe ==="
-# Add base href="./" and an import map right after <head> in index.html
+echo "=== [3/4] Configuring Relative Paths for Itch.io Iframe ==="
 python3 - << 'EOF'
 import re
 
@@ -46,25 +47,18 @@ content = re.sub(r'href="/favicon\.', 'href="favicon.', content)
 content = re.sub(r'href="/manifest\.json"', 'href="manifest.json"', content)
 content = re.sub(r'src="/js/', 'src="js/', content)
 
-# Inject importmap for ES module Three.js resolution if not already present
-import_map = """
-  <base href="./">
-  <script type="importmap">
-  {
-    "imports": {
-      "/vendor/three/three.module.js": "./vendor/three/three.module.js"
-    }
-  }
-  </script>
-"""
+# Absolute backend links
+content = content.replace('href="/download"', 'href="https://vortex-arena-1nmx.onrender.com/download"')
+content = content.replace('href="/analytics"', 'href="https://vortex-arena-1nmx.onrender.com/analytics"')
+content = content.replace('href="/"', 'href="https://vortex-arena-1nmx.onrender.com/"')
 
-if '<base href="./">' not in content:
-    content = content.replace('<head>', '<head>' + import_map, 1)
+# Ensure no <base> tag is present that would break anchor links
+content = re.sub(r'<base\s+[^>]*>', '', content)
 
 with open(html_path, 'w', encoding='utf-8') as f:
     f.write(content)
 
-print("Successfully injected itch.io iframe compatibility into index.html")
+print("Successfully configured relative paths and anchor links in index.html")
 EOF
 
 echo "=== [4/4] Creating ZIP Archive (vortex-arena-html5.zip) ==="

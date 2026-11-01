@@ -1,4 +1,4 @@
-import * as THREE from '/vendor/three/three.module.js';
+import * as THREE from '../../vendor/three/three.module.js';
 
 export class PlayerModel {
   constructor(playerData, isLocal = false) {

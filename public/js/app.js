@@ -1,4 +1,4 @@
-import * as THREE from '/vendor/three/three.module.js';
+import * as THREE from '../vendor/three/three.module.js';
 import { GameEngine } from './game/GameEngine.js';
 import { PlayerModel } from './game/PlayerModel.js';
 import { MapData } from './game/MapData.js';
@@ -58,6 +58,7 @@ class App {
   async init() {
     this.setupNetworkListeners();
     this.setupTurntablePreview();
+    this.setupLandingNavLinks();
 
     // Check if existing token is valid
     if (window.apiClient.token) {
@@ -72,6 +73,22 @@ class App {
         this.navigateTo('auth');
       }
     }
+  }
+
+  setupLandingNavLinks() {
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[href^="#"]');
+      if (!link) return;
+      const hash = link.getAttribute('href');
+      if (hash && hash.length > 1) {
+        const targetId = hash.slice(1);
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          e.preventDefault();
+          targetEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
   }
 
   setCurrentUser(user) {
