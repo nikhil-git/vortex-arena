@@ -59,6 +59,17 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 // Support reverse proxies (Render, Koyeb, Railway, Fly.io, Cloudflare)
 app.set('trust proxy', 1);
 
+// Cross-Origin Resource Sharing (CORS) for external embeddings (itch.io, WebView, web apps)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 // Global SEO & Search Indexing response headers
 app.use((req, res, next) => {
   res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');

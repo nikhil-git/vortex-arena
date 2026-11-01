@@ -157,17 +157,21 @@
     // =======================================================================
 
     sendBeaconOrFetch(endpoint, data) {
+      const baseUrl = (window.apiClient && typeof window.apiClient.resolveBaseUrl === 'function')
+        ? window.apiClient.resolveBaseUrl()
+        : '';
+      const fullUrl = `${baseUrl}${endpoint}`;
       const payload = JSON.stringify(data);
       if (navigator.sendBeacon) {
         try {
           const blob = new Blob([payload], { type: 'application/json' });
-          if (navigator.sendBeacon(endpoint, blob)) {
+          if (navigator.sendBeacon(fullUrl, blob)) {
             return;
           }
         } catch (e) {}
       }
 
-      fetch(endpoint, {
+      fetch(fullUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,

@@ -38,11 +38,14 @@ class NetClient {
     }
 
     let wsUrl;
-    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    const hostname = window.location.hostname || '';
+    const isItch = hostname.includes('itch.io') || hostname.includes('itch.zone') || hostname.includes('hwcdn.net');
+
+    if ((window.location.protocol === 'http:' || window.location.protocol === 'https:') && !isItch) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(this.token)}`;
     } else {
-      const base = window.apiClient ? window.apiClient.resolveBaseUrl() : 'http://192.168.1.3:3000';
+      const base = window.apiClient ? window.apiClient.resolveBaseUrl() : 'https://vortex-arena-1nmx.onrender.com';
       const wsBase = base.replace(/^http/, 'ws').replace(/\/$/, '');
       wsUrl = `${wsBase}/ws?token=${encodeURIComponent(this.token)}`;
     }

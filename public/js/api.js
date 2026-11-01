@@ -16,10 +16,16 @@ class ApiClient {
     const saved = localStorage.getItem('vortex_server_url');
     if (saved) return saved.replace(/\/$/, '');
 
+    // External game portals & CDN embeds (itch.io, itch.zone, hwcdn.net)
+    const hostname = window.location.hostname || '';
+    if (hostname.includes('itch.io') || hostname.includes('itch.zone') || hostname.includes('hwcdn.net')) {
+      return 'https://vortex-arena-1nmx.onrender.com';
+    }
+
     if (window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:')) {
       return window.location.origin;
     }
-    return 'http://192.168.1.3:3000';
+    return 'https://vortex-arena-1nmx.onrender.com';
   }
 
   setToken(token) {
