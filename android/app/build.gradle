@@ -24,11 +24,10 @@ android {
             keyPassword "android"
         }
         release {
-            def ksPath = System.getenv("VORTEX_KEYSTORE") ?: "${System.getProperty('user.home')}/.android/debug.keystore"
-            storeFile file(ksPath)
-            storePassword System.getenv("VORTEX_KEYSTORE_PASSWORD") ?: "android"
-            keyAlias System.getenv("VORTEX_KEY_ALIAS") ?: "androiddebugkey"
-            keyPassword System.getenv("VORTEX_KEY_PASSWORD") ?: "android"
+            storeFile rootProject.file("vortex-release.keystore")
+            storePassword "vortex2026"
+            keyAlias "vortexarena"
+            keyPassword "vortex2026"
         }
     }
 
