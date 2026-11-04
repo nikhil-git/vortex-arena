@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Deletion Request - Vortex Arena</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root {
+      --bg-dark: #0a0f18;
+      --card-bg: #111a2e;
+      --accent-cyan: #00f0ff;
+      --accent-red: #ff3366;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border-color: rgba(0, 240, 255, 0.2);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 36px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    h1 {
+      color: var(--accent-red);
+      font-size: 24px;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(10, 15, 24, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+    .warning-box {
+      background: rgba(255, 51, 102, 0.1);
+      border: 1px solid rgba(255, 51, 102, 0.3);
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #fca5a5;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent-red);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover {
+      background: #e11d48;
+    }
+    .back-btn {
+      display: inline-block;
+      margin-top: 18px;
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .success-msg {
+      display: none;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #a7f3d0;
+      padding: 16px;
+      border-radius: 6px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>REQUEST ACCOUNT & DATA DELETION</h1>
+    <p>In compliance with Google Play Developer Policies and data protection regulations, you can permanently delete your Vortex Arena account and all associated gameplay data.</p>
+
+    <div class="warning-box">
+      ⚠️ <strong>Permanent Action:</strong> Deleting your account will immediately erase your registered username, password credentials, lifetime kills, stats, unlocked weapon skins, and leaderboard rankings. This action cannot be reversed.
+    </div>
+
+    <form id="delete-form" onsubmit="handleDelete(event)">
+      <div class="form-group">
+        <label for="username">Registered Username or Email</label>
+        <input type="text" id="username" required placeholder="e.g. SoldierAlpha">
+      </div>
+      <div class="form-group">
+        <label for="password">Account Password</label>
+        <input type="password" id="password" required placeholder="Enter password to verify identity">
+      </div>
+      <button type="submit" class="submit-btn">Permanently Delete My Account & Data</button>
+    </form>
+
+    <div id="status-box" class="success-msg"></div>
+
+    <a href="/" class="back-btn">← Cancel and return to game</a>
+  </div>
+
+  <script>
+    async function handleDelete(e) {
+      e.preventDefault();
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value;
+      const statusBox = document.getElementById('status-box');
+
+      if (!confirm('Are you absolutely certain you want to permanently delete your account and all game progress?')) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/delete-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.removeItem('vortex_token');
+          document.getElementById('delete-form').style.display = 'none';
+          statusBox.style.display = 'block';
+          statusBox.textContent = data.message || 'Your account and all associated data have been permanently deleted.';
+        } else {
+          alert('Error: ' + (data.error || 'Failed to verify account credentials.'));
+        }
+      } catch (err) {
+        alert('Request failed. Please contact support@vortex-arena.com');
+      }
+    }
+  </script>
+</body>
+</html>

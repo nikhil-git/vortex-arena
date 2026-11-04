@@ -39,10 +39,14 @@ class NetClient {
 
     let wsUrl;
     const hostname = window.location.hostname || '';
-    const isItch = hostname.includes('itch.io') || hostname.includes('itch.zone') || hostname.includes('hwcdn.net');
+    const isExternalHost =
+      hostname.includes('itch.io') ||
+      hostname.includes('itch.zone') ||
+      hostname.includes('hwcdn.net') ||
+      hostname.includes('androidplatform.net');
     const hasCustomUrl = Boolean(localStorage.getItem('vortex_server_url'));
 
-    if ((window.location.protocol === 'http:' || window.location.protocol === 'https:') && !isItch && !hasCustomUrl) {
+    if ((window.location.protocol === 'http:' || window.location.protocol === 'https:') && !isExternalHost && !hasCustomUrl) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(this.token)}`;
     } else {

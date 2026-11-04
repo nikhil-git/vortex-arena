@@ -1750,6 +1750,14 @@ body {
   }
 }
 
+/* Native Android Client Clean View: Suppress web APK download prompts inside installed native app */
+.is-native-android [data-track-download],
+.is-native-android #modal-mobile-download-trigger,
+.is-native-android .native-hide {
+  display: none !important;
+}
+
+
 
 
 

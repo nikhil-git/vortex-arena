@@ -60,6 +60,12 @@ class App {
     this.setupTurntablePreview();
     this.setupLandingNavLinks();
 
+    // Detect official native Android client environment
+    if (window.Android || navigator.userAgent.includes('VortexArenaNative')) {
+      document.documentElement.classList.add('is-native-android');
+      document.body.classList.add('is-native-android');
+    }
+
     // Check if existing token is valid
     if (window.apiClient.token) {
       try {
@@ -971,6 +977,11 @@ class App {
         this.gameEngine.weaponView.triggerRecoil(0.08);
         if (window.soundEngine) window.soundEngine.playShoot(this.activeWeaponId);
 
+        // Native haptic feedback for recoil
+        if (window.Android && typeof window.Android.vibrate === 'function') {
+          window.Android.vibrate(28);
+        }
+
         // Local tracer
         const forward = dir.clone().multiplyScalar(60);
         const hitPoint = origin.clone().add(forward);
@@ -1512,6 +1523,9 @@ class App {
     net.on('hit_confirmed', (data) => {
       this.showHitmarker(data.isHeadshot);
       if (data.targetKilled) {
+        if (window.Android && typeof window.Android.vibrate === 'function') {
+          window.Android.vibrate(100);
+        }
         this.showEliminationBanner(data.targetUsername, data.isHeadshot);
         this.refreshUserStats();
       }
@@ -1519,6 +1533,9 @@ class App {
 
     net.on('damaged', (data) => {
       this.updateHUDVitals(data.health, data.shield);
+      if (window.Android && typeof window.Android.vibrate === 'function') {
+        window.Android.vibrate(60);
+      }
       const vig = document.getElementById('damage-vignette');
       if (vig) {
         vig.classList.add('hit');
@@ -2222,6 +2239,54 @@ class App {
     if (window.soundEngine) {
       window.soundEngine.setMasterVolume(volMaster);
       window.soundEngine.setSfxVolume(volSfx);
+    }
+  }
+
+  handleNativeBackPress() {
+    // 1. Check if any open modal overlay is currently visible
+    const modalIds = [
+      'modal-sp-config',
+      'modal-create-room',
+      'modal-join-code',
+      'modal-map-select',
+      'modal-mobile-download',
+      'modal-about-creator',
+      'modal-settings',
+      'modal-account',
+      'modal-scoreboard'
+    ];
+
+    let dismissedModal = false;
+    for (const id of modalIds) {
+      const el = document.getElementById(id);
+      if (el && window.getComputedStyle(el).display !== 'none') {
+        el.style.display = 'none';
+        dismissedModal = true;
+      }
+    }
+
+    if (dismissedModal) {
+      return true; // Modal dismissed
+    }
+
+    // 2. If in active 3D game match, return false so native confirmation dialog pops up
+    if (this.gameEngine && this.gameEngine.isRunning) {
+      return false;
+    }
+
+    // 3. If in main-menu or lobby, return false so native confirmation dialog pops up
+    return false;
+  }
+
+  onAppPause() {
+    if (window.soundEngine && window.soundEngine.ctx && typeof window.soundEngine.ctx.suspend === 'function') {
+      try { window.soundEngine.ctx.suspend(); } catch (e) {}
+    }
+  }
+
+  onAppResume() {
+    if (window.soundEngine && window.soundEngine.ctx && typeof window.soundEngine.ctx.resume === 'function') {
+      try { window.soundEngine.ctx.resume(); } catch (e) {}
     }
   }
 

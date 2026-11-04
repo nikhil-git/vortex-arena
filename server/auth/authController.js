@@ -269,6 +269,36 @@ class AuthController {
       return res.status(500).json({ error: 'Internal server error during logout' });
     }
   }
+
+  deleteAccount(req, res) {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    try {
+      const trimmed = username.trim();
+      const user = db.prepare('SELECT id, password_hash FROM users WHERE username = ? OR email = ?').get(trimmed, trimmed.toLowerCase());
+      if (!user) {
+        return res.status(404).json({ error: 'Account not found' });
+      }
+
+      if (!user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
+        return res.status(401).json({ error: 'Invalid password' });
+      }
+
+      try { db.prepare('DELETE FROM stats WHERE user_id = ?').run(user.id); } catch (e) {}
+      try { db.prepare('DELETE FROM user_skins WHERE user_id = ?').run(user.id); } catch (e) {}
+      try { db.prepare('DELETE FROM friends WHERE user_id = ? OR friend_id = ?').run(user.id, user.id); } catch (e) {}
+      try { db.prepare('DELETE FROM achievements WHERE user_id = ?').run(user.id); } catch (e) {}
+      try { db.prepare('DELETE FROM users WHERE id = ?').run(user.id); } catch (e) {}
+
+      return res.status(200).json({ success: true, message: 'Account and all associated game progress have been permanently deleted.' });
+    } catch (err) {
+      console.error('Delete account error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 }
 
 module.exports = new AuthController();

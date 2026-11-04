@@ -192,6 +192,14 @@ function handleApkDownload(req, res) {
 app.get('/download', handleApkDownload);
 app.get('/VortexArena.apk', handleApkDownload);
 
+// Policy & Compliance Routes (Google Play Store compliance)
+app.get(['/privacy', '/privacy-policy'], (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html'));
+});
+app.get('/account-deletion', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'account-deletion.html'));
+});
+
 // iOS WebClip profile routes disabled - redirect to homepage
 app.get(['/vortex-arena.mobileconfig', '/download-ios'], (req, res) => res.redirect(301, '/'));
 
@@ -222,6 +230,7 @@ app.post('/api/auth/register', (req, res) => authController.register(req, res));
 app.post('/api/auth/login', (req, res) => authController.login(req, res));
 app.post('/api/auth/guest', (req, res) => authController.guest(req, res));
 app.post('/api/auth/logout', authMiddleware, (req, res) => authController.logout(req, res));
+app.post('/api/auth/delete-account', (req, res) => authController.deleteAccount(req, res));
 app.get('/api/auth/me', authMiddleware, (req, res) => authController.me(req, res));
 
 // Stats & Progression

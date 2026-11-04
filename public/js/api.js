@@ -16,9 +16,14 @@ class ApiClient {
     const saved = localStorage.getItem('vortex_server_url');
     if (saved) return saved.replace(/\/$/, '');
 
-    // External game portals & CDN embeds (itch.io, itch.zone, hwcdn.net)
+    // External game portals, CDN embeds & Android WebViewAssetLoader
     const hostname = window.location.hostname || '';
-    if (hostname.includes('itch.io') || hostname.includes('itch.zone') || hostname.includes('hwcdn.net')) {
+    if (
+      hostname.includes('itch.io') ||
+      hostname.includes('itch.zone') ||
+      hostname.includes('hwcdn.net') ||
+      hostname.includes('androidplatform.net')
+    ) {
       return 'https://vortex-arena-1nmx.onrender.com';
     }
 

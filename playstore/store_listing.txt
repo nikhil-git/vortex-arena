@@ -1,0 +1,51 @@
+=== GOOGLE PLAY STORE LISTING METADATA ===
+
+[APP NAME] (Max 30 characters)
+Vortex Arena: 3D Multiplayer
+
+[SHORT DESCRIPTION] (Max 80 characters)
+Fast-paced 3D multiplayer tactical FPS shooter with 6 maps, bots & cross-play.
+
+[FULL DESCRIPTION] (Max 4,000 characters)
+Enter Vortex Arena — the definitive high-octane 3D tactical multiplayer shooter built for mobile combat. Lock in, pick your loadout, and jump straight into adrenaline-pumping 12-player gun fights across six distinct procedural arenas.
+
+Whether you want to climb global leaderboards against online rivals or sharpen your reflexes offline against intelligent bot combatants, Vortex Arena delivers true console-grade shooting mechanics directly to your Android device.
+
+⚡ REAL-TIME 12-PLAYER MULTIPLAYER & CROSS-PLAY
+Never wait in endless lobbies. Jump instantly into public matchmaking or create custom rooms with private 4-digit codes to challenge your friends. With authoritative, low-latency WebSocket networking, Android players battle seamlessly alongside desktop and laptop players with synchronized hit registration, precision headshot detection, and live killfeeds.
+
+🔫 4 SPECIALIZED MILITARY FIREARMS
+Master your tactical arsenal engineered with unique recoil patterns, fire rates, effective ranges, and tactile haptic feedback:
+• V-44 STRIKER (Assault Rifle): Fully automatic tactical rifle delivering balanced damage, dependable accuracy, and rapid target acquisition.
+• HAWK-50 (Anti-Materiel Sniper): High-caliber precision rifle featuring an optical scope and devastating single-shot stopping power.
+• BREACHER-12 (Tactical Shotgun): High-spread close-quarters pump shotgun designed for room clearing and high burst damage.
+• PULSE-9 (Sidearm Pistol): Lightweight semi-automatic sidearm boasting instant switch times and lightning-fast reload speeds.
+
+🗺️ 6 PROCEDURALLY CRAFTED COMBAT ARENAS
+Adapt your squad tactics across diverse 3D combat environments:
+• Sector-7: A sprawling industrial complex with multi-tier catwalks, shipping crates, and tight chokepoints.
+• Suburban House: Multi-room two-story residence with courtyard perimeter combat and interior room breach lanes.
+• Rural Farm: Wide-open farmland featuring rustic barns, silos, and long-range sniper sightlines.
+• Pine Forest: Lush outdoor terrain with rolling foliage, natural tree cover, and perimeter flank corridors.
+• BlockCraft Arena: Vibrant voxel-inspired battleground with tactical vertical platforms and modular fortifications.
+• Cruise Ship: High-seas luxury liner complete with swimming pool decks, sun loungers, and oceanfront perimeter walls.
+
+🤖 OFFLINE SINGLE PLAYER & AIM TRAINING
+No internet connection? No problem! Vortex Arena includes a standalone Single Player vs AI mode and Practice Arena running 100% locally on your device:
+• 4 AI Difficulty Tiers: Easy, Medium, Hard, and Elite bots featuring dynamic strafing, obstacle pathfinding, and tactical weapon switching.
+• Custom Bot Counts: Tailor the combat density from 1v1 duels up to full 12-player chaos.
+• Practice Sandbox: Warm up your flicks, test weapon spreads, and fine-tune your sensitivities with instant respawns.
+
+🎮 CONSOLE-GRADE MOBILE CONTROLS & HAPTICS
+• Floating Virtual Joystick: Responsive 360-degree analog character movement with auto-sprint.
+• Drag-to-Aim Fire Button: Aim and shoot simultaneously with smooth touch panning and zero jitter.
+• Native Haptic Vibration: Feel the explosive recoil of every shot, hit confirmation, and elimination right in your hands.
+• Fully Customizable Sensitivity: Adjust look sensitivity, horizontal/vertical look axes, graphics quality, and master/SFX volumes to match your playstyle.
+
+🏆 PROGRESSION, SKINS & REWARDS
+Climb the ranks and unlock permanent cosmetic milestone skins for both operative characters and tactical firearms at 10, 50, and 60,000 lifetime kills. Track your personal stats including K/D ratio, headshot percentage, accuracy, and total damage dealt.
+
+🔒 PRIVACY & NO PAY-TO-WIN
+Vortex Arena is 100% skill-based. No pay-to-win mechanics, no energy timers, and no forced full-screen interstitial ads interrupting your firefights. Play as a guest immediately with zero friction, or create a free account to sync your progression across all devices.
+
+Download Vortex Arena now and dominate the battlefield!

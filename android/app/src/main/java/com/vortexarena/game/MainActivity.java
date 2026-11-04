@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.Gravity;
@@ -17,25 +18,28 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.webkit.WebViewAssetLoader;
+
 public class MainActivity extends Activity {
     private static final String TAG = "VortexArena";
     private static final String PREFS_NAME = "VortexPrefs";
     private static final String PREF_SERVER_URL = "server_url";
-    private static final String DEFAULT_SERVER_URL = "https://vortex-arena-1nmx.onrender.com";
+    public static final String PRODUCTION_SERVER_URL = "https://vortex-arena-1nmx.onrender.com";
+    private static final String LOCAL_GAME_URL = "https://appassets.androidplatform.net/assets/www/index.html";
 
     private WebView mWebView;
     private FrameLayout mRootLayout;
@@ -44,12 +48,13 @@ public class MainActivity extends Activity {
     private TextView mErrorMsgText;
     private SharedPreferences mPrefs;
     private String mCurrentServerUrl;
+    private WebViewAssetLoader mAssetLoader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Immersive Fullscreen and Notch Handling
+        // Hardware acceleration & Immersive Fullscreen
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -60,7 +65,13 @@ public class MainActivity extends Activity {
         }
 
         mPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        mCurrentServerUrl = mPrefs.getString(PREF_SERVER_URL, DEFAULT_SERVER_URL);
+        mCurrentServerUrl = mPrefs.getString(PREF_SERVER_URL, PRODUCTION_SERVER_URL);
+
+        // Configure secure AndroidX WebViewAssetLoader for local bundled asset streaming
+        mAssetLoader = new WebViewAssetLoader.Builder()
+            .setDomain("appassets.androidplatform.net")
+            .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+            .build();
 
         setupViews();
         setImmersiveMode();
@@ -71,11 +82,12 @@ public class MainActivity extends Activity {
         mRootLayout = new FrameLayout(this);
         mRootLayout.setBackgroundColor(Color.parseColor("#0a0f18"));
 
-        // 1. WebView
+        // 1. Hardware Accelerated Game WebView
         mWebView = new WebView(this);
         mWebView.setLayoutParams(new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mWebView.setBackgroundColor(Color.parseColor("#0a0f18"));
+        mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setupWebViewSettings();
 
         // 2. Loading Bar
@@ -90,29 +102,9 @@ public class MainActivity extends Activity {
         // 3. Error / Disconnected Overlay
         setupErrorLayout();
 
-        // 4. Quick Server Settings Floating Button (discreet top-right gear pill)
-        Button settingsBtn = new Button(this);
-        settingsBtn.setText("⚙ SERVER");
-        settingsBtn.setTextColor(Color.parseColor("#00f0ff"));
-        settingsBtn.setTextSize(10f);
-        settingsBtn.setBackgroundColor(Color.parseColor("#800a0f18"));
-        FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnParams.gravity = Gravity.TOP | Gravity.END;
-        btnParams.setMargins(0, 16, 24, 0);
-        settingsBtn.setLayoutParams(btnParams);
-        settingsBtn.setPadding(20, 8, 20, 8);
-        settingsBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showServerConfigDialog();
-            }
-        });
-
         mRootLayout.addView(mWebView);
         mRootLayout.addView(mLoadingBar);
         mRootLayout.addView(mErrorLayout);
-        mRootLayout.addView(settingsBtn);
 
         setContentView(mRootLayout);
     }
@@ -122,51 +114,62 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
-        s.setAllowFileAccess(true);
-        s.setAllowContentAccess(true);
-        s.setAllowFileAccessFromFileURLs(true);
-        s.setAllowUniversalAccessFromFileURLs(true);
+
+        // Security: Restrict direct file-scheme access (WebViewAssetLoader replaces file://)
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
+
+        // Media, viewport, and rendering optimization
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        mWebView.setVerticalScrollBarEnabled(true);
-        mWebView.setHorizontalScrollBarEnabled(false);
-        mWebView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
-        mWebView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        s.setSupportZoom(false);
+        s.setBuiltInZoomControls(false);
+        s.setDisplayZoomControls(false);
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // Identify official native Android client
+        String defaultUa = s.getUserAgentString();
+        s.setUserAgentString(defaultUa + " VortexArenaNative/1.2.0");
 
         mWebView.addJavascriptInterface(new WebAppInterface(this), "Android");
 
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                if (newProgress < 100) {
-                    mLoadingBar.setVisibility(View.VISIBLE);
-                    mLoadingBar.setProgress(newProgress);
-                } else {
+                mLoadingBar.setProgress(newProgress);
+                if (newProgress >= 100) {
                     mLoadingBar.setVisibility(View.GONE);
                 }
             }
 
             @Override
-            public boolean onConsoleMessage(ConsoleMessage cm) {
-                Log.d(TAG + "-Web", cm.message() + " -- From line " + cm.lineNumber() + " of " + cm.sourceId());
+            public boolean onConsoleMessage(ConsoleMessage msg) {
+                Log.d(TAG, "[GameJS] " + msg.message() + " -- (" + msg.sourceId() + ":" + msg.lineNumber() + ")");
                 return true;
             }
         });
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                // Intercept virtual https://appassets.androidplatform.net/assets/... requests
+                return mAssetLoader.shouldInterceptRequest(request.getUrl());
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
-                mErrorLayout.setVisibility(View.GONE);
-                setImmersiveMode();
+                super.onPageFinished(view, url);
+                mLoadingBar.setVisibility(View.GONE);
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
                 if (request.isForMainFrame()) {
-                    showErrorScreen("Failed to connect to " + mCurrentServerUrl);
+                    showErrorScreen("Game initialization failed: " + error.getDescription());
                 }
             }
         });
@@ -176,119 +179,53 @@ public class MainActivity extends Activity {
         mErrorLayout = new LinearLayout(this);
         mErrorLayout.setOrientation(LinearLayout.VERTICAL);
         mErrorLayout.setGravity(Gravity.CENTER);
-        mErrorLayout.setBackgroundColor(Color.parseColor("#0f172a"));
-        mErrorLayout.setVisibility(View.GONE);
+        mErrorLayout.setBackgroundColor(Color.parseColor("#0a0f18"));
         mErrorLayout.setLayoutParams(new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        mErrorLayout.setPadding(64, 32, 64, 32);
+        mErrorLayout.setVisibility(View.GONE);
 
         TextView title = new TextView(this);
         title.setText("VORTEX ARENA");
-        title.setTextSize(26f);
         title.setTextColor(Color.parseColor("#00f0ff"));
+        title.setTextSize(24f);
         title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, 12);
         mErrorLayout.addView(title);
 
         mErrorMsgText = new TextView(this);
-        mErrorMsgText.setText("Unable to connect to game server");
-        mErrorMsgText.setTextColor(Color.parseColor("#ff3366"));
+        mErrorMsgText.setTextColor(Color.parseColor("#94a3b8"));
         mErrorMsgText.setTextSize(14f);
         mErrorMsgText.setGravity(Gravity.CENTER);
-        mErrorMsgText.setPadding(24, 0, 24, 24);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        p.setMargins(0, 24, 0, 32);
+        mErrorMsgText.setLayoutParams(p);
         mErrorLayout.addView(mErrorMsgText);
 
-        LinearLayout btnRow = new LinearLayout(this);
-        btnRow.setOrientation(LinearLayout.HORIZONTAL);
-        btnRow.setGravity(Gravity.CENTER);
-
-        Button retryBtn = new Button(this);
-        retryBtn.setText("🔄 Retry");
-        retryBtn.setTextColor(Color.WHITE);
-        retryBtn.setBackgroundColor(Color.parseColor("#00a8ff"));
+        android.widget.Button retryBtn = new android.widget.Button(this);
+        retryBtn.setText("Retry Connection");
+        retryBtn.setTextColor(Color.parseColor("#0a0f18"));
+        retryBtn.setBackgroundColor(Color.parseColor("#00f0ff"));
+        retryBtn.setPadding(32, 16, 32, 16);
         retryBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 loadGame();
             }
         });
-        btnRow.addView(retryBtn);
-
-        Button changeIpBtn = new Button(this);
-        changeIpBtn.setText("⚙ Change Server");
-        changeIpBtn.setTextColor(Color.WHITE);
-        changeIpBtn.setBackgroundColor(Color.parseColor("#334155"));
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p.setMargins(16, 0, 0, 0);
-        changeIpBtn.setLayoutParams(p);
-        changeIpBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showServerConfigDialog();
-            }
-        });
-        btnRow.addView(changeIpBtn);
-
-        Button offlineBtn = new Button(this);
-        offlineBtn.setText("📦 Offline Assets");
-        offlineBtn.setTextColor(Color.WHITE);
-        offlineBtn.setBackgroundColor(Color.parseColor("#1e293b"));
-        LinearLayout.LayoutParams p2 = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p2.setMargins(16, 0, 0, 0);
-        offlineBtn.setLayoutParams(p2);
-        offlineBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mErrorLayout.setVisibility(View.GONE);
-                mWebView.loadUrl("file:///android_asset/www/index.html");
-                Toast.makeText(MainActivity.this, "Loaded local bundled assets", Toast.LENGTH_SHORT).show();
-            }
-        });
-        btnRow.addView(offlineBtn);
-
-        mErrorLayout.addView(btnRow);
+        mErrorLayout.addView(retryBtn);
     }
 
     private void showErrorScreen(String message) {
-        mErrorMsgText.setText(message + "\n\nMake sure the server is running and your phone is on the same Wi-Fi.");
+        mErrorMsgText.setText(message + "\n\nPlease ensure your device is connected to the internet.");
         mErrorLayout.setVisibility(View.VISIBLE);
     }
 
     private void loadGame() {
         mErrorLayout.setVisibility(View.GONE);
         mLoadingBar.setVisibility(View.VISIBLE);
-        mWebView.loadUrl(mCurrentServerUrl);
-    }
-
-    private void showServerConfigDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Configure Match Server");
-
-        final EditText input = new EditText(this);
-        input.setHint("https://vortex-arena-1nmx.onrender.com");
-        input.setText(mCurrentServerUrl);
-        input.setSingleLine();
-        input.setPadding(32, 24, 32, 24);
-        builder.setView(input);
-
-        builder.setPositiveButton("Connect", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String newUrl = input.getText().toString().trim();
-                if (!newUrl.isEmpty()) {
-                    if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
-                        newUrl = "http://" + newUrl;
-                    }
-                    mCurrentServerUrl = newUrl;
-                    mPrefs.edit().putString(PREF_SERVER_URL, mCurrentServerUrl).apply();
-                    Toast.makeText(MainActivity.this, "Connecting to " + mCurrentServerUrl, Toast.LENGTH_SHORT).show();
-                    loadGame();
-                }
-            }
-        });
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
+        // Load high-speed bundled local assets via secure WebViewAssetLoader
+        mWebView.loadUrl(LOCAL_GAME_URL);
     }
 
     private void setImmersiveMode() {
@@ -313,9 +250,30 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        // First check if web UI has open modals to dismiss
+        mWebView.evaluateJavascript(
+            "(function() { " +
+            "  if (window.app && typeof window.app.handleNativeBackPress === 'function') { " +
+            "    return window.app.handleNativeBackPress(); " +
+            "  } " +
+            "  return false; " +
+            "})();",
+            new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    if ("true".equals(value)) {
+                        return; // Modal closed by web app
+                    }
+                    showExitDialog();
+                }
+            }
+        );
+    }
+
+    private void showExitDialog() {
         new AlertDialog.Builder(this)
             .setTitle("Exit Vortex Arena?")
-            .setMessage("Are you sure you want to exit the game?")
+            .setMessage("Are you sure you want to exit the match?")
             .setPositiveButton("Exit", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
@@ -324,6 +282,33 @@ public class MainActivity extends Activity {
             })
             .setNegativeButton("Resume", null)
             .show();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mWebView != null) {
+            mWebView.onPause();
+            mWebView.evaluateJavascript("if (window.app && typeof window.app.onAppPause === 'function') { window.app.onAppPause(); }", null);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mWebView != null) {
+            mWebView.onResume();
+            mWebView.evaluateJavascript("if (window.app && typeof window.app.onAppResume === 'function') { window.app.onAppResume(); }", null);
+        }
+        setImmersiveMode();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mWebView != null) {
+            mWebView.destroy();
+        }
+        super.onDestroy();
     }
 
     public static class WebAppInterface {
@@ -338,9 +323,14 @@ public class MainActivity extends Activity {
             try {
                 Vibrator v = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
                 if (v != null && v.hasVibrator()) {
-                    v.vibrate(Math.min(ms, 500));
+                    long duration = Math.min(Math.max(ms, 10), 500);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        v.vibrate(duration);
+                    }
                 }
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
 
         @JavascriptInterface
@@ -350,8 +340,17 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getServerUrl() {
-            SharedPreferences p = mContext.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-            return p.getString(PREF_SERVER_URL, DEFAULT_SERVER_URL);
+            return PRODUCTION_SERVER_URL;
+        }
+
+        @JavascriptInterface
+        public boolean isNativeApp() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public String getAppVersion() {
+            return "1.2.0";
         }
     }
 }

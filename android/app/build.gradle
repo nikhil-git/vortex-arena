@@ -1,0 +1,76 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.vortexarena.game'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.vortexarena.game"
+        minSdk 24
+        targetSdk 34
+        versionCode 3
+        versionName "1.2.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+        release {
+            def ksPath = System.getenv("VORTEX_KEYSTORE") ?: "${System.getProperty('user.home')}/.android/debug.keystore"
+            storeFile file(ksPath)
+            storePassword System.getenv("VORTEX_KEYSTORE_PASSWORD") ?: "android"
+            keyAlias System.getenv("VORTEX_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword System.getenv("VORTEX_KEY_PASSWORD") ?: "android"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+        }
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = false
+        }
+        abi {
+            enableSplit = false
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'com.google.android.material:material:1.12.0'
+}
