@@ -147,6 +147,12 @@
   ]
   </script>
 
+  <script>
+    if (navigator.userAgent.includes('VortexArenaNative') || window.Android) {
+      document.documentElement.classList.add('is-native-android');
+    }
+  </script>
+
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/hud.css">
 </head>

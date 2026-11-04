@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
     private static final String PREFS_NAME = "VortexPrefs";
     private static final String PREF_SERVER_URL = "server_url";
     public static final String PRODUCTION_SERVER_URL = "https://vortex-arena-1nmx.onrender.com";
-    private static final String LOCAL_GAME_URL = "https://appassets.androidplatform.net/assets/www/index.html";
+    private static final String LOCAL_GAME_URL = "https://appassets.androidplatform.net/index.html";
 
     private WebView mWebView;
     private FrameLayout mRootLayout;
@@ -155,7 +155,45 @@ public class MainActivity extends Activity {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                // Intercept virtual https://appassets.androidplatform.net/assets/... requests
+                android.net.Uri url = request.getUrl();
+                if (url != null && "appassets.androidplatform.net".equals(url.getHost())) {
+                    String path = url.getPath();
+                    if (path == null || path.isEmpty() || "/".equals(path)) {
+                        path = "/index.html";
+                    }
+
+                    // Extract relative path within assets/www
+                    String cleanPath = path;
+                    if (cleanPath.startsWith("/assets/www/")) {
+                        cleanPath = cleanPath.substring("/assets/www/".length());
+                    } else if (cleanPath.startsWith("/assets/")) {
+                        cleanPath = cleanPath.substring("/assets/".length());
+                    }
+                    if (cleanPath.startsWith("/")) {
+                        cleanPath = cleanPath.substring(1);
+                    }
+
+                    try {
+                        String assetPath = "www/" + cleanPath;
+                        java.io.InputStream is = getAssets().open(assetPath);
+
+                        String mime = "application/octet-stream";
+                        if (cleanPath.endsWith(".html")) mime = "text/html";
+                        else if (cleanPath.endsWith(".css")) mime = "text/css";
+                        else if (cleanPath.endsWith(".js") || cleanPath.endsWith(".mjs")) mime = "application/javascript";
+                        else if (cleanPath.endsWith(".svg")) mime = "image/svg+xml";
+                        else if (cleanPath.endsWith(".png")) mime = "image/png";
+                        else if (cleanPath.endsWith(".ico")) mime = "image/x-icon";
+                        else if (cleanPath.endsWith(".json")) mime = "application/json";
+
+                        java.util.Map<String, String> headers = new java.util.HashMap<>();
+                        headers.put("Access-Control-Allow-Origin", "*");
+                        headers.put("Cache-Control", "no-cache");
+                        return new WebResourceResponse(mime, "UTF-8", 200, "OK", headers, is);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Asset not found: " + cleanPath + " (requested: " + path + ")", e);
+                    }
+                }
                 return mAssetLoader.shouldInterceptRequest(request.getUrl());
             }
 

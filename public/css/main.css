@@ -1750,7 +1750,20 @@ body {
   }
 }
 
-/* Native Android Client Clean View: Suppress web APK download prompts inside installed native app */
+/* Native Android Client Clean View: Suppress web APK download prompts & website navbar inside installed native app */
+.is-native-android .landing-header {
+  display: none !important;
+}
+
+.is-native-android .landing-page-wrapper {
+  padding-top: 12px !important;
+}
+
+.is-native-android .landing-hero {
+  min-height: calc(100vh - 24px) !important;
+  padding: 12px 24px !important;
+}
+
 .is-native-android [data-track-download],
 .is-native-android #modal-mobile-download-trigger,
 .is-native-android .native-hide {
