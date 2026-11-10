@@ -1067,13 +1067,13 @@
       </div>
 
       <!-- Bottom Bar -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+      <div class="hud-bottom-bar">
         <!-- Vitals -->
         <div class="hud-vitals-box">
           <div class="vital-bar-wrap">
             <div class="vital-label-row">
-              <span style="color: #00e5ff;">HEALTH</span>
-              <span id="hud-hp-num">100</span>
+              <span class="vital-name" style="color: #00e5ff;">HEALTH</span>
+              <span id="hud-hp-num" class="vital-num">100</span>
             </div>
             <div class="vital-track">
               <div id="hud-hp-fill" class="vital-fill health" style="width: 100%;"></div>
@@ -1082,8 +1082,8 @@
 
           <div class="vital-bar-wrap">
             <div class="vital-label-row">
-              <span style="color: #0077ff;">SHIELD</span>
-              <span id="hud-shield-num">50</span>
+              <span class="vital-name" style="color: #0077ff;">SHIELD</span>
+              <span id="hud-shield-num" class="vital-num">50</span>
             </div>
             <div class="vital-track">
               <div id="hud-shield-fill" class="vital-fill shield" style="width: 100%;"></div>
@@ -1111,18 +1111,16 @@
     <!-- Mobile Touch On-Screen Controls -->
     <div id="mobile-controls" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20;">
       <!-- Virtual Joystick Base & Thumb -->
-      <div id="joystick-base" style="position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(0, 240, 255, 0.15); border: 2px solid rgba(0, 240, 255, 0.4); display: none; pointer-events: none;">
-        <div id="joystick-thumb" style="position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; border-radius: 50%; background: var(--cyan-glow); box-shadow: 0 0 15px var(--cyan-glow);"></div>
+      <div id="joystick-base" class="joystick-base" style="position: absolute; width: 110px; height: 110px; border-radius: 50%; background: rgba(0, 240, 255, 0.1); border: 2px solid rgba(0, 240, 255, 0.3); display: none; pointer-events: none;">
+        <div id="joystick-thumb" class="joystick-thumb" style="position: absolute; top: 32px; left: 32px; width: 46px; height: 46px; border-radius: 50%; background: var(--cyan-glow); box-shadow: 0 0 12px var(--cyan-glow);"></div>
       </div>
 
       <!-- Action Buttons on Right -->
-      <div style="position: absolute; bottom: 85px; right: 28px; display: flex; flex-direction: column; gap: 14px; pointer-events: auto;">
-        <button id="touch-btn-fire" class="touch-action-btn fire" type="button">🎯 FIRE</button>
-        <div style="display: flex; gap: 10px;">
-          <button id="touch-btn-jump" class="touch-action-btn jump" type="button">🦘 JUMP</button>
-          <button id="touch-btn-reload" class="touch-action-btn reload" type="button">🔄 RELOAD</button>
-          <button id="touch-btn-swap" class="touch-action-btn swap" type="button">🔫 SWAP</button>
-        </div>
+      <div id="touch-action-cluster" class="touch-action-cluster">
+        <button id="touch-btn-fire" class="touch-action-btn fire" type="button" aria-label="Fire Weapon">🎯 FIRE</button>
+        <button id="touch-btn-jump" class="touch-action-btn jump" type="button" aria-label="Jump">🦘 JUMP</button>
+        <button id="touch-btn-swap" class="touch-action-btn swap" type="button" aria-label="Swap Weapon">🔫 SWAP</button>
+        <button id="touch-btn-reload" class="touch-action-btn reload" type="button" aria-label="Reload">🔄 RELOAD</button>
       </div>
     </div>
   </div>
@@ -1346,6 +1344,20 @@
         <span>Field of View (FOV)</span>
         <input type="range" id="setting-fov" min="65" max="105" step="1" value="75" oninput="app.updateSettings()">
         <span id="setting-fov-val" style="width: 40px; text-align: right; font-weight: 700;">75°</span>
+      </div>
+
+      <!-- HUD & Interface Display -->
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 12px;">HUD & Interface Layout</h3>
+      <div class="form-group">
+        <label>HUD Display Density</label>
+        <select id="setting-hud-layout" class="form-input" onchange="app.updateSettings()">
+          <option value="compact">Compact HUD (Optimized for Mobile & Wide View)</option>
+          <option value="normal">Normal HUD (Full Classic Desktop Layout)</option>
+          <option value="minimal">Minimal HUD (Immersive Streamlined View)</option>
+        </select>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          Mobile phones default to Compact HUD for maximum 3D map visibility.
+        </div>
       </div>
 
       <!-- Graphics Settings for Laptop Performance -->

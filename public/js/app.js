@@ -66,6 +66,17 @@ class App {
       document.body.classList.add('is-native-android');
     }
 
+    // Initialize HUD Layout (Mobile defaults to compact for maximum map visibility)
+    const isMobileDevice = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      ('ontouchstart' in window) ||
+      (navigator.maxTouchPoints > 0) ||
+      document.documentElement.classList.contains('is-native-android') ||
+      window.innerWidth <= 920;
+
+    const savedHud = localStorage.getItem('vortex_hud_layout');
+    this.hudLayout = savedHud || (isMobileDevice ? 'compact' : 'normal');
+    this.applyHudLayout(this.hudLayout);
+
     // Check if existing token is valid
     if (window.apiClient.token) {
       try {
@@ -2221,6 +2232,11 @@ class App {
     const volMaster = parseInt(document.getElementById('setting-vol-master').value, 10) / 100;
     const volSfx = parseInt(document.getElementById('setting-vol-sfx').value, 10) / 100;
 
+    const hudLayoutEl = document.getElementById('setting-hud-layout');
+    if (hudLayoutEl) {
+      this.setHudLayout(hudLayoutEl.value);
+    }
+
     document.getElementById('setting-sens-val').textContent = sens.toFixed(1);
     document.getElementById('setting-fov-val').textContent = `${fov}°`;
     const brightValEl = document.getElementById('setting-brightness-val');
@@ -2240,6 +2256,29 @@ class App {
       window.soundEngine.setMasterVolume(volMaster);
       window.soundEngine.setSfxVolume(volSfx);
     }
+  }
+
+  setHudLayout(layout) {
+    if (!['compact', 'normal', 'minimal'].includes(layout)) layout = 'compact';
+    this.hudLayout = layout;
+    localStorage.setItem('vortex_hud_layout', layout);
+    this.applyHudLayout(layout);
+  }
+
+  applyHudLayout(layout) {
+    const hud = document.getElementById('hud-overlay');
+    const selectEl = document.getElementById('setting-hud-layout');
+    if (selectEl && selectEl.value !== layout) {
+      selectEl.value = layout;
+    }
+
+    if (hud) {
+      hud.classList.remove('hud-compact', 'hud-normal', 'hud-minimal');
+      hud.classList.add(`hud-${layout}`);
+    }
+
+    document.body.classList.remove('hud-layout-compact', 'hud-layout-normal', 'hud-layout-minimal');
+    document.body.classList.add(`hud-layout-${layout}`);
   }
 
   handleNativeBackPress() {

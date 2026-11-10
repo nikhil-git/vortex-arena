@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Vortex Arena 3D In-Game Capture</title>
+  <title>Vortex Arena In-Game Screen Capture & Mobile Comparison</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; overflow: hidden; width: 1920px; height: 1080px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -25,7 +25,9 @@
       background: #ff3366; border-radius: 50%; box-shadow: 0 0 8px #ff3366;
     }
 
-    /* Top Left Status */
+    /* =========================================================================
+       DEFAULT / NORMAL HUD STYLING
+       ========================================================================= */
     .status-panel {
       position: absolute; top: 40px; left: 50px;
       background: rgba(10, 16, 28, 0.85); border: 1.5px solid rgba(0, 240, 255, 0.5);
@@ -39,7 +41,6 @@
     .bar-fill-hp { height: 100%; width: 100%; background: linear-gradient(90deg, #00ff88, #00d26a); box-shadow: 0 0 12px #00ff88; }
     .bar-fill-shield { height: 100%; width: 75%; background: linear-gradient(90deg, #00e5ff, #0099ff); box-shadow: 0 0 12px #00e5ff; }
 
-    /* Top Right Ammo */
     .ammo-panel {
       position: absolute; top: 40px; right: 50px; text-align: right;
       background: rgba(10, 16, 28, 0.85); border: 1.5px solid rgba(255, 183, 0, 0.5);
@@ -50,7 +51,6 @@
     .ammo-counts { font-size: 46px; font-weight: 900; color: #ffb700; text-shadow: 0 0 16px rgba(255, 183, 0, 0.7); }
     .ammo-reserve { font-size: 22px; color: #94a3b8; font-weight: 700; }
 
-    /* Match Banner */
     .match-banner {
       position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
       display: flex; align-items: center; gap: 24px;
@@ -62,7 +62,6 @@
     .score-red { color: #ff3366; text-shadow: 0 0 12px #ff3366; }
     .timer { font-size: 20px; color: #ffb700; }
 
-    /* Mobile Controls */
     .joystick-zone {
       position: absolute; bottom: 70px; left: 80px;
       width: 190px; height: 190px; border-radius: 50%;
@@ -105,7 +104,6 @@
       box-shadow: 0 0 16px rgba(255, 183, 0, 0.3);
     }
 
-    /* Killfeed */
     .killfeed {
       position: absolute; top: 170px; right: 50px;
       display: flex; flex-direction: column; gap: 8px; text-align: right;
@@ -114,6 +112,113 @@
       background: rgba(10, 16, 28, 0.8); border-left: 3.5px solid #00ff88;
       padding: 7px 16px; border-radius: 4px; font-size: 15px; font-weight: 800; color: #fff;
       backdrop-filter: blur(8px);
+    }
+
+    /* =========================================================================
+       SCREEN 6: OLD BLOATED MOBILE HUD (BEFORE OPTIMIZATION)
+       ========================================================================= */
+    .mode-before .status-panel {
+      top: 24px; left: 32px; width: 540px; padding: 20px 28px;
+      background: rgba(10, 14, 22, 0.9); border: 2px solid rgba(0, 240, 255, 0.5);
+    }
+    .mode-before .status-panel .bar-label { font-size: 22px; }
+    .mode-before .status-panel .bar-val { font-size: 26px; }
+
+    .mode-before .match-banner {
+      top: 24px; width: 620px; padding: 18px 30px; flex-direction: column; gap: 6px;
+      background: rgba(10, 14, 22, 0.95); border: 2px solid #00f0ff; border-radius: 12px;
+    }
+    .mode-before .match-banner .timer { font-size: 48px; font-weight: 900; }
+
+    .mode-before .ammo-panel {
+      top: auto; bottom: 24px; right: 32px; width: 440px; padding: 22px 28px;
+      background: rgba(10, 14, 22, 0.95); border: 2px solid rgba(0, 240, 255, 0.5);
+    }
+    .mode-before .ammo-counts { font-size: 72px; }
+
+    /* Buttons overlap weapon box in old mode */
+    .mode-before .fire-btn {
+      bottom: 220px; right: 260px; width: 140px; height: 140px;
+    }
+    .mode-before .action-btn-jump {
+      bottom: 110px; right: 290px; width: 100px; height: 100px;
+    }
+    .mode-before .action-btn-reload {
+      bottom: 110px; right: 170px; width: 100px; height: 100px;
+    }
+
+    /* =========================================================================
+       SCREEN 7: NEW COMPACT MOBILE HUD (AFTER OPTIMIZATION)
+       ========================================================================= */
+    .mode-after .status-panel {
+      top: 18px; left: 24px; width: 230px; padding: 8px 14px;
+      background: rgba(8, 12, 20, 0.5); border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 8px; backdrop-filter: blur(6px);
+    }
+    .mode-after .status-panel .bar-label { font-size: 11px; }
+    .mode-after .status-panel .bar-val { font-size: 13px; }
+    .mode-after .status-panel .bar-track { height: 6px; border-radius: 3px; }
+
+    .mode-after .match-banner {
+      top: 18px; width: auto; padding: 4px 18px; border-radius: 20px; gap: 12px;
+      background: rgba(8, 12, 20, 0.55); border: 1px solid rgba(0, 240, 255, 0.3);
+      font-size: 14px;
+    }
+    .mode-after .match-banner .timer { font-size: 18px; font-weight: 900; }
+
+    /* Weapon panel moved cleanly to the left of buttons */
+    .mode-after .ammo-panel {
+      top: auto; bottom: 18px; right: 240px; width: 190px; padding: 8px 14px;
+      background: rgba(8, 12, 20, 0.5); border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 8px; text-align: left;
+    }
+    .mode-after .ammo-panel .weapon-name { font-size: 12px; }
+    .mode-after .ammo-counts { font-size: 28px; }
+    .mode-after .ammo-reserve { font-size: 14px; }
+
+    /* Compact ergonomic diamond button cluster in bottom right corner */
+    .mode-after .fire-btn {
+      bottom: 18px; right: 18px; width: 88px; height: 88px; font-size: 16px;
+      background: radial-gradient(circle, rgba(255, 42, 77, 0.75) 0%, rgba(180, 20, 50, 0.35) 100%);
+      border: 2px solid rgba(255, 42, 77, 0.9); box-shadow: 0 0 16px rgba(255, 42, 77, 0.6);
+    }
+    .mode-after .action-btn-jump {
+      bottom: 116px; right: 18px; width: 58px; height: 58px; font-size: 12px;
+      background: rgba(14, 20, 32, 0.6); border: 1.5px solid rgba(0, 240, 255, 0.7);
+    }
+    .mode-after .action-btn-reload {
+      bottom: 18px; right: 116px; width: 58px; height: 58px; font-size: 11px;
+      background: rgba(14, 20, 32, 0.6); border: 1.5px solid rgba(255, 183, 0, 0.7);
+    }
+    .mode-after .action-btn-swap {
+      position: absolute; bottom: 116px; right: 90px; width: 58px; height: 58px;
+      border-radius: 50%; font-size: 11px; font-weight: 900; color: #00f0ff;
+      background: rgba(14, 20, 32, 0.6); border: 1.5px solid rgba(0, 240, 255, 0.7);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .mode-after .joystick-zone {
+      bottom: 30px; left: 30px; width: 140px; height: 140px;
+      background: rgba(0, 240, 255, 0.08); border: 1.5px solid rgba(0, 240, 255, 0.25);
+    }
+    .mode-after .joystick-knob {
+      width: 60px; height: 60px;
+    }
+
+    /* Comparison Banner Pill */
+    .comparison-badge {
+      position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+      padding: 6px 20px; border-radius: 20px; font-weight: 900; font-size: 15px;
+      letter-spacing: 2px; text-transform: uppercase; z-index: 50;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    }
+    .badge-before {
+      background: rgba(220, 38, 38, 0.9); color: #fff; border: 2px solid #ef4444;
+      top: auto; bottom: 24px; left: 50%;
+    }
+    .badge-after {
+      background: rgba(16, 185, 129, 0.9); color: #fff; border: 2px solid #10b981;
+      top: auto; bottom: 24px; left: 50%;
     }
   </style>
 </head>
@@ -130,33 +235,39 @@
       <div class="bar-track" style="margin-bottom: 12px;"><div class="bar-fill-hp" id="hud-hp-bar"></div></div>
       <div class="bar-row">
         <span class="bar-label">SHIELD</span>
-        <span class="bar-val" id="hud-shield-val" style="color: #00e5ff;">75</span>
+        <span class="bar-val" id="hud-shield-val" style="color: #00e5ff;">50</span>
       </div>
       <div class="bar-track"><div class="bar-fill-shield" id="hud-shield-bar"></div></div>
     </div>
 
-    <div class="match-banner">
-      <span class="score-blue" id="hud-blue-score">BLUE 16</span>
-      <span>:</span>
-      <span class="score-red" id="hud-red-score">RED 14</span>
+    <div class="match-banner" id="hud-match-banner">
+      <div id="hud-mode-title" style="display:none; font-size: 14px; color: #00f0ff; letter-spacing: 1px;">SUBURBAN ESTATE • VS AI (EASY)</div>
+      <div>
+        <span class="score-blue" id="hud-blue-score">BLUE 16</span>
+        <span>:</span>
+        <span class="score-red" id="hud-red-score">RED 14</span>
+      </div>
       <span style="opacity: 0.3;">|</span>
-      <span class="timer" id="hud-timer">02:45</span>
+      <span class="timer" id="hud-timer">01:02</span>
+      <div id="hud-target-sub" style="display:none; font-size: 12px; color: #94a3b8;">First to 25 Kills</div>
     </div>
 
     <div class="ammo-panel">
       <div class="weapon-name" id="hud-weapon-name">V-44 STRIKER</div>
-      <div><span class="ammo-counts" id="hud-ammo-cur">28</span> <span class="ammo-reserve" id="hud-ammo-res">/ 180</span></div>
+      <div><span class="ammo-counts" id="hud-ammo-cur">30</span> <span class="ammo-reserve" id="hud-ammo-res">/ 240</span></div>
     </div>
 
     <div class="killfeed" id="hud-killfeed">
       <div class="kill-msg"><span style="color:#00e5ff;">You</span> [V-44 Striker] <span style="color:#ff3366;">Bot_Ghost</span></div>
-      <div class="kill-msg"><span style="color:#00e5ff;">Player_Alpha</span> [Hawk-50] <span style="color:#ff3366;">Bot_Viper</span></div>
     </div>
 
     <div class="joystick-zone"><div class="joystick-knob"></div></div>
     <div class="fire-btn">FIRE</div>
     <div class="action-btn-jump">JUMP</div>
     <div class="action-btn-reload">RELOAD</div>
+    <div class="action-btn-swap" id="btn-swap" style="display:none;">SWAP</div>
+
+    <div id="comp-badge" class="comparison-badge" style="display:none;"></div>
   </div>
 
   <script type="module">
@@ -181,22 +292,65 @@
     let weaponId = 'assault_rifle';
     let skyColor = 0x0e1726;
 
-    if (screenNum === 1) {
+    if (screenNum === 6) {
+      // SCREEN 6: BEFORE Mobile Optimization (Bloated HUD, overlapping buttons)
+      document.body.className = 'mode-before';
+      mapId = 'house';
+      weaponId = 'assault_rifle';
+      skyColor = 0x82b1ff;
+      scene.fog = new THREE.FogExp2(0x82b1ff, 0.007);
+      camera.position.set(0, 2.0, 20);
+      camera.lookAt(0, 2.0, 0);
+
+      document.getElementById('hud-mode-title').style.display = 'block';
+      document.getElementById('hud-target-sub').style.display = 'block';
+      document.getElementById('hud-timer').innerText = '01:02';
+      document.getElementById('comp-badge').style.display = 'block';
+      document.getElementById('comp-badge').className = 'comparison-badge badge-before';
+      document.getElementById('comp-badge').innerText = '⚠️ BEFORE: HUD OBSTRUCTING >65% OF SCREEN & BUTTONS OVERLAPPING';
+
+      const bot = new PlayerModel({
+        id: 'bot_b', username: 'Bot_Reaper', team: 'red',
+        characterSkin: { color_primary: '#dc2626', color_secondary: '#1f2937', color_accent: '#ef4444' }
+      });
+      bot.group.position.set(1.8, 0, 6.0);
+      bot.group.rotation.y = Math.PI - 0.2;
+      scene.add(bot.group);
+
+    } else if (screenNum === 7) {
+      // SCREEN 7: AFTER Mobile Optimization (Compact HUD, 75% clear map)
+      document.body.className = 'mode-after';
+      mapId = 'house';
+      weaponId = 'assault_rifle';
+      skyColor = 0x82b1ff;
+      scene.fog = new THREE.FogExp2(0x82b1ff, 0.007);
+      camera.position.set(0, 2.0, 20);
+      camera.lookAt(0, 2.0, 0);
+
+      document.getElementById('hud-mode-title').style.display = 'none';
+      document.getElementById('hud-target-sub').style.display = 'none';
+      document.getElementById('hud-timer').innerText = '01:02';
+      document.getElementById('btn-swap').style.display = 'flex';
+      document.getElementById('comp-badge').style.display = 'block';
+      document.getElementById('comp-badge').className = 'comparison-badge badge-after';
+      document.getElementById('comp-badge').innerText = '✓ AFTER: COMPACT HUD • 75% UNOBSTRUCTED 3D GAMEPLAY VIEWPORT';
+
+      const bot = new PlayerModel({
+        id: 'bot_a', username: 'Bot_Reaper', team: 'red',
+        characterSkin: { color_primary: '#dc2626', color_secondary: '#1f2937', color_accent: '#ef4444' }
+      });
+      bot.group.position.set(1.8, 0, 6.0);
+      bot.group.rotation.y = Math.PI - 0.2;
+      scene.add(bot.group);
+
+    } else if (screenNum === 1) {
       // 1. Sector-7 Sci-Fi Compound
       mapId = 'sector7';
       weaponId = 'assault_rifle';
       skyColor = 0x0c1322;
       scene.fog = new THREE.FogExp2(skyColor, 0.012);
-
       camera.position.set(0, 1.8, 12);
       camera.lookAt(0, 1.8, 0);
-
-      document.getElementById('hud-weapon-name').innerText = 'V-44 STRIKER';
-      document.getElementById('hud-ammo-cur').innerText = '28';
-      document.getElementById('hud-ammo-res').innerText = '/ 180';
-      document.getElementById('hud-blue-score').innerText = 'BLUE 16';
-      document.getElementById('hud-red-score').innerText = 'RED 14';
-      document.getElementById('hud-timer').innerText = '02:45';
 
       const bot1 = new PlayerModel({
         id: 'bot_1', username: 'Bot_Reaper', team: 'red',
@@ -206,39 +360,18 @@
       bot1.group.rotation.y = Math.PI - 0.2;
       scene.add(bot1.group);
 
-      const bot2 = new PlayerModel({
-        id: 'bot_2', username: 'Bot_Ghost', team: 'red',
-        characterSkin: { color_primary: '#475569', color_secondary: '#0f172a', color_accent: '#ff0055' }
-      });
-      bot2.group.position.set(-3.2, 0, -1.0);
-      bot2.group.rotation.y = Math.PI + 0.3;
-      scene.add(bot2.group);
-
     } else if (screenNum === 2) {
       // 2. Suburban Estate & Courtyard (Sniper)
       mapId = 'house';
       weaponId = 'sniper_rifle';
       skyColor = 0x82b1ff;
       scene.fog = new THREE.FogExp2(0x82b1ff, 0.007);
-
       camera.position.set(0, 2.2, 24);
       camera.lookAt(0, 2.2, 0);
 
       document.getElementById('hud-weapon-name').innerText = 'HAWK-50 SNIPER';
       document.getElementById('hud-ammo-cur').innerText = '5';
       document.getElementById('hud-ammo-res').innerText = '/ 25';
-      document.getElementById('hud-blue-score').innerText = 'BLUE 20';
-      document.getElementById('hud-red-score').innerText = 'RED 17';
-      document.getElementById('hud-timer').innerText = '01:15';
-      document.getElementById('hud-hp-val').innerText = '85';
-      document.getElementById('hud-hp-bar').style.width = '85%';
-      document.getElementById('hud-shield-val').innerText = '100';
-      document.getElementById('hud-shield-bar').style.width = '100%';
-
-      document.getElementById('hud-killfeed').innerHTML = `
-        <div class="kill-msg"><span style="color:#00e5ff;">You</span> [Hawk-50 🎯] <span style="color:#ff3366;">Bot_Spectre</span></div>
-        <div class="kill-msg"><span style="color:#00e5ff;">Player_Alpha</span> [Breacher-12] <span style="color:#ff3366;">Bot_Hunter</span></div>
-      `;
 
       const bot1 = new PlayerModel({
         id: 'bot_s1', username: 'Bot_Viper', team: 'red',
@@ -254,24 +387,12 @@
       weaponId = 'shotgun';
       skyColor = 0xd97706;
       scene.fog = new THREE.FogExp2(0xd97706, 0.009);
-
       camera.position.set(6, 2.2, 20);
       camera.lookAt(-4, 2.0, 0);
 
       document.getElementById('hud-weapon-name').innerText = 'BREACHER-12 SHOTGUN';
       document.getElementById('hud-ammo-cur').innerText = '8';
       document.getElementById('hud-ammo-res').innerText = '/ 32';
-      document.getElementById('hud-blue-score').innerText = 'BLUE 8';
-      document.getElementById('hud-red-score').innerText = 'RED 9';
-      document.getElementById('hud-timer').innerText = '04:10';
-      document.getElementById('hud-hp-val').innerText = '65';
-      document.getElementById('hud-hp-bar').style.width = '65%';
-      document.getElementById('hud-shield-val').innerText = '40';
-      document.getElementById('hud-shield-bar').style.width = '40%';
-
-      document.getElementById('hud-killfeed').innerHTML = `
-        <div class="kill-msg"><span style="color:#00e5ff;">You</span> [Breacher-12] <span style="color:#ff3366;">Bot_Brute</span></div>
-      `;
 
       const bot1 = new PlayerModel({
         id: 'bot_f1', username: 'Bot_Outlaw', team: 'red',
@@ -287,21 +408,8 @@
       weaponId = 'assault_rifle';
       skyColor = 0x334155;
       scene.fog = new THREE.FogExp2(0x334155, 0.012);
-
       camera.position.set(0, 2.0, 20);
       camera.lookAt(0, 2.0, 0);
-
-      document.getElementById('hud-weapon-name').innerText = 'V-44 STRIKER';
-      document.getElementById('hud-ammo-cur').innerText = '30';
-      document.getElementById('hud-ammo-res').innerText = '/ 150';
-      document.getElementById('hud-blue-score').innerText = 'BLUE 24';
-      document.getElementById('hud-red-score').innerText = 'RED 21';
-      document.getElementById('hud-timer').innerText = '00:48';
-
-      document.getElementById('hud-killfeed').innerHTML = `
-        <div class="kill-msg"><span style="color:#00e5ff;">Mobile_Player</span> [V-44 Striker] <span style="color:#ff3366;">Bot_Wolf</span></div>
-        <div class="kill-msg"><span style="color:#00e5ff;">You</span> [V-44 Striker] <span style="color:#ff3366;">Bot_Titan</span></div>
-      `;
 
       const bot1 = new PlayerModel({
         id: 'bot_fo1', username: 'Bot_Wolf', team: 'red',
@@ -311,35 +419,18 @@
       bot1.group.rotation.y = Math.PI - 0.3;
       scene.add(bot1.group);
 
-      const bot2 = new PlayerModel({
-        id: 'bot_fo2', username: 'Bot_Titan', team: 'red',
-        characterSkin: { color_primary: '#7c3aed', color_secondary: '#1e1b4b', color_accent: '#a855f7' }
-      });
-      bot2.group.position.set(-3.2, 0, 2.0);
-      bot2.group.rotation.y = Math.PI + 0.2;
-      scene.add(bot2.group);
-
     } else {
       // 5. S.S. Oceanic Cruise Ship (Pistol)
       mapId = 'cruise';
       weaponId = 'pistol';
       skyColor = 0x38bdf8;
       scene.fog = new THREE.FogExp2(0x38bdf8, 0.005);
-
       camera.position.set(0, 6.5, 24);
       camera.lookAt(0, 4.0, 0);
 
       document.getElementById('hud-weapon-name').innerText = 'PULSE-9 SIDEARM';
       document.getElementById('hud-ammo-cur').innerText = '15';
       document.getElementById('hud-ammo-res').innerText = '/ 90';
-      document.getElementById('hud-blue-score').innerText = 'BLUE 11';
-      document.getElementById('hud-red-score').innerText = 'RED 7';
-      document.getElementById('hud-timer').innerText = '03:02';
-
-      document.getElementById('hud-killfeed').innerHTML = `
-        <div class="kill-msg"><span style="color:#00e5ff;">You</span> [Pulse-9] <span style="color:#ff3366;">Bot_Marine</span></div>
-        <div class="kill-msg"><span style="color:#ff3366;">Bot_Corsair</span> [V-44 Striker] <span style="color:#00e5ff;">Teammate_Echo</span></div>
-      `;
 
       const bot1 = new PlayerModel({
         id: 'bot_c1', username: 'Bot_Corsair', team: 'red',
@@ -352,7 +443,6 @@
 
     scene.background = new THREE.Color(skyColor);
 
-    // Common Ambient & Key Lighting
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.1);
     scene.add(hemiLight);
 
@@ -361,20 +451,16 @@
     sun.castShadow = true;
     scene.add(sun);
 
-    // Fill light from behind camera to illuminate weapon viewmodel
     const camFill = new THREE.DirectionalLight(0xffffff, 1.4);
     camFill.position.set(0, 10, 20);
     scene.add(camFill);
 
-    // Build the 3D map environment
     MapBuilder.buildMap(scene, mapId);
 
-    // Weapon ViewModel
     const weaponModel = new WeaponViewModel(camera);
     weaponModel.switchWeapon(weaponId);
     scene.add(camera);
 
-    // Warm up weapon position lerp
     for (let i = 0; i < 40; i++) {
       weaponModel.update(0.05);
     }

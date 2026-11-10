@@ -448,6 +448,22 @@
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  pointer-events: none;
+}
+
+.touch-action-cluster {
+  position: absolute;
+  bottom: 85px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  pointer-events: auto;
+}
+
+.touch-sub-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .touch-action-btn {
@@ -669,4 +685,435 @@
     font-size: 76px;
   }
 }
+
+/* ==========================================================================
+   14. COMPACT MOBILE HUD & MAXIMUM MAP VISIBILITY ARCHITECTURE
+   Optimized for mobile phones & native Android app.
+   Maximizes 3D view while keeping controls accessible and preventing overlap.
+   ========================================================================== */
+
+/* Compact Mode Trigger: Active when .hud-compact is applied, on mobile viewports, or native Android */
+#hud-overlay.hud-compact,
+body.hud-layout-compact #hud-overlay,
+.is-native-android #hud-overlay:not(.hud-normal),
+@media (max-width: 920px) and (orientation: landscape),
+@media (pointer: coarse) and (max-height: 520px) {
+
+  /* Safe Area Insets & Compact Padding */
+  #hud-overlay {
+    padding: max(6px, env(safe-area-inset-top))
+             max(10px, env(safe-area-inset-right))
+             max(6px, env(safe-area-inset-bottom))
+             max(10px, env(safe-area-inset-left));
+    box-sizing: border-box;
+  }
+
+  /* ------------------------------------------------------------------------
+     A. Top-Left: Compass, FPS, Kills, Deaths (55% reduction)
+     ------------------------------------------------------------------------ */
+  .hud-radar-box {
+    background: rgba(8, 12, 20, 0.45) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(0, 240, 255, 0.2) !important;
+    border-radius: 6px !important;
+    padding: 3px 8px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45) !important;
+    max-width: 145px !important;
+    pointer-events: auto !important;
+  }
+
+  .hud-radar-box > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .hud-radar-box #hud-compass {
+    color: var(--cyan-glow);
+    font-weight: 800;
+  }
+
+  .hud-radar-box #hud-fps {
+    font-size: 9px !important;
+    margin-left: 4px !important;
+    color: #94a3b8 !important;
+  }
+
+  .hud-radar-box > div:last-child {
+    margin-top: 2px !important;
+    padding-top: 2px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9.5px !important;
+    line-height: 1.2;
+  }
+
+  #hud-kills-count {
+    margin-right: 6px !important;
+    font-size: 10px !important;
+  }
+
+  #hud-deaths-count {
+    font-size: 10px !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     B. Top-Center: Sleek Match Information Pill (60% height reduction)
+     ------------------------------------------------------------------------ */
+  .hud-match-timer-box {
+    background: rgba(8, 12, 20, 0.5) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    border: 1px solid rgba(0, 240, 255, 0.25) !important;
+    border-radius: 14px !important;
+    padding: 3px 14px !important;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0 !important;
+    max-width: 180px !important;
+  }
+
+  .hud-match-timer {
+    font-size: 17px !important;
+    font-weight: 900 !important;
+    line-height: 1.1 !important;
+    letter-spacing: 1px !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.6) !important;
+  }
+
+  .hud-match-mode-label {
+    font-size: 9px !important;
+    letter-spacing: 1px !important;
+    line-height: 1 !important;
+    margin-bottom: 1px !important;
+    color: var(--cyan-glow) !important;
+    max-width: 160px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  #hud-score-target {
+    font-size: 8px !important;
+    color: #94a3b8 !important;
+    line-height: 1 !important;
+    margin-top: 1px !important;
+  }
+
+  #hud-ai-badge {
+    font-size: 8px !important;
+    padding: 1px 4px !important;
+    margin-top: 2px !important;
+    border-radius: 3px !important;
+    line-height: 1 !important;
+  }
+
+  /* Killfeed: Trimmed & right-aligned */
+  #killfeed {
+    max-width: 210px !important;
+    gap: 3px !important;
+  }
+
+  .killfeed-item {
+    padding: 2px 6px !important;
+    font-size: 9.5px !important;
+    border-radius: 3px !important;
+    background: rgba(8, 12, 20, 0.6) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     C. Bottom-Left: Health and Shield Vitals (50% reduction, slim bars)
+     ------------------------------------------------------------------------ */
+  .hud-bottom-bar {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-end !important;
+    width: 100% !important;
+    position: relative !important;
+    pointer-events: none !important;
+  }
+
+  .hud-vitals-box {
+    width: 135px !important;
+    padding: 4px 8px !important;
+    background: rgba(8, 12, 20, 0.45) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    border: 1px solid rgba(0, 240, 255, 0.18) !important;
+    border-radius: 6px !important;
+    gap: 3px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45) !important;
+    pointer-events: auto !important;
+  }
+
+  .vital-bar-wrap {
+    gap: 2px !important;
+  }
+
+  .vital-label-row {
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
+
+  .vital-track {
+    height: 5px !important;
+    border-radius: 3px !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     D. Bottom-Right: Weapon & Ammunition (Zero Overlap With Buttons)
+     Anchored cleanly to the left of the action button cluster
+     ------------------------------------------------------------------------ */
+  .hud-weapon-box {
+    position: absolute !important;
+    bottom: 0 !important;
+    right: calc(max(10px, env(safe-area-inset-right)) + 124px) !important;
+    width: auto !important;
+    min-width: 95px !important;
+    max-width: 125px !important;
+    padding: 4px 8px !important;
+    background: rgba(8, 12, 20, 0.45) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    border: 1px solid rgba(0, 240, 255, 0.18) !important;
+    border-radius: 6px !important;
+    gap: 2px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45) !important;
+    pointer-events: auto !important;
+  }
+
+  .weapon-name-display {
+    font-size: 9.5px !important;
+    letter-spacing: 0.8px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 110px !important;
+  }
+
+  .ammo-display {
+    gap: 3px !important;
+    align-items: baseline !important;
+    line-height: 1 !important;
+  }
+
+  .ammo-current {
+    font-size: 20px !important;
+    line-height: 1 !important;
+    color: #ffb700 !important;
+  }
+
+  .ammo-reserve {
+    font-size: 10.5px !important;
+    color: #94a3b8 !important;
+  }
+
+  .weapon-slots-row {
+    gap: 3px !important;
+    margin-top: 2px !important;
+  }
+
+  .weapon-slot-pill {
+    width: 18px !important;
+    height: 15px !important;
+    font-size: 7.5px !important;
+    border-radius: 2px !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     E & F. Touch Controls Cluster: Ergonomic Diamond Thumb Layout
+     Circular buttons reduced by 30-40%, clear spacing, no overlap
+     ------------------------------------------------------------------------ */
+  .touch-action-cluster {
+    position: absolute !important;
+    bottom: max(6px, env(safe-area-inset-bottom)) !important;
+    right: max(6px, env(safe-area-inset-right)) !important;
+    width: 118px !important;
+    height: 118px !important;
+    display: block !important;
+    pointer-events: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .touch-action-btn {
+    position: absolute !important;
+    pointer-events: auto !important;
+    border-radius: 50% !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    touch-action: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Fire Button: Compact 54px circle (30% reduction from 80px) */
+  .touch-action-btn.fire {
+    width: 54px !important;
+    height: 54px !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    font-size: 10.5px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.5px !important;
+    background: radial-gradient(circle, rgba(255, 42, 77, 0.65) 0%, rgba(180, 20, 50, 0.3) 100%) !important;
+    border: 2px solid rgba(255, 42, 77, 0.85) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(255, 42, 77, 0.5) !important;
+  }
+
+  /* Jump Button: Compact 37px circle (38% reduction from 60px) */
+  .touch-action-btn.jump {
+    width: 37px !important;
+    height: 37px !important;
+    bottom: 60px !important;
+    right: 0 !important;
+    font-size: 8.5px !important;
+    font-weight: 800 !important;
+    background: rgba(14, 20, 32, 0.55) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.65) !important;
+    color: #00f0ff !important;
+  }
+
+  /* Swap Button: Compact 37px circle positioned diagonally */
+  .touch-action-btn.swap {
+    width: 37px !important;
+    height: 37px !important;
+    bottom: 60px !important;
+    right: 46px !important;
+    font-size: 8.5px !important;
+    font-weight: 800 !important;
+    background: rgba(14, 20, 32, 0.55) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.65) !important;
+    color: #00f0ff !important;
+  }
+
+  /* Reload Button: Compact 37px circle positioned to the left of fire */
+  .touch-action-btn.reload {
+    width: 37px !important;
+    height: 37px !important;
+    bottom: 0 !important;
+    right: 60px !important;
+    font-size: 8.5px !important;
+    font-weight: 800 !important;
+    background: rgba(14, 20, 32, 0.55) !important;
+    border: 1.5px solid rgba(255, 183, 0, 0.65) !important;
+    color: #ffb700 !important;
+  }
+
+  /* Virtual Joystick: Subtle, unobtrusive */
+  #joystick-base {
+    width: 96px !important;
+    height: 96px !important;
+    background: rgba(0, 240, 255, 0.08) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.25) !important;
+  }
+
+  #joystick-thumb {
+    width: 40px !important;
+    height: 40px !important;
+    top: 28px !important;
+    left: 28px !important;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.45) !important;
+  }
+}
+
+/* ==========================================================================
+   15. MINIMAL HUD MODE (Hardcore / Streamer Mode)
+   Hides non-essential clutter: compass, FPS, mode label, objective, slots
+   ========================================================================== */
+#hud-overlay.hud-minimal .hud-radar-box,
+body.hud-layout-minimal #hud-overlay .hud-radar-box {
+  display: none !important;
+}
+
+#hud-overlay.hud-minimal .hud-match-mode-label,
+#hud-overlay.hud-minimal #hud-score-target,
+#hud-overlay.hud-minimal #hud-ai-badge,
+body.hud-layout-minimal #hud-overlay .hud-match-mode-label,
+body.hud-layout-minimal #hud-overlay #hud-score-target,
+body.hud-layout-minimal #hud-overlay #hud-ai-badge {
+  display: none !important;
+}
+
+#hud-overlay.hud-minimal .weapon-slots-row,
+body.hud-layout-minimal #hud-overlay .weapon-slots-row {
+  display: none !important;
+}
+
+#hud-overlay.hud-minimal #killfeed,
+body.hud-layout-minimal #hud-overlay #killfeed {
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   16. NORMAL HUD MODE (Desktop Standard Layout Explicit Override)
+   ========================================================================== */
+#hud-overlay.hud-normal,
+body.hud-layout-normal #hud-overlay {
+  padding: 24px 32px !important;
+}
+
+#hud-overlay.hud-normal .hud-radar-box,
+body.hud-layout-normal #hud-overlay .hud-radar-box {
+  background: rgba(10, 14, 22, 0.7) !important;
+  border: 1px solid rgba(0, 240, 255, 0.2) !important;
+  padding: 8px 16px !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  max-width: none !important;
+}
+
+#hud-overlay.hud-normal .hud-match-timer-box,
+body.hud-layout-normal #hud-overlay .hud-match-timer-box {
+  background: rgba(10, 14, 22, 0.8) !important;
+  border: 1px solid var(--border-bright) !important;
+  padding: 10px 28px !important;
+  border-radius: 6px !important;
+  max-width: none !important;
+}
+
+#hud-overlay.hud-normal .hud-match-timer,
+body.hud-layout-normal #hud-overlay .hud-match-timer {
+  font-size: 28px !important;
+}
+
+#hud-overlay.hud-normal .hud-vitals-box,
+body.hud-layout-normal #hud-overlay .hud-vitals-box {
+  width: 260px !important;
+  padding: 14px 18px !important;
+}
+
+#hud-overlay.hud-normal .vital-track,
+body.hud-layout-normal #hud-overlay .vital-track {
+  height: 10px !important;
+}
+
+#hud-overlay.hud-normal .hud-weapon-box,
+body.hud-layout-normal #hud-overlay .hud-weapon-box {
+  position: static !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 14px 22px !important;
+}
+
+#hud-overlay.hud-normal .ammo-current,
+body.hud-layout-normal #hud-overlay .ammo-current {
+  font-size: 44px !important;
+}
+
 
