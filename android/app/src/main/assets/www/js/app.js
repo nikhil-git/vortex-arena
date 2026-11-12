@@ -59,6 +59,7 @@ class App {
     this.setupNetworkListeners();
     this.setupTurntablePreview();
     this.setupLandingNavLinks();
+    this.setupWeaponSlotListeners();
 
     // Detect official native Android client environment
     if (window.Android || navigator.userAgent.includes('VortexArenaNative')) {
@@ -104,6 +105,26 @@ class App {
           e.preventDefault();
           targetEl.scrollIntoView({ behavior: 'smooth' });
         }
+      }
+    });
+  }
+
+  setupWeaponSlotListeners() {
+    const slots = [
+      { id: 'slot-1', weapon: 'assault_rifle' },
+      { id: 'slot-2', weapon: 'sniper_rifle' },
+      { id: 'slot-3', weapon: 'shotgun' },
+      { id: 'slot-4', weapon: 'pistol' }
+    ];
+    slots.forEach(({ id, weapon }) => {
+      const el = document.getElementById(id);
+      if (el) {
+        const handleSelect = (e) => {
+          e.stopPropagation();
+          this.switchActiveWeapon(weapon);
+        };
+        el.addEventListener('pointerdown', handleSelect);
+        el.addEventListener('click', handleSelect);
       }
     });
   }
@@ -1066,6 +1087,15 @@ class App {
   switchActiveWeapon(weaponId) {
     if (!this.weaponsState[weaponId]) return;
     this.activeWeaponId = weaponId;
+
+    if (this.gameEngine && this.gameEngine.inputController) {
+      if (typeof this.gameEngine.inputController.setCurrentWeapon === 'function') {
+        this.gameEngine.inputController.setCurrentWeapon(weaponId);
+      } else {
+        this.gameEngine.inputController.currentWeaponId = weaponId;
+      }
+    }
+
     window.netClient.sendSwitchWeapon(weaponId);
 
     if (this.gameEngine) {
@@ -1082,9 +1112,17 @@ class App {
   }
 
   cycleWeaponMobile() {
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (this._lastMobileSwapTime && (now - this._lastMobileSwapTime < 180)) {
+      return;
+    }
+    this._lastMobileSwapTime = now;
+
+    // Strict sequential weapon cycle: Gun 1 -> Gun 2 -> Gun 3 -> Gun 4 -> Gun 1
     const order = ['assault_rifle', 'sniper_rifle', 'shotgun', 'pistol'];
     const idx = order.indexOf(this.activeWeaponId);
-    const nextWep = order[(idx + 1) % order.length];
+    const nextIdx = (idx >= 0) ? (idx + 1) % order.length : 0;
+    const nextWep = order[nextIdx];
     this.switchActiveWeapon(nextWep);
   }
 

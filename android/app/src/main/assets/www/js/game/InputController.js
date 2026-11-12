@@ -36,6 +36,7 @@ export class InputController {
     this.touchMoveId = null;
     this.touchJoystickOrigin = { x: 0, y: 0 };
     this.lastTouchLookPos = { x: 0, y: 0 };
+    this.currentWeaponId = 'assault_rifle';
 
     // Active Map Boundaries & Obstacle Colliders
     this.bounds = MapData.getBounds('house');
@@ -259,59 +260,84 @@ export class InputController {
 
     const jumpBtn = document.getElementById('touch-btn-jump');
     if (jumpBtn) {
+      let lastJumpTime = 0;
       const handleJump = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (now - lastJumpTime < 150) return;
+        lastJumpTime = now;
         if (this.isGrounded) {
           this.velocity.y = 6.8;
           this.isGrounded = false;
           if (window.soundEngine) window.soundEngine.playJump();
         }
       };
-      jumpBtn.addEventListener('touchstart', handleJump, { passive: false });
       jumpBtn.addEventListener('pointerdown', handleJump);
-      jumpBtn.addEventListener('click', handleJump);
+      jumpBtn.addEventListener('touchstart', handleJump, { passive: false });
+      jumpBtn.addEventListener('click', (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+      });
     }
 
     const reloadBtn = document.getElementById('touch-btn-reload');
     if (reloadBtn) {
+      let lastReloadTime = 0;
       const handleReload = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (now - lastReloadTime < 250) return;
+        lastReloadTime = now;
         if (this.onReload) this.onReload();
       };
-      reloadBtn.addEventListener('touchstart', handleReload, { passive: false });
       reloadBtn.addEventListener('pointerdown', handleReload);
-      reloadBtn.addEventListener('click', handleReload);
+      reloadBtn.addEventListener('touchstart', handleReload, { passive: false });
+      reloadBtn.addEventListener('click', (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+      });
     }
 
     // Allow clicking the HUD ammo box directly to reload weapon on desktop/mobile
     const hudWepBox = document.querySelector('.hud-weapon-box');
     if (hudWepBox) {
+      let lastHudReloadTime = 0;
       hudWepBox.style.cursor = 'pointer';
       hudWepBox.title = 'Click to Reload Weapon (or press R)';
-      hudWepBox.addEventListener('pointerdown', (e) => {
+      const handleHudReload = (e) => {
         e.stopPropagation();
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (now - lastHudReloadTime < 250) return;
+        lastHudReloadTime = now;
         if (this.onReload) this.onReload();
-      });
-      hudWepBox.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this.onReload) this.onReload();
-      });
+      };
+      hudWepBox.addEventListener('pointerdown', handleHudReload);
+      hudWepBox.addEventListener('click', handleHudReload);
     }
 
     const swapBtn = document.getElementById('touch-btn-swap');
     if (swapBtn) {
+      let lastSwapTime = 0;
       const handleSwap = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (now - lastSwapTime < 180) {
+          return;
+        }
+        lastSwapTime = now;
         if (window.app && typeof window.app.cycleWeaponMobile === 'function') {
           window.app.cycleWeaponMobile();
         }
       };
-      swapBtn.addEventListener('touchstart', handleSwap, { passive: false });
       swapBtn.addEventListener('pointerdown', handleSwap);
-      swapBtn.addEventListener('click', handleSwap);
+      swapBtn.addEventListener('touchstart', handleSwap, { passive: false });
+      swapBtn.addEventListener('click', (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+      });
     }
   }
 
@@ -419,15 +445,19 @@ export class InputController {
           if (this.onReload) this.onReload();
           break;
         case 'Digit1':
+          this.currentWeaponId = 'assault_rifle';
           if (this.onSwitchWeapon) this.onSwitchWeapon('assault_rifle');
           break;
         case 'Digit2':
+          this.currentWeaponId = 'sniper_rifle';
           if (this.onSwitchWeapon) this.onSwitchWeapon('sniper_rifle');
           break;
         case 'Digit3':
+          this.currentWeaponId = 'shotgun';
           if (this.onSwitchWeapon) this.onSwitchWeapon('shotgun');
           break;
         case 'Digit4':
+          this.currentWeaponId = 'pistol';
           if (this.onSwitchWeapon) this.onSwitchWeapon('pistol');
           break;
         case 'Tab':
@@ -478,8 +508,16 @@ export class InputController {
       } else {
         nextIndex = (currentIndex - 1 + weaponOrder.length) % weaponOrder.length;
       }
-      if (this.onSwitchWeapon) this.onSwitchWeapon(weaponOrder[nextIndex]);
+      const nextWeapon = weaponOrder[nextIndex];
+      this.currentWeaponId = nextWeapon;
+      if (this.onSwitchWeapon) this.onSwitchWeapon(nextWeapon);
     });
+  }
+
+  setCurrentWeapon(weaponId) {
+    if (weaponId) {
+      this.currentWeaponId = weaponId;
+    }
   }
 
   updateCameraRotation() {
