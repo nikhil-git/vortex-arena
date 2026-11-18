@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { GameEngine } from './game/GameEngine.js';
 import { PlayerModel } from './game/PlayerModel.js';
 import { MapData } from './game/MapData.js';
+import { HudLayoutEditor } from './game/HudLayoutEditor.js';
 
 // Pre-allocated static scratch vectors for zero-allocation shooting & FX
 const _remoteOrigin = new THREE.Vector3();
@@ -57,6 +58,7 @@ class App {
     this.countdownInterval = null;
     this.countdownFadeTimer = null;
     this.countdownSecondsRemaining = 0;
+    this.hudEditor = new HudLayoutEditor(this);
 
     this.init();
   }
@@ -66,6 +68,7 @@ class App {
     this.setupTurntablePreview();
     this.setupLandingNavLinks();
     this.setupWeaponSlotListeners();
+    this.hudEditor.init();
 
     // Detect official native Android client environment
     if (window.Android || navigator.userAgent.includes('VortexArenaNative')) {
@@ -230,6 +233,15 @@ class App {
       this.loadAchievements();
     } else if (screenId === 'friends') {
       this.loadFriendsRoster();
+    } else if (screenId === 'settings') {
+      const holdEl = document.getElementById('setting-hold-fire');
+      const autoEl = document.getElementById('setting-auto-fire');
+      const dmgEl = document.getElementById('setting-damage-indicator');
+      const perfEl = document.getElementById('setting-perf-logger');
+      if (holdEl) holdEl.checked = localStorage.getItem('vortex_hold_to_fire') !== 'false';
+      if (autoEl) autoEl.checked = localStorage.getItem('vortex_auto_fire_on_aim') === 'true';
+      if (dmgEl) dmgEl.checked = localStorage.getItem('vortex_damage_indicator') !== 'false';
+      if (perfEl) perfEl.checked = localStorage.getItem('vortex_perf_logger') === 'true';
     }
 
     if (screenId !== 'gameplay') {
@@ -2295,6 +2307,30 @@ class App {
     const hudLayoutEl = document.getElementById('setting-hud-layout');
     if (hudLayoutEl) {
       this.setHudLayout(hudLayoutEl.value);
+    }
+
+    const holdFireEl = document.getElementById('setting-hold-fire');
+    const autoFireEl = document.getElementById('setting-auto-fire');
+    const dmgIndEl = document.getElementById('setting-damage-indicator');
+    const perfLogEl = document.getElementById('setting-perf-logger');
+
+    const holdFire = holdFireEl ? holdFireEl.checked : true;
+    const autoFire = autoFireEl ? autoFireEl.checked : false;
+    const dmgInd = dmgIndEl ? dmgIndEl.checked : true;
+    const perfLog = perfLogEl ? perfLogEl.checked : false;
+
+    localStorage.setItem('vortex_hold_to_fire', String(holdFire));
+    localStorage.setItem('vortex_auto_fire_on_aim', String(autoFire));
+    localStorage.setItem('vortex_damage_indicator', String(dmgInd));
+    localStorage.setItem('vortex_perf_logger', String(perfLog));
+
+    if (this.gameEngine) {
+      this.gameEngine.perfLoggerDetailed = perfLog;
+      if (this.gameEngine.input) {
+        this.gameEngine.input.holdToFire = holdFire;
+        this.gameEngine.input.autoFireOnAim = autoFire;
+        this.gameEngine.input.damageIndicatorEnabled = dmgInd;
+      }
     }
 
     document.getElementById('setting-sens-val').textContent = sens.toFixed(1);

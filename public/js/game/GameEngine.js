@@ -427,6 +427,30 @@ export class GameEngine {
     return false;
   }
 
+  checkAutoFireRaycast() {
+    if (this.isDead || !this.input) return;
+    const origin = this.input.getShootOrigin();
+    const dir = this.input.getForwardDirection();
+
+    for (const entry of this.remotePlayers.values()) {
+      if (!entry.model || !entry.model.isAlive) continue;
+      if (entry.model.isInvulnerable) continue;
+
+      const pPos = entry.model.group.position;
+      const toTargetX = pPos.x - origin.x;
+      const toTargetY = (pPos.y + 0.9) - origin.y;
+      const toTargetZ = pPos.z - origin.z;
+      const dist = Math.hypot(toTargetX, toTargetY, toTargetZ);
+      if (dist < 1.0 || dist > 45.0) continue;
+
+      const dot = (toTargetX * dir.x + toTargetY * dir.y + toTargetZ * dir.z) / dist;
+      if (dot > 0.992) {
+        this.handleShoot();
+        break;
+      }
+    }
+  }
+
   handleReload() {
     if (this.onReloadCallback) {
       this.onReloadCallback();
@@ -487,9 +511,16 @@ export class GameEngine {
     // 1. Update Input Controller
     const moveInfo = this.input.update(delta);
 
-    // 2. Continuous fire for automatic weapons
-    if (this.input.isShooting && this.weaponView && this.weaponView.activeWeaponId === 'assault_rifle') {
-      this.handleShoot();
+    // 2. Continuous fire for automatic weapons or hold-to-fire
+    if (this.input.isShooting) {
+      if (this.weaponView && (this.weaponView.activeWeaponId === 'assault_rifle' || this.input.holdToFire)) {
+        this.handleShoot();
+      }
+    } else if (this.input.autoFireOnAim && this.remotePlayers && this.remotePlayers.size > 0) {
+      if (!this._lastAutoAimCheck || (now - this._lastAutoAimCheck > 90)) {
+        this._lastAutoAimCheck = now;
+        this.checkAutoFireRaycast();
+      }
     }
 
     // 3. Update Weapon View Model

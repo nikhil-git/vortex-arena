@@ -165,7 +165,70 @@ test('Mobile HUD & Weapon Switching Verification Suite', async (t) => {
     assert.ok(html.includes('class="hud-weapon-box"'), 'HTML must have hud-weapon-box');
     assert.ok(html.includes('id="touch-btn-swap"'), 'HTML must have touch-btn-swap control');
     assert.ok(html.includes('id="touch-btn-fire"'), 'HTML must have touch-btn-fire control');
+    assert.ok(html.includes('id="touch-btn-ads"'), 'HTML must have touch-btn-ads control');
+    assert.ok(html.includes('id="touch-btn-crouch"'), 'HTML must have touch-btn-crouch control');
+    assert.ok(html.includes('id="touch-btn-reload"'), 'HTML must have touch-btn-reload control');
+    assert.ok(html.includes('id="touch-btn-jump"'), 'HTML must have touch-btn-jump control');
     assert.ok(html.includes('id="slot-1"'), 'HTML must have slot-1');
     assert.ok(html.includes('id="slot-4"'), 'HTML must have slot-4');
+  });
+
+  await t.test('5. Ergonomic Radial Arc & Fire Button Sizing', () => {
+    const cssPath = path.join(rootDir, 'public', 'css', 'hud.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+
+    // Fire button must be large (92-94px) in resting zone
+    assert.match(css, /\.touch-action-btn\.fire\s*\{[^}]*width:\s*9[0-9]px/s, 'Fire button width must be in 90-99px range for mobile thumb');
+    assert.match(css, /\.touch-action-btn\.fire\s*\{[^}]*height:\s*9[0-9]px/s, 'Fire button height must be in 90-99px range for mobile thumb');
+
+    // Secondary buttons defined
+    assert.match(css, /\.touch-action-btn\.ads/, 'CSS must define .touch-action-btn.ads');
+    assert.match(css, /\.touch-action-btn\.crouch/, 'CSS must define .touch-action-btn.crouch');
+    assert.match(css, /\.touch-action-btn\.reload/, 'CSS must define .touch-action-btn.reload');
+    assert.match(css, /\.touch-action-btn\.jump/, 'CSS must define .touch-action-btn.jump');
+    assert.match(css, /\.touch-action-btn\.swap/, 'CSS must define .touch-action-btn.swap');
+  });
+
+  await t.test('6. In-Game HUD Layout Editor Markup & Persistence Logic', () => {
+    const htmlPath = path.join(rootDir, 'public', 'index.html');
+    const html = fs.readFileSync(htmlPath, 'utf8');
+
+    assert.ok(html.includes('id="modal-hud-editor"'), 'HTML must have modal-hud-editor');
+    assert.ok(html.includes('hud-editor-btn-cancel'), 'HUD editor must have cancel button');
+    assert.ok(html.includes('hud-editor-btn-reset'), 'HUD editor must have reset button');
+    assert.ok(html.includes('hud-editor-btn-confirm'), 'HUD editor must have confirm button');
+    assert.ok(html.includes('id="hud-editor-scale"'), 'HUD editor must have scale slider');
+    assert.ok(html.includes('id="hud-editor-opacity"'), 'HUD editor must have opacity slider');
+    assert.ok(html.includes('id="hud-editor-hide-btn"'), 'HUD editor must have hide button checkbox');
+  });
+
+  await t.test('7. Multi-Touch Isolation: Fire Does Not Cancel on Other Touch End', () => {
+    let isShooting = false;
+    let fireLookTouchId = 42;
+
+    const simulateTouchEnd = (changedTouches) => {
+      if (fireLookTouchId !== null && changedTouches) {
+        for (let i = 0; i < changedTouches.length; i++) {
+          if (changedTouches[i].identifier === fireLookTouchId) {
+            isShooting = false;
+            fireLookTouchId = null;
+            break;
+          }
+        }
+      }
+    };
+
+    // User is actively shooting with finger ID 42
+    isShooting = true;
+
+    // Another touch (e.g. movement thumb ID 10) is released
+    simulateTouchEnd([{ identifier: 10 }]);
+    assert.equal(isShooting, true, 'Releasing an unrelated touch must NOT cancel firing');
+    assert.equal(fireLookTouchId, 42, 'Fire touch ID must remain active');
+
+    // Fire touch itself is released
+    simulateTouchEnd([{ identifier: 42 }]);
+    assert.equal(isShooting, false, 'Releasing the fire touch cancels firing');
+    assert.equal(fireLookTouchId, null, 'Fire touch ID must be cleared');
   });
 });

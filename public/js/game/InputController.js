@@ -43,6 +43,11 @@ export class InputController {
     this.touchJoystickOrigin = { x: 0, y: 0 };
     this.lastTouchLookPos = { x: 0, y: 0 };
     this.currentWeaponId = 'assault_rifle';
+    this.isADS = false;
+    this.isCrouched = false;
+    this.holdToFire = localStorage.getItem('vortex_hold_to_fire') !== 'false';
+    this.autoFireOnAim = localStorage.getItem('vortex_auto_fire_on_aim') === 'true';
+    this.damageIndicatorEnabled = localStorage.getItem('vortex_damage_indicator') !== 'false';
 
     // Active Map Boundaries & Obstacle Colliders
     this.bounds = MapData.getBounds('house');
@@ -247,8 +252,18 @@ export class InputController {
       const handleFireEnd = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
-        this.isShooting = false;
-        fireLookTouchId = null;
+        if (fireLookTouchId !== null && e.changedTouches) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === fireLookTouchId) {
+              this.isShooting = false;
+              fireLookTouchId = null;
+              break;
+            }
+          }
+        } else {
+          this.isShooting = false;
+          fireLookTouchId = null;
+        }
       };
 
       fireBtn.addEventListener('touchstart', handleFireStart, { passive: false });
@@ -262,6 +277,38 @@ export class InputController {
       fireBtn.addEventListener('mouseup', () => { this.isShooting = false; });
       fireBtn.addEventListener('mouseleave', () => { this.isShooting = false; });
       fireBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+    }
+
+    // ADS / Scope Button
+    const adsBtn = document.getElementById('touch-btn-ads');
+    if (adsBtn) {
+      const handleAds = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.isADS = !this.isADS;
+        adsBtn.classList.toggle('active', this.isADS);
+      };
+      adsBtn.addEventListener('touchstart', handleAds, { passive: false });
+      adsBtn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') handleAds(e);
+      });
+      adsBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+    }
+
+    // Crouch / Slide Button
+    const crouchBtn = document.getElementById('touch-btn-crouch');
+    if (crouchBtn) {
+      const handleCrouch = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.isCrouched = !this.isCrouched;
+        crouchBtn.classList.toggle('active', this.isCrouched);
+      };
+      crouchBtn.addEventListener('touchstart', handleCrouch, { passive: false });
+      crouchBtn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') handleCrouch(e);
+      });
+      crouchBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     }
 
     const jumpBtn = document.getElementById('touch-btn-jump');
@@ -446,6 +493,12 @@ export class InputController {
         case 'ShiftLeft':
         case 'ShiftRight':
           this.keys.sprint = true;
+          break;
+        case 'KeyC':
+        case 'ControlLeft':
+          this.isCrouched = !this.isCrouched;
+          const cBtn = document.getElementById('touch-btn-crouch');
+          if (cBtn) cBtn.classList.toggle('active', this.isCrouched);
           break;
         case 'KeyR':
           if (this.onReload) this.onReload();
@@ -714,16 +767,18 @@ export class InputController {
   }
 
   update(delta) {
+    const eyeHeight = this.isCrouched ? 1.1 : 1.7;
     if (!this.isLocked && !this.isTouch) {
       // Even when not locked, enforce ground clearance and synchronize camera position
-      if (this.position.y < 1.7) {
-        this.position.y = 1.7;
+      if (this.position.y < eyeHeight) {
+        this.position.y = eyeHeight;
       }
       this.camera.position.copy(this.position);
       return { isMoving: false, speed: 0 };
     }
 
-    const moveSpeed = this.keys.sprint ? 9.2 : 6.0;
+    const baseSpeed = this.isCrouched ? 3.8 : (this.keys.sprint ? 9.2 : 6.0);
+    const moveSpeed = this.isADS ? baseSpeed * 0.7 : baseSpeed;
     _scratchMoveDir.set(0, 0, 0);
 
     // Keyboard WASD
@@ -767,8 +822,8 @@ export class InputController {
     this.position.y += this.velocity.y * delta;
 
     // Arena Floor Collision
-    if (this.position.y <= 1.7) {
-      this.position.y = 1.7;
+    if (this.position.y <= eyeHeight) {
+      this.position.y = eyeHeight;
       this.velocity.y = 0;
       this.isGrounded = true;
     }
@@ -777,7 +832,7 @@ export class InputController {
 
     return {
       isMoving,
-      speed: (this.keys.sprint ? 1.5 : 1.0)
+      speed: (this.keys.sprint ? 1.5 : (this.isCrouched ? 0.6 : 1.0))
     };
   }
 

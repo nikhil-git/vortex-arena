@@ -1115,12 +1115,55 @@
         <div id="joystick-thumb" class="joystick-thumb" style="position: absolute; top: 32px; left: 32px; width: 46px; height: 46px; border-radius: 50%; background: var(--cyan-glow); box-shadow: 0 0 12px var(--cyan-glow);"></div>
       </div>
 
-      <!-- Action Buttons on Right -->
+      <!-- Action Buttons on Right (Ergonomic Radial Arc Layout) -->
       <div id="touch-action-cluster" class="touch-action-cluster">
         <button id="touch-btn-fire" class="touch-action-btn fire" type="button" aria-label="Fire Weapon">🎯 FIRE</button>
-        <button id="touch-btn-jump" class="touch-action-btn jump" type="button" aria-label="Jump">🦘 JUMP</button>
-        <button id="touch-btn-swap" class="touch-action-btn swap" type="button" aria-label="Swap Weapon">🔫 SWAP</button>
+        <button id="touch-btn-ads" class="touch-action-btn ads" type="button" aria-label="Aim Down Sights">🔭 ADS</button>
         <button id="touch-btn-reload" class="touch-action-btn reload" type="button" aria-label="Reload">🔄 RELOAD</button>
+        <button id="touch-btn-jump" class="touch-action-btn jump" type="button" aria-label="Jump">🦘 JUMP</button>
+        <button id="touch-btn-crouch" class="touch-action-btn crouch" type="button" aria-label="Crouch or Slide">🧎 CROUCH</button>
+        <button id="touch-btn-swap" class="touch-action-btn swap" type="button" aria-label="Swap Weapon">🔫 SWAP</button>
+      </div>
+    </div>
+
+    <!-- HUD Layout Customization Editor Modal (COD Mobile style) -->
+    <div id="modal-hud-editor" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; background: rgba(5, 10, 18, 0.4); backdrop-filter: blur(3px); flex-direction: column; justify-content: flex-start; align-items: center; pointer-events: auto;">
+      <div class="hud-editor-bar">
+        <div class="hud-editor-actions">
+          <button class="btn btn-secondary hud-editor-btn-cancel" onclick="app.hudEditor.cancel()" type="button">CANCEL</button>
+          <button class="btn btn-danger hud-editor-btn-reset" onclick="app.hudEditor.reset()" type="button">RESET</button>
+          <button class="btn btn-primary hud-editor-btn-confirm" onclick="app.hudEditor.confirm()" type="button">CONFIRM</button>
+        </div>
+        <div class="hud-editor-controls">
+          <div class="hud-editor-prop title-box">
+            <span id="hud-editor-item-name">FIRE BUTTON</span>
+          </div>
+          <div class="hud-editor-prop">
+            <label>Scale <span id="hud-editor-scale-val">100%</span></label>
+            <input type="range" id="hud-editor-scale" min="60" max="150" value="100" oninput="app.hudEditor.onScaleChange(this.value)">
+          </div>
+          <div class="hud-editor-prop">
+            <label>Opacity <span id="hud-editor-opacity-val">100%</span></label>
+            <input type="range" id="hud-editor-opacity" min="20" max="100" value="100" oninput="app.hudEditor.onOpacityChange(this.value)">
+          </div>
+          <div class="hud-editor-prop hide-toggle">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="hud-editor-hide-btn" onchange="app.hudEditor.onHideToggle(this.checked)" style="accent-color: var(--cyan-glow);">
+              <span>HIDE BUTTON</span>
+            </label>
+          </div>
+          <div class="hud-editor-dpad">
+            <button class="dpad-btn up" onclick="app.hudEditor.nudge(0, -3)" type="button">▲</button>
+            <div class="dpad-mid">
+              <button class="dpad-btn left" onclick="app.hudEditor.nudge(-3, 0)" type="button">◀</button>
+              <button class="dpad-btn right" onclick="app.hudEditor.nudge(3, 0)" type="button">▶</button>
+            </div>
+            <button class="dpad-btn down" onclick="app.hudEditor.nudge(0, 3)" type="button">▼</button>
+          </div>
+        </div>
+      </div>
+      <div class="hud-editor-hint">
+        💡 Tap any button to select • Drag to reposition anywhere • Adjust scale & opacity above
       </div>
     </div>
   </div>
@@ -1336,18 +1379,34 @@
         <input type="range" id="setting-sens" min="0.2" max="3.0" step="0.1" value="1.0" oninput="app.updateSettings()">
         <span id="setting-sens-val" style="width: 40px; text-align: right; font-weight: 700;">1.0</span>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
         <span>Invert Mouse Y-Axis</span>
         <input type="checkbox" id="setting-invert-y" onchange="app.updateSettings()" style="width: 20px; height: 20px; accent-color: var(--cyan-glow);">
       </div>
-      <div class="slider-row">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+        <span>Hold to Fire (Continuous shooting)</span>
+        <input type="checkbox" id="setting-hold-fire" checked onchange="app.updateSettings()" style="width: 20px; height: 20px; accent-color: var(--cyan-glow);">
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+        <span>Auto-Fire on Aim (Simple Mobile Mode)</span>
+        <input type="checkbox" id="setting-auto-fire" onchange="app.updateSettings()" style="width: 20px; height: 20px; accent-color: var(--cyan-glow);">
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+        <span>Damage Direction Indicator</span>
+        <input type="checkbox" id="setting-damage-indicator" checked onchange="app.updateSettings()" style="width: 20px; height: 20px; accent-color: var(--cyan-glow);">
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+        <span>Detailed Performance Stats (FPS, Frame Time, Memory, Ping)</span>
+        <input type="checkbox" id="setting-perf-logger" onchange="app.updateSettings()" style="width: 20px; height: 20px; accent-color: var(--cyan-glow);">
+      </div>
+      <div class="slider-row" style="margin-top: 10px;">
         <span>Field of View (FOV)</span>
         <input type="range" id="setting-fov" min="65" max="105" step="1" value="75" oninput="app.updateSettings()">
         <span id="setting-fov-val" style="width: 40px; text-align: right; font-weight: 700;">75°</span>
       </div>
 
       <!-- HUD & Interface Display -->
-      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 12px;">HUD & Interface Layout</h3>
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 14px;">HUD & Mobile Layout</h3>
       <div class="form-group">
         <label>HUD Display Density</label>
         <select id="setting-hud-layout" class="form-input" onchange="app.updateSettings()">
@@ -1359,6 +1418,9 @@
           Mobile phones default to Compact HUD for maximum 3D map visibility.
         </div>
       </div>
+      <button class="btn btn-primary" style="width: 100%; margin-top: 6px; font-size: 13px;" onclick="app.hudEditor.open()" type="button">
+        📐 Customize Mobile HUD Layout (Drag, Scale & Opacity)
+      </button>
 
       <!-- Graphics Settings for Laptop Performance -->
       <h3 style="font-size: 16px; font-weight: 800; color: var(--cyan-glow); text-transform: uppercase; margin-top: 12px;">Graphics Performance</h3>
