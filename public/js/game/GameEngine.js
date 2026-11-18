@@ -53,6 +53,9 @@ export class GameEngine {
     this.fpsCounter = 60;
     this.frameCount = 0;
     this.fpsTimer = 0;
+    this.frameTimeMs = 16.6;
+    this.perfLoggerDetailed = localStorage.getItem('vortex_perf_logger') === 'true';
+    this._activePlayerIds = new Set();
 
     // Graphics settings
     this.graphicsQuality = 'high';
@@ -344,11 +347,11 @@ export class GameEngine {
   }
 
   syncRemotePlayers(playerSnapshots) {
-    const activeIds = new Set();
+    this._activePlayerIds.clear();
 
     for (const snap of playerSnapshots) {
       const pid = snap.id;
-      activeIds.add(pid);
+      this._activePlayerIds.add(pid);
 
       if (String(pid) === String(this.localPlayerId)) {
         // If an orphan model exists for local player, remove it immediately
@@ -401,7 +404,7 @@ export class GameEngine {
 
     // Remove disconnected remote players
     for (const [id, entry] of this.remotePlayers.entries()) {
-      if (!activeIds.has(id)) {
+      if (!this._activePlayerIds.has(id)) {
         this.scene.remove(entry.model.group);
         this.remotePlayers.delete(id);
       }
@@ -454,15 +457,31 @@ export class GameEngine {
     const delta = Math.max(0.001, Math.min(0.1, (now - this.lastFrameTime) / 1000 || 0.016));
     this.lastFrameTime = now;
 
-    // Track FPS
+    // Track FPS and Performance Metrics
     this.frameCount++;
     this.fpsTimer += delta;
-    if (this.fpsTimer >= 1.0) {
-      this.fpsCounter = this.frameCount;
+    this.frameTimeMs = delta * 1000;
+    if (this.fpsTimer >= 0.5) {
+      this.fpsCounter = Math.round(this.frameCount / this.fpsTimer);
       this.frameCount = 0;
       this.fpsTimer = 0;
       const fpsEl = document.getElementById('hud-fps');
-      if (fpsEl) fpsEl.textContent = `${this.fpsCounter} FPS`;
+      if (fpsEl) {
+        if (this.perfLoggerDetailed) {
+          const ft = this.frameTimeMs.toFixed(1);
+          let memStr = '';
+          if (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) {
+            memStr = ` • ${Math.round(window.performance.memory.usedJSHeapSize / 1048576)}MB`;
+          }
+          const ping = (window.netClient && window.netClient.currentPing !== undefined && window.netClient.currentPing !== null)
+            ? `${window.netClient.currentPing}ms`
+            : null;
+          const pingStr = ping ? ` • ${ping}` : '';
+          fpsEl.textContent = `${this.fpsCounter} FPS • ${ft}ms${memStr}${pingStr}`;
+        } else {
+          fpsEl.textContent = `${this.fpsCounter} FPS`;
+        }
+      }
     }
 
     // 1. Update Input Controller

@@ -1,6 +1,12 @@
 import * as THREE from '../../vendor/three/three.module.js';
 import { MapData } from './MapData.js';
 
+// Pre-allocated static scratch vectors for zero-allocation per-frame physics & math
+const _scratchMoveDir = new THREE.Vector3();
+const _scratchAxisY = new THREE.Vector3(0, 1, 0);
+const _scratchForwardDir = new THREE.Vector3(0, 0, -1);
+const _scratchShootOrigin = new THREE.Vector3();
+
 export class InputController {
   constructor(camera, domElement, onShoot, onReload, onSwitchWeapon, onScoreboardToggle) {
     this.camera = camera;
@@ -718,28 +724,28 @@ export class InputController {
     }
 
     const moveSpeed = this.keys.sprint ? 9.2 : 6.0;
-    const moveDir = new THREE.Vector3();
+    _scratchMoveDir.set(0, 0, 0);
 
     // Keyboard WASD
-    if (this.keys.forward) moveDir.z -= 1;
-    if (this.keys.backward) moveDir.z += 1;
-    if (this.keys.left) moveDir.x -= 1;
-    if (this.keys.right) moveDir.x += 1;
+    if (this.keys.forward) _scratchMoveDir.z -= 1;
+    if (this.keys.backward) _scratchMoveDir.z += 1;
+    if (this.keys.left) _scratchMoveDir.x -= 1;
+    if (this.keys.right) _scratchMoveDir.x += 1;
 
     // Mobile touch joystick
     if (this.isTouch && (this.touchMove.x !== 0 || this.touchMove.z !== 0)) {
-      moveDir.x += this.touchMove.x;
-      moveDir.z += this.touchMove.z;
+      _scratchMoveDir.x += this.touchMove.x;
+      _scratchMoveDir.z += this.touchMove.z;
     }
 
-    const isMoving = moveDir.lengthSq() > 0;
+    const isMoving = _scratchMoveDir.lengthSq() > 0;
     if (isMoving) {
-      moveDir.normalize();
-      // Apply yaw rotation to move direction
-      moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+      _scratchMoveDir.normalize();
+      // Apply yaw rotation to move direction using cached Y axis vector
+      _scratchMoveDir.applyAxisAngle(_scratchAxisY, this.yaw);
 
-      this.velocity.x = moveDir.x * moveSpeed;
-      this.velocity.z = moveDir.z * moveSpeed;
+      this.velocity.x = _scratchMoveDir.x * moveSpeed;
+      this.velocity.z = _scratchMoveDir.z * moveSpeed;
     } else {
       this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, 0, delta * 12);
       this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, 0, delta * 12);
@@ -775,15 +781,17 @@ export class InputController {
     };
   }
 
-  getForwardDirection() {
+  getForwardDirection(target) {
     this.updateCameraRotation();
-    const dir = new THREE.Vector3(0, 0, -1);
-    dir.applyEuler(this.camera.rotation);
-    return dir.normalize();
+    const out = target || _scratchForwardDir;
+    out.set(0, 0, -1);
+    out.applyEuler(this.camera.rotation);
+    return out.normalize();
   }
 
-  getShootOrigin() {
+  getShootOrigin(target) {
     this.camera.position.copy(this.position);
-    return this.camera.position.clone();
+    const out = target || _scratchShootOrigin;
+    return out.copy(this.camera.position);
   }
 }

@@ -3,6 +3,12 @@ import { GameEngine } from './game/GameEngine.js';
 import { PlayerModel } from './game/PlayerModel.js';
 import { MapData } from './game/MapData.js';
 
+// Pre-allocated static scratch vectors for zero-allocation shooting & FX
+const _remoteOrigin = new THREE.Vector3();
+const _remoteDir = new THREE.Vector3();
+const _remoteHitPoint = new THREE.Vector3();
+const _localHitPoint = new THREE.Vector3();
+
 class App {
   constructor() {
     this.currentUser = null;
@@ -77,6 +83,19 @@ class App {
     const savedHud = localStorage.getItem('vortex_hud_layout');
     this.hudLayout = savedHud || (isMobileDevice ? 'compact' : 'normal');
     this.applyHudLayout(this.hudLayout);
+
+    // Performance Logger toggle listener (tap on FPS or press 'P')
+    const fpsEl = document.getElementById('hud-fps');
+    if (fpsEl) {
+      fpsEl.style.cursor = 'pointer';
+      fpsEl.title = 'Click to toggle performance stats (FPS, FT, Heap, Ping)';
+      fpsEl.addEventListener('click', () => this.togglePerformanceLogger());
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyP' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        this.togglePerformanceLogger();
+      }
+    });
 
     // Check if existing token is valid
     if (window.apiClient.token) {
@@ -1014,10 +1033,9 @@ class App {
           window.Android.vibrate(28);
         }
 
-        // Local tracer
-        const forward = dir.clone().multiplyScalar(60);
-        const hitPoint = origin.clone().add(forward);
-        this.gameEngine.particles.createBulletTracer(origin, hitPoint);
+        // Local tracer (zero-allocation)
+        _localHitPoint.copy(origin).addScaledVector(dir, 60);
+        this.gameEngine.particles.createBulletTracer(origin, _localHitPoint);
         this.gameEngine.particles.createMuzzleFlash(origin);
       };
 
@@ -1339,6 +1357,10 @@ class App {
     const feed = document.getElementById('killfeed');
     if (!feed) return;
 
+    while (feed.children.length >= 4) {
+      feed.removeChild(feed.lastElementChild);
+    }
+
     const item = document.createElement('div');
     item.className = `killfeed-item ${isHeadshot ? 'headshot' : ''}`;
     item.innerHTML = `
@@ -1350,7 +1372,7 @@ class App {
 
     setTimeout(() => {
       if (item.parentNode) item.parentNode.removeChild(item);
-    }, 5000);
+    }, 4000);
   }
 
   showEliminationBanner(victimName, isHeadshot) {
@@ -1559,12 +1581,12 @@ class App {
     });
 
     net.on('remote_player_fired', (data) => {
-      if (this.gameEngine) {
-        const origin = new THREE.Vector3(data.origin[0], data.origin[1], data.origin[2]);
-        const dir = new THREE.Vector3(data.dir[0], data.dir[1], data.dir[2]);
-        const hitPoint = origin.clone().add(dir.multiplyScalar(60));
-        this.gameEngine.particles.createBulletTracer(origin, hitPoint);
-        this.gameEngine.particles.createMuzzleFlash(origin);
+      if (this.gameEngine && data.origin && data.dir) {
+        _remoteOrigin.set(data.origin[0], data.origin[1], data.origin[2]);
+        _remoteDir.set(data.dir[0], data.dir[1], data.dir[2]);
+        _remoteHitPoint.copy(_remoteOrigin).addScaledVector(_remoteDir, 60);
+        this.gameEngine.particles.createBulletTracer(_remoteOrigin, _remoteHitPoint);
+        this.gameEngine.particles.createMuzzleFlash(_remoteOrigin);
       }
       if (window.soundEngine) window.soundEngine.playShoot(data.weaponId);
     });
@@ -2301,6 +2323,13 @@ class App {
     this.hudLayout = layout;
     localStorage.setItem('vortex_hud_layout', layout);
     this.applyHudLayout(layout);
+  }
+
+  togglePerformanceLogger() {
+    if (!this.gameEngine) return;
+    this.gameEngine.perfLoggerDetailed = !this.gameEngine.perfLoggerDetailed;
+    localStorage.setItem('vortex_perf_logger', String(this.gameEngine.perfLoggerDetailed));
+    this.showToast(this.gameEngine.perfLoggerDetailed ? '📊 Performance Stats: DETAILED (FPS, FT, Heap, Ping)' : '📊 Performance Stats: COMPACT');
   }
 
   applyHudLayout(layout) {
