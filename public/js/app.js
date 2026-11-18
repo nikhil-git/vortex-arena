@@ -2510,6 +2510,11 @@ class App {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
+    // Cap notifications queue to max 2 visible toasts so they never obstruct gameplay
+    while (container.children.length >= 2) {
+      container.removeChild(container.firstElementChild);
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
@@ -2517,7 +2522,7 @@ class App {
 
     setTimeout(() => {
       if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 4000);
+    }, 2200);
   }
 }
 

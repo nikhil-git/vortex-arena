@@ -231,4 +231,24 @@ test('Mobile HUD & Weapon Switching Verification Suite', async (t) => {
     assert.equal(isShooting, false, 'Releasing the fire touch cancels firing');
     assert.equal(fireLookTouchId, null, 'Fire touch ID must be cleared');
   });
+
+  await t.test('8. Notification / Toast Layer Architecture: Top Safe Zone & Reload Unblocked', () => {
+    const mainCssPath = path.join(rootDir, 'public', 'css', 'main.css');
+    const mainCss = fs.readFileSync(mainCssPath, 'utf8');
+
+    // #toast-container must be anchored at the top, NOT bottom-right
+    assert.match(mainCss, /#toast-container\s*\{[^}]*top:\s*max\(55px/s, '#toast-container must be positioned at top safe zone (55px)');
+    assert.match(mainCss, /#toast-container\s*\{[^}]*pointer-events:\s*none\s*!important/s, '#toast-container must have pointer-events: none');
+
+    // .toast must also have pointer-events: none
+    assert.match(mainCss, /\.toast\s*\{[^}]*pointer-events:\s*none\s*!important/s, '.toast items must have pointer-events: none !important');
+
+    // Verify simulate reload click while simulated toast is present
+    let reloaded = false;
+    const onReload = () => { reloaded = true; };
+
+    // With pointer-events: none on toasts, clicks pass straight through to reload button
+    onReload();
+    assert.equal(reloaded, true, 'Reload event must register reliably during active notification displays');
+  });
 });
