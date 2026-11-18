@@ -634,7 +634,7 @@ class Room {
         isInvulnerable: Boolean(dmgResult.isInvulnerable)
       });
 
-      // Damage notification to victim
+      // Damage notification to victim with authoritative attacker coordinates for damage direction HUD
       targetPlayer.send('damaged', {
         attackerUserId: shooter.id,
         attackerUsername: shooter.username,
@@ -642,7 +642,8 @@ class Room {
         health: targetPlayer.health,
         shield: targetPlayer.shield,
         isHeadshot: hit.isHeadshot,
-        isInvulnerable: Boolean(dmgResult.isInvulnerable)
+        isInvulnerable: Boolean(dmgResult.isInvulnerable),
+        attackerPosition: [shooter.position.x, shooter.position.z]
       });
 
       // If killed, handle death & authoritative progression

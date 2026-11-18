@@ -527,6 +527,11 @@ export class GameEngine {
     this.weaponView.setADS(this.input.isADS);
     this.weaponView.update(delta, moveInfo.isMoving, moveInfo.speed);
 
+    // Update dynamic damage direction indicators
+    if (window.app && typeof window.app.updateDamageIndicators === 'function') {
+      window.app.updateDamageIndicators();
+    }
+
     // 4. Update Particle Systems
     this.particles.update(delta);
 

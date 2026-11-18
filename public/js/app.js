@@ -1365,6 +1365,74 @@ class App {
     }, 120);
   }
 
+  addDamageIndicator(attackerX, attackerZ, damageTaken = 20) {
+    const container = document.getElementById('damage-indicators');
+    if (!container) return;
+
+    if (!this.activeDamageIndicators) this.activeDamageIndicators = [];
+
+    // Limit active indicators to prevent DOM buildup
+    while (this.activeDamageIndicators.length >= 5) {
+      const oldest = this.activeDamageIndicators.shift();
+      if (oldest.el && oldest.el.parentNode) oldest.el.parentNode.removeChild(oldest.el);
+    }
+
+    const arcEl = document.createElement('div');
+    arcEl.className = 'damage-indicator-arc';
+    arcEl.innerHTML = `
+      <svg viewBox="0 0 100 100">
+        <path d="M 22 28 Q 50 12 78 28" fill="none" stroke="#ff2244" stroke-width="7" stroke-linecap="round"/>
+        <path d="M 32 36 Q 50 24 68 36" fill="none" stroke="#ff6688" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    `;
+    container.appendChild(arcEl);
+
+    const duration = Math.min(2200, 1400 + damageTaken * 25);
+    const entry = {
+      el: arcEl,
+      attackerX,
+      attackerZ,
+      createdAt: performance.now(),
+      duration,
+      initialOpacity: Math.min(1.0, 0.75 + (damageTaken / 60))
+    };
+    this.activeDamageIndicators.push(entry);
+    this.updateDamageIndicators();
+  }
+
+  updateDamageIndicators() {
+    if (!this.activeDamageIndicators || this.activeDamageIndicators.length === 0) return;
+    if (!this.gameEngine || !this.gameEngine.input) return;
+
+    const now = performance.now();
+    const playerPos = this.gameEngine.input.position;
+    const playerYaw = this.gameEngine.input.yaw;
+
+    for (let i = this.activeDamageIndicators.length - 1; i >= 0; i--) {
+      const ind = this.activeDamageIndicators[i];
+      const elapsed = now - ind.createdAt;
+
+      if (elapsed >= ind.duration) {
+        if (ind.el.parentNode) ind.el.parentNode.removeChild(ind.el);
+        this.activeDamageIndicators.splice(i, 1);
+        continue;
+      }
+
+      // Compute relative angle to attacker
+      const dx = ind.attackerX - playerPos.x;
+      const dz = ind.attackerZ - playerPos.z;
+      const worldAngle = Math.atan2(dx, -dz);
+      const relAngleRad = worldAngle - playerYaw;
+      const relAngleDeg = (relAngleRad * 180) / Math.PI;
+
+      const progress = elapsed / ind.duration;
+      const currentOpacity = ind.initialOpacity * (1 - progress);
+
+      ind.el.style.transform = `rotate(${relAngleDeg}deg)`;
+      ind.el.style.opacity = currentOpacity.toFixed(3);
+    }
+  }
+
   addKillfeedItem(killer, victim, weaponName, isHeadshot) {
     const feed = document.getElementById('killfeed');
     if (!feed) return;
@@ -1622,9 +1690,15 @@ class App {
       const vig = document.getElementById('damage-vignette');
       if (vig) {
         vig.classList.add('hit');
-        setTimeout(() => vig.classList.remove('hit'), 150);
+        const vigDuration = (data.damageTaken && data.damageTaken >= 35) ? 350 : 150;
+        setTimeout(() => vig.classList.remove('hit'), vigDuration);
       }
       if (window.soundEngine) window.soundEngine.playDamage();
+
+      // Show directional damage indicator pointing toward attacker
+      if (data.attackerPosition && this.gameEngine && this.gameEngine.input && this.gameEngine.input.damageIndicatorEnabled) {
+        this.addDamageIndicator(data.attackerPosition[0], data.attackerPosition[1], data.damageTaken || 20);
+      }
     });
 
     net.on('player_eliminated', (data) => {

@@ -1578,6 +1578,36 @@ body.hud-layout-normal #hud-overlay .ammo-current {
   font-size: 44px !important;
 }
 
+/* Directional Damage Indicators (Rotates dynamically around crosshair) */
+.damage-indicators-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none !important;
+  z-index: 12;
+}
+
+.damage-indicator-arc {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 150px;
+  height: 150px;
+  margin-top: -75px;
+  margin-left: -75px;
+  pointer-events: none !important;
+  transform-origin: center center;
+  transition: opacity 0.1s linear;
+}
+
+.damage-indicator-arc svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 8px rgba(255, 30, 60, 0.95)) drop-shadow(0 0 16px rgba(255, 30, 60, 0.6));
+}
+
 /* ==========================================================================
    17. HUD LAYOUT CUSTOMIZATION EDITOR (COD Mobile style)
    ========================================================================== */
