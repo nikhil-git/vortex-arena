@@ -78,6 +78,8 @@ class NetClient {
           this.authenticatedUser = msg.user;
         } else if (msg.type === 'auth_error') {
           this.isAuthenticated = false;
+        } else if (msg.type === 'pong' && msg.clientTime) {
+          this.currentPing = Math.max(1, Date.now() - msg.clientTime);
         }
         this.emit(msg.type, msg);
       } catch (e) {

@@ -16,6 +16,8 @@ class SoundEngine {
       sfxVolume: 0.9,
       musicVolume: 0.5
     };
+    this.activeVoices = 0;
+    this.maxConcurrentVoices = 5;
   }
 
   init() {
@@ -41,12 +43,24 @@ class SoundEngine {
     }
   }
 
-  cleanupNodes(nodes, delayMs = 500) {
-    setTimeout(() => {
-      nodes.forEach(n => {
-        try { n.disconnect(); } catch (e) {}
-      });
-    }, delayMs);
+  cleanupNodes(nodes, delayMs = 350, primaryNode = null) {
+    let cleaned = false;
+    const disconnectAll = () => {
+      if (cleaned) return;
+      cleaned = true;
+      if (this.activeVoices > 0) this.activeVoices--;
+      for (let i = 0; i < nodes.length; i++) {
+        try { nodes[i].disconnect(); } catch (e) {}
+      }
+    };
+
+    if (primaryNode && 'onended' in primaryNode) {
+      primaryNode.onended = disconnectAll;
+      // Safety timeout in case audio context pauses or ends abruptly
+      setTimeout(disconnectAll, delayMs + 100);
+    } else {
+      setTimeout(disconnectAll, delayMs);
+    }
   }
 
   ensureContext() {
@@ -77,7 +91,9 @@ class SoundEngine {
 
     // Rate limit audio triggers so mobile audio buffer never overflows
     if (now - this.lastShootAudioTime < 0.075) return;
+    if (this.activeVoices >= this.maxConcurrentVoices) return;
     this.lastShootAudioTime = now;
+    this.activeVoices++;
 
     const noiseBuf = this.sharedNoiseBuffer || this.createNoiseBuffer(0.5);
 
@@ -114,7 +130,7 @@ class SoundEngine {
       noiseNode.start(now);
       noiseNode.stop(now + 0.3);
 
-      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain, filter], 500);
+      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain, filter], 500, osc);
 
     } else if (weaponId === 'shotgun') {
       const osc = this.ctx.createOscillator();
@@ -148,7 +164,7 @@ class SoundEngine {
       noiseNode.start(now);
       noiseNode.stop(now + 0.25);
 
-      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain, noiseFilter], 350);
+      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain, noiseFilter], 350, osc);
 
     } else if (weaponId === 'pistol') {
       const osc = this.ctx.createOscillator();
@@ -177,7 +193,7 @@ class SoundEngine {
       noiseNode.start(now);
       noiseNode.stop(now + 0.08);
 
-      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain], 200);
+      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain], 200, osc);
 
     } else {
       // V-44 Assault Rifle
@@ -212,7 +228,7 @@ class SoundEngine {
       noiseNode.start(now);
       noiseNode.stop(now + 0.1);
 
-      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain, noiseFilter], 200);
+      this.cleanupNodes([osc, oscGain, noiseNode, noiseGain, noiseFilter], 200, osc);
     }
   }
 

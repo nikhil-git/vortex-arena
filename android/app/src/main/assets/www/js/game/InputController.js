@@ -1,6 +1,12 @@
 import * as THREE from '../../vendor/three/three.module.js';
 import { MapData } from './MapData.js';
 
+// Pre-allocated static scratch vectors for zero-allocation per-frame physics & math
+const _scratchMoveDir = new THREE.Vector3();
+const _scratchAxisY = new THREE.Vector3(0, 1, 0);
+const _scratchForwardDir = new THREE.Vector3(0, 0, -1);
+const _scratchShootOrigin = new THREE.Vector3();
+
 export class InputController {
   constructor(camera, domElement, onShoot, onReload, onSwitchWeapon, onScoreboardToggle) {
     this.camera = camera;
@@ -37,6 +43,11 @@ export class InputController {
     this.touchJoystickOrigin = { x: 0, y: 0 };
     this.lastTouchLookPos = { x: 0, y: 0 };
     this.currentWeaponId = 'assault_rifle';
+    this.isADS = false;
+    this.isCrouched = false;
+    this.holdToFire = localStorage.getItem('vortex_hold_to_fire') !== 'false';
+    this.autoFireOnAim = localStorage.getItem('vortex_auto_fire_on_aim') === 'true';
+    this.damageIndicatorEnabled = localStorage.getItem('vortex_damage_indicator') !== 'false';
 
     // Active Map Boundaries & Obstacle Colliders
     this.bounds = MapData.getBounds('house');
@@ -241,8 +252,18 @@ export class InputController {
       const handleFireEnd = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
-        this.isShooting = false;
-        fireLookTouchId = null;
+        if (fireLookTouchId !== null && e.changedTouches) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === fireLookTouchId) {
+              this.isShooting = false;
+              fireLookTouchId = null;
+              break;
+            }
+          }
+        } else {
+          this.isShooting = false;
+          fireLookTouchId = null;
+        }
       };
 
       fireBtn.addEventListener('touchstart', handleFireStart, { passive: false });
@@ -256,6 +277,38 @@ export class InputController {
       fireBtn.addEventListener('mouseup', () => { this.isShooting = false; });
       fireBtn.addEventListener('mouseleave', () => { this.isShooting = false; });
       fireBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+    }
+
+    // ADS / Scope Button
+    const adsBtn = document.getElementById('touch-btn-ads');
+    if (adsBtn) {
+      const handleAds = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.isADS = !this.isADS;
+        adsBtn.classList.toggle('active', this.isADS);
+      };
+      adsBtn.addEventListener('touchstart', handleAds, { passive: false });
+      adsBtn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') handleAds(e);
+      });
+      adsBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+    }
+
+    // Crouch / Slide Button
+    const crouchBtn = document.getElementById('touch-btn-crouch');
+    if (crouchBtn) {
+      const handleCrouch = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.isCrouched = !this.isCrouched;
+        crouchBtn.classList.toggle('active', this.isCrouched);
+      };
+      crouchBtn.addEventListener('touchstart', handleCrouch, { passive: false });
+      crouchBtn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') handleCrouch(e);
+      });
+      crouchBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     }
 
     const jumpBtn = document.getElementById('touch-btn-jump');
@@ -341,6 +394,32 @@ export class InputController {
     }
   }
 
+  resetInputState() {
+    this.keys.forward = false;
+    this.keys.backward = false;
+    this.keys.left = false;
+    this.keys.right = false;
+    this.keys.jump = false;
+    this.keys.sprint = false;
+    this.velocity.x = 0;
+    this.velocity.z = 0;
+
+    // Reset touch movement & look IDs so screen never freezes on resume
+    this.touchMoveId = null;
+    this.touchLookId = null;
+    this.touchMove = { x: 0, z: 0 };
+    this.isShooting = false;
+    this.isADS = false;
+
+    const joystickThumb = document.getElementById('joystick-thumb');
+    const joystickBase = document.getElementById('joystick-base');
+    if (joystickThumb) joystickThumb.style.transform = 'translate(0, 0)';
+    if (joystickBase) joystickBase.style.display = 'none';
+
+    const adsBtn = document.getElementById('touch-btn-ads');
+    if (adsBtn) adsBtn.classList.remove('active');
+  }
+
   setupListeners() {
     // Pointer Lock click
     this.domElement.addEventListener('click', () => {
@@ -352,25 +431,16 @@ export class InputController {
     document.addEventListener('pointerlockchange', () => {
       this.isLocked = (document.pointerLockElement === this.domElement);
       if (!this.isLocked) {
-        this.keys.forward = false;
-        this.keys.backward = false;
-        this.keys.left = false;
-        this.keys.right = false;
-        this.keys.sprint = false;
+        this.resetInputState();
       }
     });
 
-    // Window blur: reset all movement states when window loses focus
-    window.addEventListener('blur', () => {
-      this.keys.forward = false;
-      this.keys.backward = false;
-      this.keys.left = false;
-      this.keys.right = false;
-      this.keys.jump = false;
-      this.keys.sprint = false;
-      this.velocity.x = 0;
-      this.velocity.z = 0;
+    // Window blur & lifecycle visibility changes: reset all movement & touch states
+    window.addEventListener('blur', () => this.resetInputState());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.resetInputState();
     });
+    window.addEventListener('pagehide', () => this.resetInputState());
 
     // Mouse Movement
     document.addEventListener('mousemove', (e) => {
@@ -440,6 +510,12 @@ export class InputController {
         case 'ShiftLeft':
         case 'ShiftRight':
           this.keys.sprint = true;
+          break;
+        case 'KeyC':
+        case 'ControlLeft':
+          this.isCrouched = !this.isCrouched;
+          const cBtn = document.getElementById('touch-btn-crouch');
+          if (cBtn) cBtn.classList.toggle('active', this.isCrouched);
           break;
         case 'KeyR':
           if (this.onReload) this.onReload();
@@ -708,38 +784,40 @@ export class InputController {
   }
 
   update(delta) {
+    const eyeHeight = this.isCrouched ? 1.1 : 1.7;
     if (!this.isLocked && !this.isTouch) {
       // Even when not locked, enforce ground clearance and synchronize camera position
-      if (this.position.y < 1.7) {
-        this.position.y = 1.7;
+      if (this.position.y < eyeHeight) {
+        this.position.y = eyeHeight;
       }
       this.camera.position.copy(this.position);
       return { isMoving: false, speed: 0 };
     }
 
-    const moveSpeed = this.keys.sprint ? 9.2 : 6.0;
-    const moveDir = new THREE.Vector3();
+    const baseSpeed = this.isCrouched ? 3.8 : (this.keys.sprint ? 9.2 : 6.0);
+    const moveSpeed = this.isADS ? baseSpeed * 0.7 : baseSpeed;
+    _scratchMoveDir.set(0, 0, 0);
 
     // Keyboard WASD
-    if (this.keys.forward) moveDir.z -= 1;
-    if (this.keys.backward) moveDir.z += 1;
-    if (this.keys.left) moveDir.x -= 1;
-    if (this.keys.right) moveDir.x += 1;
+    if (this.keys.forward) _scratchMoveDir.z -= 1;
+    if (this.keys.backward) _scratchMoveDir.z += 1;
+    if (this.keys.left) _scratchMoveDir.x -= 1;
+    if (this.keys.right) _scratchMoveDir.x += 1;
 
     // Mobile touch joystick
     if (this.isTouch && (this.touchMove.x !== 0 || this.touchMove.z !== 0)) {
-      moveDir.x += this.touchMove.x;
-      moveDir.z += this.touchMove.z;
+      _scratchMoveDir.x += this.touchMove.x;
+      _scratchMoveDir.z += this.touchMove.z;
     }
 
-    const isMoving = moveDir.lengthSq() > 0;
+    const isMoving = _scratchMoveDir.lengthSq() > 0;
     if (isMoving) {
-      moveDir.normalize();
-      // Apply yaw rotation to move direction
-      moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+      _scratchMoveDir.normalize();
+      // Apply yaw rotation to move direction using cached Y axis vector
+      _scratchMoveDir.applyAxisAngle(_scratchAxisY, this.yaw);
 
-      this.velocity.x = moveDir.x * moveSpeed;
-      this.velocity.z = moveDir.z * moveSpeed;
+      this.velocity.x = _scratchMoveDir.x * moveSpeed;
+      this.velocity.z = _scratchMoveDir.z * moveSpeed;
     } else {
       this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, 0, delta * 12);
       this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, 0, delta * 12);
@@ -761,8 +839,8 @@ export class InputController {
     this.position.y += this.velocity.y * delta;
 
     // Arena Floor Collision
-    if (this.position.y <= 1.7) {
-      this.position.y = 1.7;
+    if (this.position.y <= eyeHeight) {
+      this.position.y = eyeHeight;
       this.velocity.y = 0;
       this.isGrounded = true;
     }
@@ -771,19 +849,21 @@ export class InputController {
 
     return {
       isMoving,
-      speed: (this.keys.sprint ? 1.5 : 1.0)
+      speed: (this.keys.sprint ? 1.5 : (this.isCrouched ? 0.6 : 1.0))
     };
   }
 
-  getForwardDirection() {
+  getForwardDirection(target) {
     this.updateCameraRotation();
-    const dir = new THREE.Vector3(0, 0, -1);
-    dir.applyEuler(this.camera.rotation);
-    return dir.normalize();
+    const out = target || _scratchForwardDir;
+    out.set(0, 0, -1);
+    out.applyEuler(this.camera.rotation);
+    return out.normalize();
   }
 
-  getShootOrigin() {
+  getShootOrigin(target) {
     this.camera.position.copy(this.position);
-    return this.camera.position.clone();
+    const out = target || _scratchShootOrigin;
+    return out.copy(this.camera.position);
   }
 }

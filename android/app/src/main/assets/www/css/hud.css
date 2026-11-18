@@ -471,12 +471,11 @@
 
 .touch-action-cluster {
   position: absolute;
-  bottom: 85px;
-  right: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  pointer-events: auto;
+  bottom: 0;
+  right: 0;
+  width: 290px;
+  height: 250px;
+  pointer-events: none;
 }
 
 .touch-sub-actions {
@@ -485,6 +484,7 @@
 }
 
 .touch-action-btn {
+  position: absolute;
   background: rgba(14, 20, 32, 0.85);
   border: 2px solid rgba(0, 240, 255, 0.5);
   color: #fff;
@@ -500,30 +500,95 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-}
-
-.touch-action-btn:active {
-  transform: scale(0.92);
-}
-
-.touch-action-btn.fire {
-  width: 80px;
-  height: 80px;
-  font-size: 15px;
-  background: linear-gradient(135deg, rgba(255, 42, 77, 0.55), rgba(200, 20, 50, 0.35));
-  border-color: var(--crimson-red);
-  color: #fff;
-  box-shadow: 0 0 20px rgba(255, 42, 77, 0.6);
-}
-
-.touch-action-btn.jump,
-.touch-action-btn.reload,
-.touch-action-btn.swap {
-  width: 60px;
-  height: 60px;
   font-size: 11px;
+  letter-spacing: 0.5px;
+  pointer-events: auto;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+
+.touch-action-btn:active,
+.touch-action-btn.active {
+  transform: scale(0.92);
+  filter: brightness(1.2);
+}
+
+/* Fire button in natural thumb resting zone (94dp diameter) */
+.touch-action-btn.fire {
+  width: 94px;
+  height: 94px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  right: max(16px, env(safe-area-inset-right));
+  font-size: 13px;
+  background: radial-gradient(circle, rgba(255, 42, 77, 0.75) 0%, rgba(180, 20, 50, 0.4) 100%);
+  border: 2.5px solid rgba(255, 42, 77, 0.9);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 42, 77, 0.65);
+}
+
+.touch-action-btn.fire::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
+  border-radius: 50%;
+}
+
+/* Secondary controls in ergonomic thumb arc */
+.touch-action-btn.ads {
+  width: 48px;
+  height: 48px;
+  bottom: max(124px, calc(env(safe-area-inset-bottom) + 108px));
+  right: max(24px, calc(env(safe-area-inset-right) + 8px));
+  font-size: 9px;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1.5px solid rgba(0, 240, 255, 0.75);
+  color: #00f0ff;
+}
+
+.touch-action-btn.reload {
+  width: 48px;
+  height: 48px;
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 96px));
+  right: max(88px, calc(env(safe-area-inset-right) + 72px));
+  font-size: 9px;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1.5px solid rgba(255, 183, 0, 0.75);
+  color: #ffb700;
+}
+
+.touch-action-btn.jump {
+  width: 48px;
+  height: 48px;
+  bottom: max(32px, calc(env(safe-area-inset-bottom) + 16px));
+  right: max(120px, calc(env(safe-area-inset-right) + 104px));
+  font-size: 9px;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1.5px solid rgba(0, 240, 255, 0.75);
+  color: #00f0ff;
+}
+
+.touch-action-btn.crouch {
+  width: 44px;
+  height: 44px;
+  bottom: max(156px, calc(env(safe-area-inset-bottom) + 140px));
+  right: max(72px, calc(env(safe-area-inset-right) + 56px));
+  font-size: 8px;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1.5px solid rgba(0, 240, 255, 0.75);
+  color: #00f0ff;
+}
+
+.touch-action-btn.swap {
+  width: 44px;
+  height: 44px;
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 6px));
+  right: max(178px, calc(env(safe-area-inset-right) + 162px));
+  font-size: 8px;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1.5px solid rgba(0, 240, 255, 0.75);
+  color: #00f0ff;
 }
 
 /* Respawn Protection Shield Indicator */
@@ -1017,15 +1082,15 @@ body.hud-layout-compact #hud-overlay .weapon-slot-pill,
   border-radius: 2px !important;
 }
 
-/* E & F. Touch action cluster & buttons */
+/* E & F. Touch action cluster & buttons (Ergonomic Radial Arc & Natural Thumb Rest) */
 #hud-overlay.hud-compact .touch-action-cluster,
 body.hud-layout-compact #hud-overlay .touch-action-cluster,
 .is-native-android #hud-overlay:not(.hud-normal) .touch-action-cluster {
   position: absolute !important;
-  bottom: max(4px, env(safe-area-inset-bottom)) !important;
-  right: max(6px, env(safe-area-inset-right)) !important;
-  width: 114px !important;
-  height: 114px !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  width: 290px !important;
+  height: 250px !important;
   display: block !important;
   pointer-events: none !important;
   box-sizing: border-box !important;
@@ -1051,59 +1116,87 @@ body.hud-layout-compact #hud-overlay .touch-action-btn,
 #hud-overlay.hud-compact .touch-action-btn.fire,
 body.hud-layout-compact #hud-overlay .touch-action-btn.fire,
 .is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.fire {
-  width: 52px !important;
-  height: 52px !important;
-  bottom: 0 !important;
-  right: 0 !important;
-  font-size: 10px !important;
+  width: 92px !important;
+  height: 92px !important;
+  bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  right: max(16px, env(safe-area-inset-right)) !important;
+  font-size: 13px !important;
   font-weight: 900 !important;
   letter-spacing: 0.5px !important;
-  background: radial-gradient(circle, rgba(255, 42, 77, 0.65) 0%, rgba(180, 20, 50, 0.3) 100%) !important;
-  border: 2px solid rgba(255, 42, 77, 0.85) !important;
+  background: radial-gradient(circle, rgba(255, 42, 77, 0.75) 0%, rgba(180, 20, 50, 0.4) 100%) !important;
+  border: 2.5px solid rgba(255, 42, 77, 0.9) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 12px rgba(255, 42, 77, 0.5) !important;
+  box-shadow: 0 0 16px rgba(255, 42, 77, 0.6) !important;
 }
 
-#hud-overlay.hud-compact .touch-action-btn.jump,
-body.hud-layout-compact #hud-overlay .touch-action-btn.jump,
-.is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.jump {
-  width: 36px !important;
-  height: 36px !important;
-  bottom: 58px !important;
-  right: 0 !important;
-  font-size: 8px !important;
+#hud-overlay.hud-compact .touch-action-btn.ads,
+body.hud-layout-compact #hud-overlay .touch-action-btn.ads,
+.is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.ads {
+  width: 48px !important;
+  height: 48px !important;
+  bottom: max(124px, calc(env(safe-area-inset-bottom) + 108px)) !important;
+  right: max(24px, calc(env(safe-area-inset-right) + 8px)) !important;
+  font-size: 9px !important;
   font-weight: 800 !important;
-  background: rgba(14, 20, 32, 0.55) !important;
-  border: 1.5px solid rgba(0, 240, 255, 0.65) !important;
-  color: #00f0ff !important;
-}
-
-#hud-overlay.hud-compact .touch-action-btn.swap,
-body.hud-layout-compact #hud-overlay .touch-action-btn.swap,
-.is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.swap {
-  width: 36px !important;
-  height: 36px !important;
-  bottom: 58px !important;
-  right: 44px !important;
-  font-size: 8px !important;
-  font-weight: 800 !important;
-  background: rgba(14, 20, 32, 0.55) !important;
-  border: 1.5px solid rgba(0, 240, 255, 0.65) !important;
+  background: rgba(14, 20, 32, 0.75) !important;
+  border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
   color: #00f0ff !important;
 }
 
 #hud-overlay.hud-compact .touch-action-btn.reload,
 body.hud-layout-compact #hud-overlay .touch-action-btn.reload,
 .is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.reload {
-  width: 36px !important;
-  height: 36px !important;
-  bottom: 0 !important;
-  right: 58px !important;
+  width: 48px !important;
+  height: 48px !important;
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 96px)) !important;
+  right: max(88px, calc(env(safe-area-inset-right) + 72px)) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  background: rgba(14, 20, 32, 0.75) !important;
+  border: 1.5px solid rgba(255, 183, 0, 0.75) !important;
+  color: #ffb700 !important;
+}
+
+#hud-overlay.hud-compact .touch-action-btn.jump,
+body.hud-layout-compact #hud-overlay .touch-action-btn.jump,
+.is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.jump {
+  width: 48px !important;
+  height: 48px !important;
+  bottom: max(32px, calc(env(safe-area-inset-bottom) + 16px)) !important;
+  right: max(120px, calc(env(safe-area-inset-right) + 104px)) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  background: rgba(14, 20, 32, 0.75) !important;
+  border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
+  color: #00f0ff !important;
+}
+
+#hud-overlay.hud-compact .touch-action-btn.crouch,
+body.hud-layout-compact #hud-overlay .touch-action-btn.crouch,
+.is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.crouch {
+  width: 44px !important;
+  height: 44px !important;
+  bottom: max(156px, calc(env(safe-area-inset-bottom) + 140px)) !important;
+  right: max(72px, calc(env(safe-area-inset-right) + 56px)) !important;
   font-size: 8px !important;
   font-weight: 800 !important;
-  background: rgba(14, 20, 32, 0.55) !important;
-  border: 1.5px solid rgba(255, 183, 0, 0.65) !important;
-  color: #ffb700 !important;
+  background: rgba(14, 20, 32, 0.75) !important;
+  border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
+  color: #00f0ff !important;
+}
+
+#hud-overlay.hud-compact .touch-action-btn.swap,
+body.hud-layout-compact #hud-overlay .touch-action-btn.swap,
+.is-native-android #hud-overlay:not(.hud-normal) .touch-action-btn.swap {
+  width: 44px !important;
+  height: 44px !important;
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 6px)) !important;
+  right: max(178px, calc(env(safe-area-inset-right) + 162px)) !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  background: rgba(14, 20, 32, 0.75) !important;
+  border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
+  color: #00f0ff !important;
 }
 
 #hud-overlay.hud-compact #joystick-base,
@@ -1294,10 +1387,10 @@ body.hud-layout-compact #hud-overlay #joystick-thumb,
   }
   #hud-overlay:not(.hud-normal) .touch-action-cluster {
     position: absolute !important;
-    bottom: max(4px, env(safe-area-inset-bottom)) !important;
-    right: max(6px, env(safe-area-inset-right)) !important;
-    width: 114px !important;
-    height: 114px !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 290px !important;
+    height: 250px !important;
     display: block !important;
     pointer-events: none !important;
     box-sizing: border-box !important;
@@ -1317,49 +1410,73 @@ body.hud-layout-compact #hud-overlay #joystick-thumb,
     justify-content: center !important;
   }
   #hud-overlay:not(.hud-normal) .touch-action-btn.fire {
-    width: 52px !important;
-    height: 52px !important;
-    bottom: 0 !important;
-    right: 0 !important;
-    font-size: 10px !important;
+    width: 92px !important;
+    height: 92px !important;
+    bottom: max(14px, env(safe-area-inset-bottom)) !important;
+    right: max(14px, env(safe-area-inset-right)) !important;
+    font-size: 13px !important;
     font-weight: 900 !important;
     letter-spacing: 0.5px !important;
-    background: radial-gradient(circle, rgba(255, 42, 77, 0.65) 0%, rgba(180, 20, 50, 0.3) 100%) !important;
-    border: 2px solid rgba(255, 42, 77, 0.85) !important;
+    background: radial-gradient(circle, rgba(255, 42, 77, 0.75) 0%, rgba(180, 20, 50, 0.4) 100%) !important;
+    border: 2.5px solid rgba(255, 42, 77, 0.9) !important;
     color: #ffffff !important;
-    box-shadow: 0 0 12px rgba(255, 42, 77, 0.5) !important;
+    box-shadow: 0 0 16px rgba(255, 42, 77, 0.6) !important;
   }
-  #hud-overlay:not(.hud-normal) .touch-action-btn.jump {
-    width: 36px !important;
-    height: 36px !important;
-    bottom: 58px !important;
-    right: 0 !important;
-    font-size: 8px !important;
+  #hud-overlay:not(.hud-normal) .touch-action-btn.ads {
+    width: 48px !important;
+    height: 48px !important;
+    bottom: max(124px, calc(env(safe-area-inset-bottom) + 108px)) !important;
+    right: max(24px, calc(env(safe-area-inset-right) + 8px)) !important;
+    font-size: 9px !important;
     font-weight: 800 !important;
-    background: rgba(14, 20, 32, 0.55) !important;
-    border: 1.5px solid rgba(0, 240, 255, 0.65) !important;
-    color: #00f0ff !important;
-  }
-  #hud-overlay:not(.hud-normal) .touch-action-btn.swap {
-    width: 36px !important;
-    height: 36px !important;
-    bottom: 58px !important;
-    right: 44px !important;
-    font-size: 8px !important;
-    font-weight: 800 !important;
-    background: rgba(14, 20, 32, 0.55) !important;
-    border: 1.5px solid rgba(0, 240, 255, 0.65) !important;
+    background: rgba(14, 20, 32, 0.75) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
     color: #00f0ff !important;
   }
   #hud-overlay:not(.hud-normal) .touch-action-btn.reload {
-    width: 36px !important;
-    height: 36px !important;
-    bottom: 0 !important;
-    right: 58px !important;
+    width: 48px !important;
+    height: 48px !important;
+    bottom: max(112px, calc(env(safe-area-inset-bottom) + 96px)) !important;
+    right: max(88px, calc(env(safe-area-inset-right) + 72px)) !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    background: rgba(14, 20, 32, 0.75) !important;
+    border: 1.5px solid rgba(255, 183, 0, 0.75) !important;
+    color: #ffb700 !important;
+  }
+  #hud-overlay:not(.hud-normal) .touch-action-btn.jump {
+    width: 48px !important;
+    height: 48px !important;
+    bottom: max(32px, calc(env(safe-area-inset-bottom) + 16px)) !important;
+    right: max(120px, calc(env(safe-area-inset-right) + 104px)) !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    background: rgba(14, 20, 32, 0.75) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
+    color: #00f0ff !important;
+  }
+  #hud-overlay:not(.hud-normal) .touch-action-btn.crouch {
+    width: 44px !important;
+    height: 44px !important;
+    bottom: max(156px, calc(env(safe-area-inset-bottom) + 140px)) !important;
+    right: max(72px, calc(env(safe-area-inset-right) + 56px)) !important;
     font-size: 8px !important;
     font-weight: 800 !important;
-    background: rgba(14, 20, 32, 0.55) !important;
-    border: 1.5px solid rgba(255, 183, 0, 0.65) !important;
+    background: rgba(14, 20, 32, 0.75) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
+    color: #00f0ff !important;
+  }
+  #hud-overlay:not(.hud-normal) .touch-action-btn.swap {
+    width: 44px !important;
+    height: 44px !important;
+    bottom: max(22px, calc(env(safe-area-inset-bottom) + 6px)) !important;
+    right: max(178px, calc(env(safe-area-inset-right) + 162px)) !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    background: rgba(14, 20, 32, 0.75) !important;
+    border: 1.5px solid rgba(0, 240, 255, 0.75) !important;
+    color: #00f0ff !important;
+  }
     color: #ffb700 !important;
   }
   #hud-overlay:not(.hud-normal) #joystick-base {
@@ -1459,6 +1576,180 @@ body.hud-layout-normal #hud-overlay .hud-weapon-box {
 #hud-overlay.hud-normal .ammo-current,
 body.hud-layout-normal #hud-overlay .ammo-current {
   font-size: 44px !important;
+}
+
+/* Directional Damage Indicators (Rotates dynamically around crosshair) */
+.damage-indicators-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none !important;
+  z-index: 12;
+}
+
+.damage-indicator-arc {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 150px;
+  height: 150px;
+  margin-top: -75px;
+  margin-left: -75px;
+  pointer-events: none !important;
+  transform-origin: center center;
+  transition: opacity 0.1s linear;
+}
+
+.damage-indicator-arc svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 8px rgba(255, 30, 60, 0.95)) drop-shadow(0 0 16px rgba(255, 30, 60, 0.6));
+}
+
+/* ==========================================================================
+   17. HUD LAYOUT CUSTOMIZATION EDITOR (COD Mobile style)
+   ========================================================================== */
+.hud-editor-bar {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(12, 18, 28, 0.94);
+  border: 1.5px solid rgba(0, 240, 255, 0.4);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.15);
+  max-width: 95vw;
+  box-sizing: border-box;
+  z-index: 10001;
+}
+
+.hud-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hud-editor-btn-cancel {
+  background: #4a5568 !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  padding: 6px 14px !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+}
+
+.hud-editor-btn-reset {
+  background: #e53e3e !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  padding: 6px 14px !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+}
+
+.hud-editor-btn-confirm {
+  background: #ecc94b !important;
+  color: #1a202c !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  padding: 6px 16px !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+}
+
+.hud-editor-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  padding-left: 14px;
+  flex-wrap: wrap;
+}
+
+.hud-editor-prop {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.hud-editor-prop.title-box {
+  min-width: 120px;
+  color: var(--cyan-glow);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.hud-editor-prop input[type="range"] {
+  width: 85px;
+  height: 5px;
+  accent-color: var(--cyan-glow);
+}
+
+.hud-editor-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-editor-dpad .dpad-mid {
+  display: flex;
+  gap: 4px;
+}
+
+.hud-editor-dpad .dpad-btn {
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  font-size: 9px;
+  background: rgba(30, 41, 59, 0.9);
+  color: #fff;
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-editor-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(5, 10, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+/* Editing active state outlines */
+.in-hud-editor .hud-editable-item {
+  outline: 2px dashed rgba(0, 240, 255, 0.7) !important;
+  outline-offset: 4px !important;
+  cursor: move !important;
+  pointer-events: auto !important;
+}
+
+.in-hud-editor .hud-editing-selected {
+  outline: 2.5px solid #ecc94b !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 16px #ecc94b !important;
 }
 
 

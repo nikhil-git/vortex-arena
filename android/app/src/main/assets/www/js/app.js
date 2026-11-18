@@ -2,6 +2,13 @@ import * as THREE from '../vendor/three/three.module.js';
 import { GameEngine } from './game/GameEngine.js';
 import { PlayerModel } from './game/PlayerModel.js';
 import { MapData } from './game/MapData.js';
+import { HudLayoutEditor } from './game/HudLayoutEditor.js';
+
+// Pre-allocated static scratch vectors for zero-allocation shooting & FX
+const _remoteOrigin = new THREE.Vector3();
+const _remoteDir = new THREE.Vector3();
+const _remoteHitPoint = new THREE.Vector3();
+const _localHitPoint = new THREE.Vector3();
 
 class App {
   constructor() {
@@ -51,6 +58,7 @@ class App {
     this.countdownInterval = null;
     this.countdownFadeTimer = null;
     this.countdownSecondsRemaining = 0;
+    this.hudEditor = new HudLayoutEditor(this);
 
     this.init();
   }
@@ -60,6 +68,7 @@ class App {
     this.setupTurntablePreview();
     this.setupLandingNavLinks();
     this.setupWeaponSlotListeners();
+    this.hudEditor.init();
 
     // Detect official native Android client environment
     if (window.Android || navigator.userAgent.includes('VortexArenaNative')) {
@@ -77,6 +86,31 @@ class App {
     const savedHud = localStorage.getItem('vortex_hud_layout');
     this.hudLayout = savedHud || (isMobileDevice ? 'compact' : 'normal');
     this.applyHudLayout(this.hudLayout);
+
+    // App lifecycle event listeners (prevents mobile resume freeze and stuck inputs)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.onAppPause();
+      } else {
+        this.onAppResume();
+      }
+    });
+    window.addEventListener('pagehide', () => this.onAppPause());
+    window.addEventListener('pageshow', () => this.onAppResume());
+    window.addEventListener('focus', () => this.onAppResume());
+
+    // Performance Logger toggle listener (tap on FPS or press 'P')
+    const fpsEl = document.getElementById('hud-fps');
+    if (fpsEl) {
+      fpsEl.style.cursor = 'pointer';
+      fpsEl.title = 'Click to toggle performance stats (FPS, FT, Heap, Ping)';
+      fpsEl.addEventListener('click', () => this.togglePerformanceLogger());
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyP' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        this.togglePerformanceLogger();
+      }
+    });
 
     // Check if existing token is valid
     if (window.apiClient.token) {
@@ -211,6 +245,15 @@ class App {
       this.loadAchievements();
     } else if (screenId === 'friends') {
       this.loadFriendsRoster();
+    } else if (screenId === 'settings') {
+      const holdEl = document.getElementById('setting-hold-fire');
+      const autoEl = document.getElementById('setting-auto-fire');
+      const dmgEl = document.getElementById('setting-damage-indicator');
+      const perfEl = document.getElementById('setting-perf-logger');
+      if (holdEl) holdEl.checked = localStorage.getItem('vortex_hold_to_fire') !== 'false';
+      if (autoEl) autoEl.checked = localStorage.getItem('vortex_auto_fire_on_aim') === 'true';
+      if (dmgEl) dmgEl.checked = localStorage.getItem('vortex_damage_indicator') !== 'false';
+      if (perfEl) perfEl.checked = localStorage.getItem('vortex_perf_logger') === 'true';
     }
 
     if (screenId !== 'gameplay') {
@@ -1014,10 +1057,9 @@ class App {
           window.Android.vibrate(28);
         }
 
-        // Local tracer
-        const forward = dir.clone().multiplyScalar(60);
-        const hitPoint = origin.clone().add(forward);
-        this.gameEngine.particles.createBulletTracer(origin, hitPoint);
+        // Local tracer (zero-allocation)
+        _localHitPoint.copy(origin).addScaledVector(dir, 60);
+        this.gameEngine.particles.createBulletTracer(origin, _localHitPoint);
         this.gameEngine.particles.createMuzzleFlash(origin);
       };
 
@@ -1335,9 +1377,81 @@ class App {
     }, 120);
   }
 
+  addDamageIndicator(attackerX, attackerZ, damageTaken = 20) {
+    const container = document.getElementById('damage-indicators');
+    if (!container) return;
+
+    if (!this.activeDamageIndicators) this.activeDamageIndicators = [];
+
+    // Limit active indicators to prevent DOM buildup
+    while (this.activeDamageIndicators.length >= 5) {
+      const oldest = this.activeDamageIndicators.shift();
+      if (oldest.el && oldest.el.parentNode) oldest.el.parentNode.removeChild(oldest.el);
+    }
+
+    const arcEl = document.createElement('div');
+    arcEl.className = 'damage-indicator-arc';
+    arcEl.innerHTML = `
+      <svg viewBox="0 0 100 100">
+        <path d="M 22 28 Q 50 12 78 28" fill="none" stroke="#ff2244" stroke-width="7" stroke-linecap="round"/>
+        <path d="M 32 36 Q 50 24 68 36" fill="none" stroke="#ff6688" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    `;
+    container.appendChild(arcEl);
+
+    const duration = Math.min(2200, 1400 + damageTaken * 25);
+    const entry = {
+      el: arcEl,
+      attackerX,
+      attackerZ,
+      createdAt: performance.now(),
+      duration,
+      initialOpacity: Math.min(1.0, 0.75 + (damageTaken / 60))
+    };
+    this.activeDamageIndicators.push(entry);
+    this.updateDamageIndicators();
+  }
+
+  updateDamageIndicators() {
+    if (!this.activeDamageIndicators || this.activeDamageIndicators.length === 0) return;
+    if (!this.gameEngine || !this.gameEngine.input) return;
+
+    const now = performance.now();
+    const playerPos = this.gameEngine.input.position;
+    const playerYaw = this.gameEngine.input.yaw;
+
+    for (let i = this.activeDamageIndicators.length - 1; i >= 0; i--) {
+      const ind = this.activeDamageIndicators[i];
+      const elapsed = now - ind.createdAt;
+
+      if (elapsed >= ind.duration) {
+        if (ind.el.parentNode) ind.el.parentNode.removeChild(ind.el);
+        this.activeDamageIndicators.splice(i, 1);
+        continue;
+      }
+
+      // Compute relative angle to attacker
+      const dx = ind.attackerX - playerPos.x;
+      const dz = ind.attackerZ - playerPos.z;
+      const worldAngle = Math.atan2(dx, -dz);
+      const relAngleRad = worldAngle - playerYaw;
+      const relAngleDeg = (relAngleRad * 180) / Math.PI;
+
+      const progress = elapsed / ind.duration;
+      const currentOpacity = ind.initialOpacity * (1 - progress);
+
+      ind.el.style.transform = `rotate(${relAngleDeg}deg)`;
+      ind.el.style.opacity = currentOpacity.toFixed(3);
+    }
+  }
+
   addKillfeedItem(killer, victim, weaponName, isHeadshot) {
     const feed = document.getElementById('killfeed');
     if (!feed) return;
+
+    while (feed.children.length >= 4) {
+      feed.removeChild(feed.lastElementChild);
+    }
 
     const item = document.createElement('div');
     item.className = `killfeed-item ${isHeadshot ? 'headshot' : ''}`;
@@ -1350,7 +1464,7 @@ class App {
 
     setTimeout(() => {
       if (item.parentNode) item.parentNode.removeChild(item);
-    }, 5000);
+    }, 4000);
   }
 
   showEliminationBanner(victimName, isHeadshot) {
@@ -1559,12 +1673,12 @@ class App {
     });
 
     net.on('remote_player_fired', (data) => {
-      if (this.gameEngine) {
-        const origin = new THREE.Vector3(data.origin[0], data.origin[1], data.origin[2]);
-        const dir = new THREE.Vector3(data.dir[0], data.dir[1], data.dir[2]);
-        const hitPoint = origin.clone().add(dir.multiplyScalar(60));
-        this.gameEngine.particles.createBulletTracer(origin, hitPoint);
-        this.gameEngine.particles.createMuzzleFlash(origin);
+      if (this.gameEngine && data.origin && data.dir) {
+        _remoteOrigin.set(data.origin[0], data.origin[1], data.origin[2]);
+        _remoteDir.set(data.dir[0], data.dir[1], data.dir[2]);
+        _remoteHitPoint.copy(_remoteOrigin).addScaledVector(_remoteDir, 60);
+        this.gameEngine.particles.createBulletTracer(_remoteOrigin, _remoteHitPoint);
+        this.gameEngine.particles.createMuzzleFlash(_remoteOrigin);
       }
       if (window.soundEngine) window.soundEngine.playShoot(data.weaponId);
     });
@@ -1588,9 +1702,15 @@ class App {
       const vig = document.getElementById('damage-vignette');
       if (vig) {
         vig.classList.add('hit');
-        setTimeout(() => vig.classList.remove('hit'), 150);
+        const vigDuration = (data.damageTaken && data.damageTaken >= 35) ? 350 : 150;
+        setTimeout(() => vig.classList.remove('hit'), vigDuration);
       }
       if (window.soundEngine) window.soundEngine.playDamage();
+
+      // Show directional damage indicator pointing toward attacker
+      if (data.attackerPosition && this.gameEngine && this.gameEngine.input && this.gameEngine.input.damageIndicatorEnabled) {
+        this.addDamageIndicator(data.attackerPosition[0], data.attackerPosition[1], data.damageTaken || 20);
+      }
     });
 
     net.on('player_eliminated', (data) => {
@@ -2275,6 +2395,30 @@ class App {
       this.setHudLayout(hudLayoutEl.value);
     }
 
+    const holdFireEl = document.getElementById('setting-hold-fire');
+    const autoFireEl = document.getElementById('setting-auto-fire');
+    const dmgIndEl = document.getElementById('setting-damage-indicator');
+    const perfLogEl = document.getElementById('setting-perf-logger');
+
+    const holdFire = holdFireEl ? holdFireEl.checked : true;
+    const autoFire = autoFireEl ? autoFireEl.checked : false;
+    const dmgInd = dmgIndEl ? dmgIndEl.checked : true;
+    const perfLog = perfLogEl ? perfLogEl.checked : false;
+
+    localStorage.setItem('vortex_hold_to_fire', String(holdFire));
+    localStorage.setItem('vortex_auto_fire_on_aim', String(autoFire));
+    localStorage.setItem('vortex_damage_indicator', String(dmgInd));
+    localStorage.setItem('vortex_perf_logger', String(perfLog));
+
+    if (this.gameEngine) {
+      this.gameEngine.perfLoggerDetailed = perfLog;
+      if (this.gameEngine.input) {
+        this.gameEngine.input.holdToFire = holdFire;
+        this.gameEngine.input.autoFireOnAim = autoFire;
+        this.gameEngine.input.damageIndicatorEnabled = dmgInd;
+      }
+    }
+
     document.getElementById('setting-sens-val').textContent = sens.toFixed(1);
     document.getElementById('setting-fov-val').textContent = `${fov}°`;
     const brightValEl = document.getElementById('setting-brightness-val');
@@ -2301,6 +2445,13 @@ class App {
     this.hudLayout = layout;
     localStorage.setItem('vortex_hud_layout', layout);
     this.applyHudLayout(layout);
+  }
+
+  togglePerformanceLogger() {
+    if (!this.gameEngine) return;
+    this.gameEngine.perfLoggerDetailed = !this.gameEngine.perfLoggerDetailed;
+    localStorage.setItem('vortex_perf_logger', String(this.gameEngine.perfLoggerDetailed));
+    this.showToast(this.gameEngine.perfLoggerDetailed ? '📊 Performance Stats: DETAILED (FPS, FT, Heap, Ping)' : '📊 Performance Stats: COMPACT');
   }
 
   applyHudLayout(layout) {
@@ -2356,20 +2507,43 @@ class App {
   }
 
   onAppPause() {
+    if (this.gameEngine && this.gameEngine.input && typeof this.gameEngine.input.resetInputState === 'function') {
+      this.gameEngine.input.resetInputState();
+    }
     if (window.soundEngine && window.soundEngine.ctx && typeof window.soundEngine.ctx.suspend === 'function') {
       try { window.soundEngine.ctx.suspend(); } catch (e) {}
     }
   }
 
   onAppResume() {
+    if (this.gameEngine && typeof this.gameEngine.handleResume === 'function') {
+      this.gameEngine.handleResume();
+    }
     if (window.soundEngine && window.soundEngine.ctx && typeof window.soundEngine.ctx.resume === 'function') {
       try { window.soundEngine.ctx.resume(); } catch (e) {}
+    }
+    // Connection watchdog: if in gameplay and WebSocket was interrupted while backgrounded
+    if (this.currentScreen === 'gameplay' && window.netClient) {
+      if (!window.netClient.isConnected || !window.netClient.ws || window.netClient.ws.readyState !== WebSocket.OPEN) {
+        this.showToast('📡 Reconnecting to battleground...', 'info');
+        window.netClient.ensureConnected(4000).then((connected) => {
+          if (!connected && this.currentScreen === 'gameplay') {
+            this.showToast('Match session ended while away', 'danger');
+            this.navigateTo('main-menu');
+          }
+        });
+      }
     }
   }
 
   showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
+
+    // Cap notifications queue to max 2 visible toasts so they never obstruct gameplay
+    while (container.children.length >= 2) {
+      container.removeChild(container.firstElementChild);
+    }
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -2378,7 +2552,7 @@ class App {
 
     setTimeout(() => {
       if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 4000);
+    }, 2200);
   }
 }
 

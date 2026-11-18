@@ -53,6 +53,9 @@ export class GameEngine {
     this.fpsCounter = 60;
     this.frameCount = 0;
     this.fpsTimer = 0;
+    this.frameTimeMs = 16.6;
+    this.perfLoggerDetailed = localStorage.getItem('vortex_perf_logger') === 'true';
+    this._activePlayerIds = new Set();
 
     // Graphics settings
     this.graphicsQuality = 'high';
@@ -344,11 +347,11 @@ export class GameEngine {
   }
 
   syncRemotePlayers(playerSnapshots) {
-    const activeIds = new Set();
+    this._activePlayerIds.clear();
 
     for (const snap of playerSnapshots) {
       const pid = snap.id;
-      activeIds.add(pid);
+      this._activePlayerIds.add(pid);
 
       if (String(pid) === String(this.localPlayerId)) {
         // If an orphan model exists for local player, remove it immediately
@@ -401,7 +404,7 @@ export class GameEngine {
 
     // Remove disconnected remote players
     for (const [id, entry] of this.remotePlayers.entries()) {
-      if (!activeIds.has(id)) {
+      if (!this._activePlayerIds.has(id)) {
         this.scene.remove(entry.model.group);
         this.remotePlayers.delete(id);
       }
@@ -422,6 +425,30 @@ export class GameEngine {
       return true;
     }
     return false;
+  }
+
+  checkAutoFireRaycast() {
+    if (this.isDead || !this.input) return;
+    const origin = this.input.getShootOrigin();
+    const dir = this.input.getForwardDirection();
+
+    for (const entry of this.remotePlayers.values()) {
+      if (!entry.model || !entry.model.isAlive) continue;
+      if (entry.model.isInvulnerable) continue;
+
+      const pPos = entry.model.group.position;
+      const toTargetX = pPos.x - origin.x;
+      const toTargetY = (pPos.y + 0.9) - origin.y;
+      const toTargetZ = pPos.z - origin.z;
+      const dist = Math.hypot(toTargetX, toTargetY, toTargetZ);
+      if (dist < 1.0 || dist > 45.0) continue;
+
+      const dot = (toTargetX * dir.x + toTargetY * dir.y + toTargetZ * dir.z) / dist;
+      if (dot > 0.992) {
+        this.handleShoot();
+        break;
+      }
+    }
   }
 
   handleReload() {
@@ -449,33 +476,70 @@ export class GameEngine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.25 : 2.0));
   }
 
+  handleResume() {
+    this.lastFrameTime = performance.now();
+    this.frameCount = 0;
+    this.fpsTimer = 0;
+    if (this.input && typeof this.input.resetInputState === 'function') {
+      this.input.resetInputState();
+    }
+  }
+
   animate(now) {
     requestAnimationFrame(this.animate);
     const delta = Math.max(0.001, Math.min(0.1, (now - this.lastFrameTime) / 1000 || 0.016));
     this.lastFrameTime = now;
 
-    // Track FPS
+    // Track FPS and Performance Metrics
     this.frameCount++;
     this.fpsTimer += delta;
-    if (this.fpsTimer >= 1.0) {
-      this.fpsCounter = this.frameCount;
+    this.frameTimeMs = delta * 1000;
+    if (this.fpsTimer >= 0.5) {
+      this.fpsCounter = Math.round(this.frameCount / this.fpsTimer);
       this.frameCount = 0;
       this.fpsTimer = 0;
       const fpsEl = document.getElementById('hud-fps');
-      if (fpsEl) fpsEl.textContent = `${this.fpsCounter} FPS`;
+      if (fpsEl) {
+        if (this.perfLoggerDetailed) {
+          const ft = this.frameTimeMs.toFixed(1);
+          let memStr = '';
+          if (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) {
+            memStr = ` • ${Math.round(window.performance.memory.usedJSHeapSize / 1048576)}MB`;
+          }
+          const ping = (window.netClient && window.netClient.currentPing !== undefined && window.netClient.currentPing !== null)
+            ? `${window.netClient.currentPing}ms`
+            : null;
+          const pingStr = ping ? ` • ${ping}` : '';
+          fpsEl.textContent = `${this.fpsCounter} FPS • ${ft}ms${memStr}${pingStr}`;
+        } else {
+          fpsEl.textContent = `${this.fpsCounter} FPS`;
+        }
+      }
     }
 
     // 1. Update Input Controller
     const moveInfo = this.input.update(delta);
 
-    // 2. Continuous fire for automatic weapons
-    if (this.input.isShooting && this.weaponView && this.weaponView.activeWeaponId === 'assault_rifle') {
-      this.handleShoot();
+    // 2. Continuous fire for automatic weapons or hold-to-fire
+    if (this.input.isShooting) {
+      if (this.weaponView && (this.weaponView.activeWeaponId === 'assault_rifle' || this.input.holdToFire)) {
+        this.handleShoot();
+      }
+    } else if (this.input.autoFireOnAim && this.remotePlayers && this.remotePlayers.size > 0) {
+      if (!this._lastAutoAimCheck || (now - this._lastAutoAimCheck > 90)) {
+        this._lastAutoAimCheck = now;
+        this.checkAutoFireRaycast();
+      }
     }
 
     // 3. Update Weapon View Model
     this.weaponView.setADS(this.input.isADS);
     this.weaponView.update(delta, moveInfo.isMoving, moveInfo.speed);
+
+    // Update dynamic damage direction indicators
+    if (window.app && typeof window.app.updateDamageIndicators === 'function') {
+      window.app.updateDamageIndicators();
+    }
 
     // 4. Update Particle Systems
     this.particles.update(delta);
