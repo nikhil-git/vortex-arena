@@ -87,6 +87,18 @@ class App {
     this.hudLayout = savedHud || (isMobileDevice ? 'compact' : 'normal');
     this.applyHudLayout(this.hudLayout);
 
+    // App lifecycle event listeners (prevents mobile resume freeze and stuck inputs)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.onAppPause();
+      } else {
+        this.onAppResume();
+      }
+    });
+    window.addEventListener('pagehide', () => this.onAppPause());
+    window.addEventListener('pageshow', () => this.onAppResume());
+    window.addEventListener('focus', () => this.onAppResume());
+
     // Performance Logger toggle listener (tap on FPS or press 'P')
     const fpsEl = document.getElementById('hud-fps');
     if (fpsEl) {
@@ -2495,14 +2507,32 @@ class App {
   }
 
   onAppPause() {
+    if (this.gameEngine && this.gameEngine.input && typeof this.gameEngine.input.resetInputState === 'function') {
+      this.gameEngine.input.resetInputState();
+    }
     if (window.soundEngine && window.soundEngine.ctx && typeof window.soundEngine.ctx.suspend === 'function') {
       try { window.soundEngine.ctx.suspend(); } catch (e) {}
     }
   }
 
   onAppResume() {
+    if (this.gameEngine && typeof this.gameEngine.handleResume === 'function') {
+      this.gameEngine.handleResume();
+    }
     if (window.soundEngine && window.soundEngine.ctx && typeof window.soundEngine.ctx.resume === 'function') {
       try { window.soundEngine.ctx.resume(); } catch (e) {}
+    }
+    // Connection watchdog: if in gameplay and WebSocket was interrupted while backgrounded
+    if (this.currentScreen === 'gameplay' && window.netClient) {
+      if (!window.netClient.isConnected || !window.netClient.ws || window.netClient.ws.readyState !== WebSocket.OPEN) {
+        this.showToast('📡 Reconnecting to battleground...', 'info');
+        window.netClient.ensureConnected(4000).then((connected) => {
+          if (!connected && this.currentScreen === 'gameplay') {
+            this.showToast('Match session ended while away', 'danger');
+            this.navigateTo('main-menu');
+          }
+        });
+      }
     }
   }
 

@@ -476,6 +476,15 @@ export class GameEngine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.25 : 2.0));
   }
 
+  handleResume() {
+    this.lastFrameTime = performance.now();
+    this.frameCount = 0;
+    this.fpsTimer = 0;
+    if (this.input && typeof this.input.resetInputState === 'function') {
+      this.input.resetInputState();
+    }
+  }
+
   animate(now) {
     requestAnimationFrame(this.animate);
     const delta = Math.max(0.001, Math.min(0.1, (now - this.lastFrameTime) / 1000 || 0.016));

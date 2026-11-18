@@ -394,6 +394,32 @@ export class InputController {
     }
   }
 
+  resetInputState() {
+    this.keys.forward = false;
+    this.keys.backward = false;
+    this.keys.left = false;
+    this.keys.right = false;
+    this.keys.jump = false;
+    this.keys.sprint = false;
+    this.velocity.x = 0;
+    this.velocity.z = 0;
+
+    // Reset touch movement & look IDs so screen never freezes on resume
+    this.touchMoveId = null;
+    this.touchLookId = null;
+    this.touchMove = { x: 0, z: 0 };
+    this.isShooting = false;
+    this.isADS = false;
+
+    const joystickThumb = document.getElementById('joystick-thumb');
+    const joystickBase = document.getElementById('joystick-base');
+    if (joystickThumb) joystickThumb.style.transform = 'translate(0, 0)';
+    if (joystickBase) joystickBase.style.display = 'none';
+
+    const adsBtn = document.getElementById('touch-btn-ads');
+    if (adsBtn) adsBtn.classList.remove('active');
+  }
+
   setupListeners() {
     // Pointer Lock click
     this.domElement.addEventListener('click', () => {
@@ -405,25 +431,16 @@ export class InputController {
     document.addEventListener('pointerlockchange', () => {
       this.isLocked = (document.pointerLockElement === this.domElement);
       if (!this.isLocked) {
-        this.keys.forward = false;
-        this.keys.backward = false;
-        this.keys.left = false;
-        this.keys.right = false;
-        this.keys.sprint = false;
+        this.resetInputState();
       }
     });
 
-    // Window blur: reset all movement states when window loses focus
-    window.addEventListener('blur', () => {
-      this.keys.forward = false;
-      this.keys.backward = false;
-      this.keys.left = false;
-      this.keys.right = false;
-      this.keys.jump = false;
-      this.keys.sprint = false;
-      this.velocity.x = 0;
-      this.velocity.z = 0;
+    // Window blur & lifecycle visibility changes: reset all movement & touch states
+    window.addEventListener('blur', () => this.resetInputState());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.resetInputState();
     });
+    window.addEventListener('pagehide', () => this.resetInputState());
 
     // Mouse Movement
     document.addEventListener('mousemove', (e) => {
